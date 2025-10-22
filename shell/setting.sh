@@ -1,6 +1,8 @@
-# Global Settings
+# control data path for shell scripts
+
+## Global Settings
 use_tissue="GTEx"       # Options: GTEx, eQTLGen
-target_population="EAS" # Options: EAS, AFR
+target_population="AFR" # Options: EAS, AFR
 chrs=($(seq 1 22))
 
 ## File Paths
