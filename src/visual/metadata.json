@@ -1,0 +1,102 @@
+{
+    "method_name": [
+        "Original",
+        "traceC",
+        "traceCB"
+    ],
+    "QTDids": [
+        "QTD000021",
+        "QTD000069",
+        "QTD000081",
+        "QTD000031",
+        "QTD000067",
+        "QTD000371",
+        "QTD000066",
+        "QTD000372",
+        "QTD000073",
+        "QTD000115"
+    ],
+    "Celltypes": [
+        "Monocytes",
+        "Monocytes",
+        "Monocytes",
+        "CD4+T_cells",
+        "CD4+T_cells",
+        "CD4+T_cells",
+        "CD8+T_cells",
+        "CD8+T_cells",
+        "B_cells",
+        "NK_cells"
+    ],
+    "Names": [
+        "BLUEPRINT(191)",
+        "CEDAR(286)",
+        "Fairfax_2014(420)",
+        "BLUEPRINT(167)",
+        "CEDAR(290)",
+        "Kasela_2017(280)",
+        "CEDAR(277)",
+        "Kasela_2017(269)",
+        "CEDAR(262)",
+        "Gilchrist_2021(247)"
+    ],
+    "id2name": {
+        "QTD000021": "BLUEPRINT(191)",
+        "QTD000069": "CEDAR(286)",
+        "QTD000081": "Fairfax_2014(420)",
+        "QTD000031": "BLUEPRINT(167)",
+        "QTD000067": "CEDAR(290)",
+        "QTD000371": "Kasela_2017(280)",
+        "QTD000066": "CEDAR(277)",
+        "QTD000372": "Kasela_2017(269)",
+        "QTD000073": "CEDAR(262)",
+        "QTD000115": "Gilchrist_2021(247)"
+    },
+    "id2celltype": {
+        "QTD000021": "Monocytes",
+        "QTD000069": "Monocytes",
+        "QTD000081": "Monocytes",
+        "QTD000031": "CD4+T_cells",
+        "QTD000067": "CD4+T_cells",
+        "QTD000371": "CD4+T_cells",
+        "QTD000066": "CD8+T_cells",
+        "QTD000372": "CD8+T_cells",
+        "QTD000073": "B_cells",
+        "QTD000115": "NK_cells"
+    },
+    "celltype_proportion": {
+        "B_cells": 0.8069001744805046,
+        "CD4+T_cells": 10.401165801186464,
+        "CD8+T_cells": 7.140400706490821,
+        "NK_cells": 9.722658552454147,
+        "Monocytes": 14.755361092635985
+    },
+    "Colors": {
+        "Original": "#78F38C",
+        "traceC": "#fb8500",
+        "traceCB": "#2d00f7"
+    },
+    "celltype_colors": {
+        "Monocytes": "#cdb4db",
+        "CD4+T_cells": "#ffc8dd",
+        "CD8+T_cells": "#fde2e4",
+        "B_cells": "#bde0fe",
+        "NK_cells": "#caffbf"
+    },
+    "onek1k2celltype": {
+        "B IN": "B_cells",
+        "B Mem": "B_cells",
+        "CD4 NC": "CD4+T_cells",
+        "CD4 ET": "CD4+T_cells",
+        "CD4 SOX4": "CD4+T_cells",
+        "CD8 NC": "CD8+T_cells",
+        "CD8 ET": "CD8+T_cells",
+        "CD8 S100B": "CD8+T_cells",
+        "Mono C": "Monocytes",
+        "Mono NC": "Monocytes",
+        "NK R": "NK_cells",
+        "NK": "NK_cells",
+        "Plasma": "Plasma",
+        "DC": "DC"
+    }
+}
