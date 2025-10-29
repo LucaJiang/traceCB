@@ -108,7 +108,7 @@ def f3violin(summary_sign_df):
         # 添加celltype标注线
         x_end = x_start + width
         ax.hlines(
-            y=y_min + (y_max - y_min) * 0.02,  # 位于x轴上方
+            y=y_min + (y_max - y_min) * 0.015,  # 位于x轴上方
             xmin=x_start + margin,
             xmax=x_end - margin,
             colors=celltype_colors[celltype],
@@ -122,7 +122,7 @@ def f3violin(summary_sign_df):
         x_center = x_start + width / 2
         ax.text(
             x_center,
-            y_min + (y_max - y_min) * 0.07,  # 位于标注线上方
+            y_min + (y_max - y_min) * 0.04,  # 位于标注线上方
             label_name_shorten[celltype],
             color="black",
             # fontsize=10,
@@ -132,7 +132,8 @@ def f3violin(summary_sign_df):
         )
 
     plt.tight_layout()
-    plt.savefig(os.path.join(save_path, "f3boxen.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(save_path, "f3boxen.pdf"), bbox_inches="tight")
+    print("Figure saved to:", os.path.join(save_path, "f3boxen.pdf"))
 
 
 if __name__ == "__main__":
@@ -144,9 +145,7 @@ if __name__ == "__main__":
         meta_data["id2celltype"]
     )
     print("Summary Sign DataFrame:")
-    print(
-        summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]]
-        .groupby("NAME")
-        .agg(TraceC=("TAR_CNEFF", "median"), TraceCB=("TAR_TNEFF", "median"))
-    )
+    print(summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]].groupby("NAME").agg(
+        TraceC=("TAR_CNEFF", "mean"), TraceCB=("TAR_TNEFF", "mean")
+    ))
     f3violin(summary_sign_df)

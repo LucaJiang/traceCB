@@ -88,7 +88,7 @@ def load_summary(study_dir):
     summary_df.loc[na_raw, "TAR_TeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
     summary_df.loc[na_raw, "AUX_CeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
     summary_df.loc[na_raw, "AUX_TeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
-    return summary_sign_df, summary_df
+    return summary_sign_df.copy(), summary_df.copy()
 
 
 def plot_neff_violin(

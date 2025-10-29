@@ -3,14 +3,23 @@ from utils import *
 from matplotlib.patches import Rectangle
 
 
-def count_egene(df, replicate_egenes):
+def count_egene(df, replicate_egenes_by_celltype):
     """
     Count the number of eGenes for each qtdid and method.
-    Count the number of replicate eGenes from each qtdid and method.
+    Count the number of replicate eGenes from each qtdid and method based on celltype.
     Returns a DataFrame with the count of eGenes.
     """
     df = df.copy()
-    df.loc[:, "is_replicate"] = df.GENE.isin(replicate_egenes)
+
+    # Map QTDid to celltype for each row
+    df['cell_type'] = df['QTDid'].map(meta_data['id2celltype'])
+
+    # Determine if a gene is a replicate based on its celltype
+    df['is_replicate'] = df.apply(
+        lambda row: row['GENE'] in replicate_egenes_by_celltype.get(row['cell_type'], set()),
+        axis=1
+    )
+
     for m in ["S", "C", "T"]:
         df.loc[:, f"TAR_{m}eGene"] = (df.loc[:, f"TAR_{m}eSNP"] > 0).astype(int)
         df.loc[:, f"TAR_{m}eGene_replicate"] = (
@@ -65,9 +74,9 @@ def count_egene(df, replicate_egenes):
         }
     )
     count_df.loc[:, "name"] = count_df.index.map(meta_data["id2name"])
-    # count_df.name = pd.Categorical(
-    #     count_df.name, categories=meta_data["Names"], ordered=False
-    # )
+    count_df.name = pd.Categorical(
+        count_df.name, categories=meta_data["Names"], ordered=True
+    )
     count_df = count_df.reset_index().sort_values("name")
 
     # find average replicate rate
@@ -198,14 +207,34 @@ def f3egene(plot_df):
     )
 
     plt.tight_layout()
-    save_name = "f3egene.pdf"
-    plt.savefig(os.path.join(save_path, save_name))
+    save_name = "f3egene_replicate_OASIS.png"
+    plt.savefig(os.path.join(save_path, save_name), dpi=300)
     print(f"Figure saved to {os.path.join(save_path, save_name)}")
+
+
+# 2. 获取OASIS eGene函数, 按细胞类型返回
+def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
+    """
+    Loads eGenes from OASIS dataset, grouped by cell type.
+    Returns a dictionary mapping cell types to a set of eGene IDs.
+    """
+    oasis_egenes_by_celltype = {cell: set() for cell in OASIS_celltype_dict.keys()}
+    for celltype, aliases in OASIS_celltype_dict.items():
+        for alias in aliases:
+            file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            if not os.path.exists(file_path):
+                print(f"File not found: {file_path}")
+                continue
+            df = pd.read_csv(file_path, sep="\t")
+            replicated_genes = set(df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"])
+            oasis_egenes_by_celltype[celltype].update(replicated_genes)
+    return oasis_egenes_by_celltype
 
 
 if __name__ == "__main__":
     summary_sign_df, _ = load_all_summary()
-    replicate_df = pd.read_csv("/home/group1/wjiang49/data/hum0343/hum0343_eGene.csv")
-    replicate_egenes = replicate_df.gene
-    plot_df = count_egene(summary_sign_df, replicate_egenes)
+    # 获取按细胞类型分类的OASIS eGene
+    replicate_egenes_by_celltype = get_oasis_egene_by_celltype(egene_pval_threshold=5e-3)
+    # 传入字典进行计数
+    plot_df = count_egene(summary_sign_df, replicate_egenes_by_celltype)
     f3egene(plot_df)

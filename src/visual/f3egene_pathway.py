@@ -4,10 +4,10 @@ from matplotlib.patches import Rectangle
 
 # change the data path and title correspondingly
 save_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
-egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Membrane_egene.csv"
-title = "Newly discovered eGenes in\nSurface or Membrane"
-# egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Nuclear_egene.csv"
-# title = "Newly discovered eGenes in\nNuclear, Cytoplasm or ER"
+# egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Membrane_egene.csv"
+# title = "Newly discovered eGenes in\nSurface or Membrane"
+egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Nuclear_egene.csv"
+title = "Newly discovered eGenes in\nNuclear, Cytoplasm or ER"
 
 
 # find newly discovered eGenes

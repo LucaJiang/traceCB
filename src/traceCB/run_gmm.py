@@ -10,7 +10,7 @@ from ldsc import Run_single_LDSC, Run_cross_LDSC
 from gmm import GMM, GMMtissue
 from utils import make_pd_shrink, z2p, P_VAL_THRED, MIN_FLOAT, eSNP_THRESHOLD
 
-# cmd: python -m pdb src/run_gmm.py -s QTD000066 -t CD8+T_cells -c 22 -d /gpfs1/scratch/wjiang49/xpmm/EAS_GTEx/
+# cmd: python src/traceCB/run_gmm.py -s QTD000081 -t Monocytes -c 1 -d /home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx >> log/test_sigmao_QTD000081_Monocytes.csv 2>&1
 
 
 def parse_args():
@@ -129,7 +129,9 @@ def main(args, chr):
         ],
     )
     summary_df.index.name = "GENE"
-    for gene in gene_list:
+    # for gene in gene_list:
+    for gene_idx in prange(len(gene_list)):
+        gene = gene_list[gene_idx]
         ## collect data for the gene
         tarQTLgene_df = (
             tarQTLdf.loc[tarQTLdf["GENE"] == gene, :]
@@ -183,16 +185,8 @@ def main(args, chr):
             gene_df.LD_x.to_numpy(),
             np.array([1.0, 1.0, 0.0]),
         )
+        
         Omega_p = z2p(Omega / Omega_se)
-        ## get Sigma_o
-        propt_weighted_omega, _ = Run_single_LDSC(
-            gene_df.BETA_tissue.to_numpy() / gene_df.SE_tissue.to_numpy(),
-            gene_df.N_tissue.to_numpy(),
-            gene_df.LD_aux.to_numpy(),
-            1.0,
-        )
-        weighted_omega_o = propt_weighted_omega - celltype_proportion**2 * Omega[1, 1]
-        Sigma_o = weighted_omega_o * gene_df.LD_aux.to_numpy()
         summary_df.loc[gene, "H1SQ"] = Omega[0, 0]
         summary_df.loc[gene, "H1SQSE"] = Omega_se[0, 0]
         summary_df.loc[gene, "H2SQ"] = Omega[1, 1]
@@ -227,6 +221,30 @@ def main(args, chr):
                     Omega[i, j] = MIN_FLOAT
         if np.any(Omega <= MIN_FLOAT):
             continue  # skip genes with unsignificant heritability or correlation
+
+        ## ! get Sigma_o
+        propt_weighted_omega, propt_weighted_omega_se = Run_single_LDSC(
+            gene_df.BETA_tissue.to_numpy() / gene_df.SE_tissue.to_numpy(),
+            gene_df.N_tissue.to_numpy(),
+            gene_df.LD_aux.to_numpy(),
+            1.0,
+        ) # pi^2 omega2 + (1-pi)^2 omegao
+        Omega_o = (propt_weighted_omega - celltype_proportion**2 * Omega[1, 1]) / (1 - celltype_proportion)**2
+        Omega_o_se = (propt_weighted_omega_se**2 + celltype_proportion**4 * Omega_se[1, 1]**2) ** 0.5 / (1 - celltype_proportion)**2
+        
+        weighted_omega_o = propt_weighted_omega - celltype_proportion**2 * Omega[1, 1]
+        Sigma_o = weighted_omega_o * gene_df.LD_aux.to_numpy()
+        Sigma_o_mean = Sigma_o.mean()
+        Sigma_o_set_zero = False
+        # if z2p(Omega_o/Omega_o_se) > 0.05:
+        # # if z2p(Omega_o/Omega_o_se) > P_VAL_THRED:
+        #     Sigma_o = gene_df.LD_aux.to_numpy() * 0.0  # set Sigma_o to zero
+        #     Sigma_o_set_zero = True
+        Sigma_o = gene_df.LD_aux.to_numpy() * 0.0  # ! test set Sigma_o to zero
+                         
+        # # ! test
+        # print(f"{Sigma_o_mean:.8e},{Sigma_o_set_zero},{(Omega[1, 1]*gene_df.LD_aux).mean():.8e},{Omega_o:.8e},{Omega[1, 1]:.8e},{1-np.any(Omega <= MIN_FLOAT)}")
+    
         Omega = make_pd_shrink(Omega, shrink=0.9)
 
         ## run GMM for each SNP in the gene

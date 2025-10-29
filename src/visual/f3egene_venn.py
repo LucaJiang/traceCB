@@ -100,9 +100,8 @@ def get_venn3_count_plot(ct_df, ct_qid, harmonized=True):
     plt.tight_layout()
     plt.savefig(
         os.path.join(
-            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.png"
+            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.pdf"
         ),
-        dpi=300,
     )
 
 
@@ -145,9 +144,8 @@ def get_venn2_count_plot(ct_df, ct_qid, harmonized=True):
     plt.tight_layout()
     plt.savefig(
         os.path.join(
-            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.png"
+            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.pdf"
         ),
-        dpi=300,
     )
 
 

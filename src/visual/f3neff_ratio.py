@@ -2,8 +2,6 @@ from utils import *
 from f3violin import remove_outliers
 from adjustText import adjust_text
 from scipy import stats
-import numpy as np
-
 
 # 计算regression置信区间
 def prediction_interval(x, y, new_x, confidence=0.95):
@@ -33,6 +31,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
     """
     x=true sample size of the AUX, y=TAR_CNEFF / TAR_SNEFF, color=cell type
     """
+    print("Beginning to plot sample size vs TAR_CNEFF_SNEFF_RATIO...")
     ## group by QTDid and get the mean of TAR_CNEFF_SNEFF_RATIO
     samplesize_df = (
         summary_sign_df.groupby("QTDid")
@@ -53,19 +52,6 @@ def f3neff_ratio_samplesize(summary_sign_df):
 
     # plot
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(
-        x="SAMPLE_SIZE",
-        y="TAR_CNEFF_SNEFF_RATIO",
-        hue="CELL_TYPE",
-        data=samplesize_df,
-        ax=ax,
-        palette=meta_data["celltype_colors"],
-        s=50,  # 稍微增大点的大小
-        alpha=1,
-        edgecolor="white",
-        linewidth=0.5,
-    )
-
     # 添加回归线和置信区间, exclude qtdid == "BLUEPRINT(191)" or "BLUEPRINT(167)"
     blueprint_rows = samplesize_df.QTDid.isin(["QTD000021", "QTD000031"])
     x = samplesize_df.loc[~blueprint_rows, "SAMPLE_SIZE"]
@@ -78,6 +64,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
     )
     line_y = slope * line_x + intercept
     margin = prediction_interval(x, y, line_x, confidence=0.95)
+    print(f"Regression line: y = {slope:.4f} * x + {intercept:.4f}, R^2 = {r_value**2:.4f}")
 
     # 绘制回归线
     ax.plot(
@@ -96,6 +83,18 @@ def f3neff_ratio_samplesize(summary_sign_df):
         line_y + margin,
         color="gray",
         alpha=0.1,
+    )
+    sns.scatterplot(
+        x="SAMPLE_SIZE",
+        y="TAR_CNEFF_SNEFF_RATIO",
+        hue="CELL_TYPE",
+        data=samplesize_df,
+        ax=ax,
+        palette=meta_data["celltype_colors"],
+        s=50,  # 稍微增大点的大小
+        alpha=1,
+        edgecolor="gray",
+        linewidth=0.5,
     )
 
     # 使用adjustText自动避让
@@ -125,8 +124,8 @@ def f3neff_ratio_samplesize(summary_sign_df):
         expand_text=(1.5, 1.5),  # 增加文本周围的扩展区域
         expand_points=(1.5, 1.5),  # 增加点周围的扩展区域
         expand_objects=(1.5, 1.5),  # 增加对象周围的扩展区域
-        min_arrow_len=12,
-        lim=4000,  # 增加迭代次数
+        min_arrow_len=16,
+        lim=8000,  # 增加迭代次数
         precision=0.0001,  # 提高精度
         arrowprops=dict(
             arrowstyle="->",
@@ -152,14 +151,16 @@ def f3neff_ratio_samplesize(summary_sign_df):
 
     plt.tight_layout()
     plt.savefig(
-        f"{save_path}/f3neff_ratio_samplesize.png", dpi=300, bbox_inches="tight"
+        f"{save_path}/f3neff_ratio_samplesize.pdf", bbox_inches="tight"
     )
+    print(f"Sample size plot saved to: {save_path}/f3neff_ratio_samplesize.pdf")
 
 
 def f3neff_ratio_celltype_proportion(summary_sign_df):
     """
     x=cell type proportion, y=TAR_TNEFF / TAR_CNEFF, color=cell type
     """
+    print("Beginning to plot cell type proportion vs TAR_TNEFF_CNEFF_RATIO...")
     ## group by QTDid and get the mean of TAR_TNEFF_CNEFF_RATIO
     celltype_proportion_df = (
         summary_sign_df.groupby("QTDid")
@@ -181,22 +182,9 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
 
     print("Celltype proportion plot data:")
     print(celltype_proportion_df)
-
+    
     # plot
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(
-        x="CELL_TYPE_PROP",
-        y="TAR_TNEFF_CNEFF_RATIO",
-        hue="CELL_TYPE",
-        data=celltype_proportion_df,
-        ax=ax,
-        palette=meta_data["celltype_colors"],
-        s=50,  # 稍微增大点的大小
-        alpha=1,
-        edgecolor="white",
-        linewidth=0.5,
-    )
-
     # 添加回归线和置信区间
     x_lower = celltype_proportion_df["CELL_TYPE_PROP"]
     y_lower = celltype_proportion_df["TAR_TNEFF_CNEFF_RATIO"]
@@ -208,6 +196,7 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
     line_x_lower = np.linspace(x_lower.min(), x_lower.max(), 100)
     line_y_lower = slope_lower * line_x_lower + intercept_lower
     margin_lower = prediction_interval(x_lower, y_lower, line_x_lower, confidence=0.95)
+    print(f"Regression line: y = {slope_lower:.4f} * x + {intercept_lower:.4f}, R^2 = {r_value_lower**2:.4f}")
 
     # 绘制回归线
     ax.plot(
@@ -227,7 +216,19 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
         color="gray",
         alpha=0.1,
     )
-
+    sns.scatterplot(
+        x="CELL_TYPE_PROP",
+        y="TAR_TNEFF_CNEFF_RATIO",
+        hue="CELL_TYPE",
+        data=celltype_proportion_df,
+        ax=ax,
+        palette=meta_data["celltype_colors"],
+        s=50,  # 稍微增大点的大小
+        alpha=1,
+        edgecolor="gray",
+        linewidth=0.5,
+    )
+    
     # 采用斜向偏移策略
     texts_lower = []
     for i, row in celltype_proportion_df.iterrows():
@@ -280,14 +281,14 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
 
     plt.tight_layout()
     plt.savefig(
-        f"{save_path}/f3neff_ratio_celltype_proportion.png",
-        dpi=300,
+        f"{save_path}/f3neff_ratio_celltype_proportion.pdf",
         bbox_inches="tight",
     )
+    print(f"Cell type proportion plot saved to: {save_path}/f3neff_ratio_celltype_proportion.pdf")
 
 
 if __name__ == "__main__":
-    summary_sign_df, _ = load_all_summary()
+    summary_sign_df, _ = load_all_summary()    
     summary_sign_df = remove_outliers(summary_sign_df)
     summary_sign_df.loc[:, "NAME"] = summary_sign_df.QTDid.map(meta_data["id2name"])
 

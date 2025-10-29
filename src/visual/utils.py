@@ -12,10 +12,15 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 1000)
 plt.rcParams["font.family"] = "DejaVu Sans"
 
-study_path_main = "/home/group1/wjiang49/data/traceCB/AFR_GTEx"
-save_path = "/home/group1/wjiang49/data/traceCB/AFR_GTEx/results"
 # study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_GTEx"
 # save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
+# study_path_main = "/home/group1/wjiang49/data/traceCB/AFR_GTEx"
+# save_path = "/home/group1/wjiang49/data/traceCB/AFR_GTEx/results"
+study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
+save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
+
+onek1k_path = "/home/wjiang49/group/wjiang49/data/traceCB/onek1k_supp/onek1k_esnp.csv"
+gtex_lookup_table_path = "/home/wjiang49/group/wjiang49/data/GTEx/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz"
 
 ## convert p-value to z-score and vice versa
 p2z = lambda p: np.abs(norm.ppf(p / 2))
@@ -29,6 +34,14 @@ label_name_shorten = {
     "NK_cells": "NK",
 }
 
+OASIS_path = "/home/wjiang49/group/wjiang49/data/hum0197/eQTL_summary_statistics"
+OASIS_celltype_dict = {
+    "Monocytes": ["Mono"],
+    "CD4+T_cells": ["CD4T"],
+    "CD8+T_cells": ["CD8T"],
+    "B_cells": ["B"],
+    "NK_cells": ["NK"]
+}
 
 def load_json(json_file="metadata.json"):
     """
@@ -55,14 +68,16 @@ def load_summary(study_dir):
     summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr*", "summary.csv"))
     summary_df = pd.DataFrame()
     for summary_file in summary_dirs:
-        df = pd.read_csv(summary_file)
-        df["CHR"] = os.path.basename(os.path.dirname(summary_file)).replace("chr", "")
+        df = pd.read_csv(summary_file, header=0, index_col=None)
+        df.loc[:, "CHR"] = os.path.basename(os.path.dirname(summary_file)).replace("chr", "")
         summary_df = (
             df if summary_df.empty else pd.concat([summary_df, df], ignore_index=True)
         )
-    summary_df.loc[:, "COR"] = (
+    summary_df.loc[:, "COR_ORI"] = (
         summary_df.COV / summary_df.H1SQ.apply(np.sqrt) / summary_df.H2SQ.apply(np.sqrt)
-    )  # convert correlation to genetic correlation
+    )  # convert correlation to genetic correlation, original cor
+    summary_df.loc[:, "COR"] = summary_df.COR_ORI.clip(-1, 1)  # clip cor to [-1,1]
+    summary_df.loc[summary_df.COV_PVAL > 0.05, "COR"] = 1e-12  # if COR_PVAL>0.05, set COR=0
     summary_sign_df = summary_df.dropna()
     na_raw = summary_df.TAR_CNEFF.isna()
     summary_df.loc[na_raw, "TAR_CNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
@@ -74,6 +89,7 @@ def load_summary(study_dir):
     summary_df.loc[na_raw, "AUX_CeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
     summary_df.loc[na_raw, "AUX_TeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
     return summary_sign_df.copy(), summary_df.copy()
+
 
 
 def load_all_summary(study_path_main=study_path_main):
@@ -102,11 +118,27 @@ def load_all_summary(study_path_main=study_path_main):
         )
     return all_summary_sign_df, all_summary_df
 
+def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
+    """
+    Loads eGenes from OASIS dataset, grouped by cell type.
+    Returns a dictionary mapping cell types to a set of eGene IDs.
+    """
+    oasis_egenes_by_celltype = {cell: set() for cell in OASIS_celltype_dict.keys()}
+    for celltype, aliases in OASIS_celltype_dict.items():
+        for alias in aliases:
+            file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            if not os.path.exists(file_path):
+                print(f"File not found: {file_path}")
+                continue
+            df = pd.read_csv(file_path, sep="\t")
+            # OASIS文件使用'phenotype_id'作为gene id列
+            replicated_genes = set(df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"])
+            oasis_egenes_by_celltype[celltype].update(replicated_genes)
+    return oasis_egenes_by_celltype
 
 class onek1k_geneid2name(object):
 
     def __init__(self):
-        onek1k_path = "/gpfs1/home/wjiang49/xpmm/data/onek1k_esnp.csv"
         # Cell_type	Gene_ID	Gene_Ensembl_ID	SNP	Chromosome
         self.onek1k_df = pd.read_csv(
             onek1k_path, usecols=["Gene_ID", "Gene_Ensembl_ID"]
@@ -149,7 +181,6 @@ def get_gtex_lookup_table():
     Returns a DataFrame with columns: POS, RSID
     POS based on b38
     """
-    gtex_lookup_table_path = "/gpfs1/scratch/ResearchGroups/bios_mingxcai/data/GTEx/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz"
     lookup_df = pd.read_csv(
         gtex_lookup_table_path,
         sep="\t",

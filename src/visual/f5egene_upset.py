@@ -47,5 +47,5 @@ if __name__ == "__main__":
         df = summary_sign_df_all[summary_sign_df_all.QTDid == target_qtdid].copy()
         eGene_df = format_eGene_df(df)
         title = "eGene for " + meta_data["id2name"][target_qtdid]
-        save_file = f"{save_path}/f6egene_upset_{target_qtdid}.png"
+        save_file = f"{save_path}/f5egene_upset_{target_qtdid}.png"
         plot_upset(eGene_df, title, save_file)

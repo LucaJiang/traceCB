@@ -73,8 +73,8 @@
     },
     "Colors": {
         "Original": "#78F38C",
-        "traceC": "#fb8500",
-        "traceCB": "#2d00f7"
+        "traceC": "#ffbf75",
+        "traceCB": "#456aff"
     },
     "celltype_colors": {
         "Monocytes": "#cdb4db",

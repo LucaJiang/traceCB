@@ -29,24 +29,36 @@ plot_gene_info = (
     # ("ENSG00000104518", "QTD000081", 8, "GSDMD"),
     # ("ENSG00000166928", "QTD000021", 11, "MS4A14"),
     ## heatmap bcx mon
-    # ("ENSG00000172543", "QTD000021", 11, "CTSW"),
-    # ("ENSG00000172543", "QTD000081", 11, "CTSW"),
-    # ("ENSG00000172543", "QTD000069", 11, "CTSW"),
+    ("ENSG00000172543", "QTD000021", 11, "CTSW"),
+    ("ENSG00000172543", "QTD000081", 11, "CTSW"),
+    ("ENSG00000172543", "QTD000069", 11, "CTSW"),
     # ("ENSG00000011454", "QTD000021", 9, "RABGAP1"),
     # ("ENSG00000011454", "QTD000069", 9, "RABGAP1"),
     # ("ENSG00000011454", "QTD000081", 9, "RABGAP1"),
     # ("ENSG00000148700", "QTD000021", 10, "ADD3"),
     # ("ENSG00000148700", "QTD000069", 10, "ADD3"),
     # ("ENSG00000148700", "QTD000081", 10, "ADD3"),
-    ("ENSG00000118369", "QTD000021", 11, "USP35"),
-    ("ENSG00000118369", "QTD000081", 11, "USP35"),
-    ("ENSG00000118369", "QTD000069", 11, "USP35"),
+    # ("ENSG00000118369", "QTD000021", 11, "USP35"),
+    # ("ENSG00000118369", "QTD000081", 11, "USP35"),
+    # ("ENSG00000118369", "QTD000069", 11, "USP35"),
+    ### test WDR48   "ENSG00000114742, 3: 39,052,013-39,096,671"
+    # ("ENSG00000114742", "QTD000021", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000031", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000066", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000067", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000069", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000073", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000081", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000115", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000371", 3, "WDR48"),
+    # ("ENSG00000114742", "QTD000372", 3, "WDR48"),
+
 )
 
-gwas_path = "/gpfs1/scratch/wjiang49/XeQTL/coloc/bcx/bcx_mon_GWAS.csv"
+gwas_path = "/home/wjiang49/group/wjiang49/data/xpmm/coloc/bcx/bcx_mon_GWAS.csv"
 
 MIN_PVAL = 1e-20
-MAX_RANGE = 800000
+MAX_RANGE = 200_000
 lookup_table = get_gtex_lookup_table().set_index("RSID") # RSID, POS
 
 def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
@@ -67,7 +79,7 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
     # Merge data on RSID/SNP
     merged_df = pd.merge(eqtl_df, gwas_df, left_on="RSID", right_on="SNP", how="inner")
     merged_df.loc[:, "PVAL"] = merged_df.Z.apply(z2p)
-    # clip pos if too large
+    # # clip pos if too large
     min_pos = merged_df.POS.min()
     max_pos = merged_df.POS.max()
     if max_pos - min_pos > MAX_RANGE:
@@ -77,8 +89,8 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
         merged_df = merged_df[(merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)]
         print(f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}")
     
-    # convert pos to b38
-    merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
+    # # convert pos to b38
+    # merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
     # sort by POS
     merged_df.sort_values(by="POS", inplace=True)
 
@@ -226,8 +238,8 @@ def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
         merged_df = merged_df[(merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)]
         print(f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}")
         
-    # convert pos to b38
-    merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
+    # # convert pos to b38
+    # merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
     
     # plot 3 manhattan plots (GWAS + celltype + tissue)
     target_methods = ["PVAL_gwas", "PVAL_celltype", "PVAL_tissue"]

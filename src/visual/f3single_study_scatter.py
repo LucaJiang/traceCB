@@ -6,7 +6,9 @@
 from utils import *
 from adjustText import adjust_text
 
-target_qtdids = ["QTD000067", "QTD000371", "QTD000069", "QTD000081"]
+
+# target_qtdids = ["QTD000081"]
+target_qtdids = ["QTD000021","QTD000031","QTD000066","QTD000067", "QTD000069", "QTD000073","QTD000081", "QTD000115","QTD000371", "QTD000372"]
 
 
 def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
@@ -14,8 +16,35 @@ def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
     ## p1: x=TAR_SNEFF, y=TAR_CNEFF, hue=COV_PVAL<0.05
     ## p2: x=TAR_SNEFF, y=TAR_TNEFF, hue=COV_PVAL<0.05
     ## p3: x=TAR_CNEFF, y=TAR_TNEFF, hue=COV_PVAL<0.05
-    fig, ax = plt.subplots(1, 3, figsize=(12, 3))
+    fig, ax = plt.subplots(1, 3, figsize=(11, 5))
     ## find significant and not significant xpop cov
+    # palette = {
+    #     "High Correlation": "#f30c0cf8", ## cor>0.8
+    #     "Medium Correlation": "#33ff00", ## 0.4<cor<0.8
+    #     "Low Correlation": "#00ddfff8", ## cor<0.4
+    #     "Not Significant": "#120eff",
+    # }
+    # summary_df.loc[:, "COV_SIGN"] = pd.cut(
+    #     summary_df.COR,
+    #     bins=[-1, 0.4, 0.8, 1.1],
+    #     labels=[
+    #         "Low Correlation",
+    #         "Medium Correlation",
+    #         "High Correlation",
+    #     ],
+    #     include_lowest=True,
+    # ).astype(str)
+    # summary_df.loc[summary_df["COV_PVAL"] >= 0.05, "COV_SIGN"] = "Not Significant"
+    # summary_df.COV_SIGN = pd.Categorical(
+    #     summary_df.COV_SIGN,
+    #     categories=[
+    #         "High Correlation",
+    #         "Medium Correlation",
+    #         "Low Correlation",
+    #         "Not Significant",
+    #     ],
+    #     ordered=True,
+    # )
     palette = {
         "Significant": "#db1717f8",
         "Not Significant": "#120eff",
@@ -59,13 +88,13 @@ def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
             texts = []
             for _, row in row_to_annotate.iterrows():
                 gene_name = annot_class.get_gene_name(row.GENE)
-                if gene_name is not None:
+                if gene_name is not None and row[x_col] != row[y_col]:
                     texts.append(
                         ax[i].text(
                             row[x_col],
                             row[y_col],
                             gene_name,
-                            fontsize=8,
+                            fontsize=7,
                             fontstyle="italic",
                         )
                     )
@@ -76,23 +105,23 @@ def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
                 ha="center",
                 va="center",
                 force_text=(4.0, 4.0),  # 增加文本之间的排斥力
-                force_points=(2, 2),  # 增加文本与点之间的排斥力
+                force_points=(4, 4),  # 增加文本与点之间的排斥力
                 expand_text=(4, 4),  # 增加文本周围的扩展区域
                 expand_points=(1.5, 1.5),  # 增加点周围的扩展区域
                 lim=10000,  # 增加迭代次数
                 precision=0.0001,  # 提高精度
-                arrowprops=dict(
-                    arrowstyle="->",
-                    color="grey",
-                    lw=0.5,
-                    shrinkA=4,  # 增加箭头与文本的距离
-                    shrinkB=2,  # 增加箭头与点的距离
-                ),
+                # arrowprops=dict(
+                #     arrowstyle="->",
+                #     color="grey",
+                #     lw=0.5,
+                #     shrinkA=4,  # 增加箭头与文本的距离
+                #     shrinkB=2,  # 增加箭头与点的距离
+                # ),
             )
         ## add baseline
         xmax = summary_df[x_col].max()
         ymax = summary_df[y_col].max()
-        xymax = max(xmax, ymax)
+        xymax = min(xmax, ymax)
         ax[i].plot(
             [0, xymax],
             [0, xymax],
@@ -101,8 +130,9 @@ def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
             linewidth=0.5,
         )
         ## set title and labels
-        ax[i].set_xlabel(f"{column2method[x_col]}")
-        ax[i].set_ylabel(f"{column2method[y_col]}")
+        ax[i].set_xlabel(f"{column2method[x_col]} effective sample size")
+        ax[i].set_ylabel(f"{column2method[y_col]} effective sample size")
+
         ## set x and y ticks
         ax[i].ticklabel_format(
             style="sci",  # 使用科学记数法
@@ -110,29 +140,28 @@ def f3_neff_scatter(summary_df, target_qtdid, text_annot=True):
             scilimits=(3, 3),  # 当数字达到10^3时触发
             useMathText=True,  # 使用数学文本格式（例如 10³ 而不是 1e3）
         )
+        
         if i != 2:
             ax[i].get_legend().remove()
         # ax[i].get_legend().set_title("Correlation Significance")
     ax[2].legend(
         loc="lower right",
         title="Correlation Significance",
-        # fontsize=6,
-        # title_fontsize=6,
+        # fontsize=8,
+        # title_fontsize=8,
     )
-    plt.suptitle(
-        f"Effective Sample Size Comparison for {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}",
-    )
+    # plt.suptitle(
+    #     f"Effective Sample Size Comparison for {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}",
+    # )
     plt.tight_layout()
     if text_annot:
         plt.savefig(
-            f"{save_path}/f3_neff_scatter_{target_qtdid}_annot.png",
-            dpi=300,
+            f"{save_path}/f3_neff_scatter_{target_qtdid}_annot.pdf",
             bbox_inches="tight",
         )
     else:
         plt.savefig(
-            f"{save_path}/f3_neff_scatter_{target_qtdid}_no_annot.png",
-            dpi=300,
+            f"{save_path}/f3_neff_scatter_{target_qtdid}_no_annot.pdf",
             bbox_inches="tight",
         )
     plt.close()
@@ -143,8 +172,10 @@ def f3_cor(summary_sign_df, target_qtdid):
     ## 1. num of egene by method, proportion of egene by method
     ## 2. ratio of effective sample size: GMM/Original, GMM+/Original
     ## define cor group
-    cor_group_cut = [0.4, 0.6, 0.8]
-    cor_group_labels = ["0.0-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
+    # cor_group_cut = [0.4, 0.6, 0.8]
+    # cor_group_labels = ["0.0-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
+    cor_group_cut = [0.4, 0.8]
+    cor_group_labels = ["0.0-0.4", "0.4-0.8", "0.8-1.0"]
     summary_sign_df.loc[:, "COR_GROUP"] = pd.cut(
         summary_sign_df.COR,
         bins=[-1] + cor_group_cut + [1.1],
@@ -166,85 +197,7 @@ def f3_cor(summary_sign_df, target_qtdid):
     )
 
     # plot
-    fig, ax = plt.subplots(2, 1, figsize=(6, 8), sharex=True)
-    ## 1. num of egene by method, proportion of egene by method
-    egene_data = pd.DataFrame(
-        {
-            "GENE": summary_sign_df["GENE"],
-            "COR_GROUP": summary_sign_df["COR_GROUP"],
-            meta_data["method_name"][0]: summary_sign_df["TAR_SeSNP"] > 0,
-            meta_data["method_name"][1]: summary_sign_df["TAR_CeSNP"] > 0,
-            meta_data["method_name"][2]: summary_sign_df["TAR_TeSNP"] > 0,
-        }
-    )
-
-    # 转换为长格式便于绘图
-    melted_df = pd.melt(
-        egene_data,
-        id_vars=["GENE", "COR_GROUP"],
-        value_vars=meta_data["method_name"],
-        var_name="Method",
-        value_name="is_eGene",
-    )
-
-    # 只保留是eGene的记录
-    melted_df = melted_df[melted_df["is_eGene"]]
-
-    # 统计每个相关性组中每种方法检测到的eGene数量
-    plot_df = (
-        melted_df.groupby(["COR_GROUP", "Method"], observed=False)
-        .size()
-        .reset_index(name="Count")
-    )
-
-    # 计算每个相关性组的总基因数
-    cor_group_counts = (
-        summary_sign_df["COR_GROUP"].value_counts().sort_index().reset_index()
-    )
-    cor_group_counts.columns = ["COR_GROUP", "Total"]
-
-    # 合并总基因数到plot_df
-    plot_df = plot_df.merge(cor_group_counts, on="COR_GROUP", how="left")
-
-    # 计算比例
-    plot_df["Proportion"] = plot_df["Count"] / plot_df["Total"]
-
-    # 绘制条形图
-    sns.barplot(
-        x="COR_GROUP",
-        y="Count",
-        hue="Method",
-        data=plot_df,
-        ax=ax[0],
-        palette=meta_data["Colors"],
-        order=cor_group_labels,  # 确保x轴顺序与cor group一致
-        hue_order=meta_data["method_name"],
-    )
-
-    ax[0].set_xlabel("")  # 不显示x轴标签，因为有共享的x轴
-    ax[0].set_ylabel("Number of eGenes")
-
-    # 添加第二个y轴显示比例
-    ax0_twin = ax[0].twinx()
-    sns.lineplot(
-        x="COR_GROUP",
-        y="Proportion",
-        hue="Method",
-        data=plot_df,
-        marker="o",
-        ax=ax0_twin,
-        palette=meta_data["Colors"],
-        hue_order=meta_data["method_name"],
-        legend=False,  # 避免重复图例
-    )
-
-    ax0_twin.set_ylabel("Proportion of eGenes")
-    ax0_twin.set_ylim(0, 1)
-
-    # 添加图例
-    handles1, labels1 = ax[0].get_legend_handles_labels()
-    ax[0].legend(handles1, labels1, title="Method", loc="upper left")
-
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     ## 2. 比例箱线图：展示GMM和GMM+相对于Original的有效样本量比率
     c2o_ration_name = f"{meta_data['method_name'][1]}/{meta_data['method_name'][0]}"
     t2o_ration_name = f"{meta_data['method_name'][2]}/{meta_data['method_name'][0]}"
@@ -260,6 +213,8 @@ def f3_cor(summary_sign_df, target_qtdid):
         var_name="Ratio",
         value_name="Value",
     )
+    ## set negtive value to nan
+    ratio_melted.loc[ratio_melted['Value'] < 0, 'Value'] = np.nan
 
     # 绘制箱线图，不显示异常值点
     sns.boxplot(
@@ -268,95 +223,142 @@ def f3_cor(summary_sign_df, target_qtdid):
         hue="Ratio",
         data=ratio_melted,
         fliersize=0,  # 不显示异常值
-        ax=ax[1],
+        ax=ax,
         palette=this_palette,
     )
 
     # 设置y轴范围和标签
-    ax[1].set_ylim([-0.5, 5.5])  # 根据实际数据调整上限
-    ax[1].set_ylabel("Effective Sample Size Fold Change Ratio")
-    ax[1].set_xlabel("Correlation Group")
-    ax[1].legend(title="Ratio", loc="upper left")
+    # ax.set_ylim([-0.5, 5.5])  # 根据实际数据调整上限
+    # ax.set_ylim([-0.5, 60.5])  # 根据实际数据调整上限
+    ax.set_ylim([0.5, 3.05])  # 根据实际数据调整上限
+    ax.set_ylabel("Effective Sample Size Fold Change Ratio")
+    ax.set_xlabel("Correlation Group")
+    ax.legend(title="Ratio", loc="upper left")
 
     # 设置整体标题
-    plt.suptitle(
-        f"eGene Detection and Effective Sample Size\nin {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}",
-        fontsize=12,
-        y=0.98,
-    )
+    # plt.suptitle(
+    #     f"Effective Sample Size Fold Change Ratio\nin {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}",
+    #     fontsize=12,
+    #     y=0.98,
+    # )
 
     # 调整布局并保存
     plt.tight_layout()
     plt.savefig(
-        os.path.join(save_path, f"f3_cor_{target_qtdid}.png"),
-        dpi=300,
+        os.path.join(save_path, f"f3_cor_{target_qtdid}.pdf"),
         bbox_inches="tight",
     )
     plt.close()
 
 
-def f3_cor_density(summary_df, target_qtdid):
+def f3_cor_density(summary_df, summary_sign_df, target_qtdid):
     # plot cor density and significant cor density
-    target_summary_df = summary_df[summary_df.QTDid == target_qtdid].copy()
+    # QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+    target_summary_df = summary_df.copy()
+    target_summary_sign_df = summary_sign_df.copy()
 
-    # 筛选出显著相关的数据
-    significant_df = target_summary_df[target_summary_df.COV_PVAL < 0.05].copy()
+    # 添加分组标签
+    target_summary_df.loc[:, "Type"] = "Heritability Significant"
+    target_summary_sign_df.loc[:, "Type"] = "Correlation Significant"
+    # remove negtive cor
+    target_summary_sign_df = target_summary_sign_df[target_summary_sign_df.COR > 0]
+    
+    # 合并数据
+    combined_df = pd.concat([target_summary_df, target_summary_sign_df], ignore_index=True)
+    combined_df.loc[:, "COR"] = combined_df["COR_ORI"].clip(lower=-10, upper=10)
+    
+    # print(target_summary_df.COR.describe())
+    # print(target_summary_sign_df.COR.describe())
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-
-    # 绘制所有COR的分布曲线
-    sns.kdeplot(
-        data=target_summary_df,
+    # 使用 displot 并添加 rug
+    g = sns.displot(
+        data=combined_df,
         x="COR",
-        color="#120eff",  # 蓝色
-        fill=True,
-        ax=ax,
+        hue="Type",
+        kind="hist",
+        bins=200,
+        stat="count",
+        kde=True,
+        # rug=True,
         alpha=0.5,
-        linewidth=1.5,
-        label="All genes",
+        palette={"Heritability Significant": "#120eff", "Correlation Significant": "#db1717f8"},
+        hue_order=["Heritability Significant", "Correlation Significant"],
+        height=4,
+        # aspect=0.7,
+        aspect=1.1,
     )
-
-    # 绘制仅显著COR的分布曲线
-    sns.kdeplot(
-        data=significant_df,
-        x="COR",
-        color="#db1717f8",  # 红色
-        fill=True,
-        ax=ax,
-        alpha=0.5,
-        linewidth=1.5,
-        label="Significant genes",
-    )
-
-    ax.set_xlabel("Genetic Correlation")
-    ax.set_ylabel("Density")
-    ax.set_title(
-        f"Genetic Correlation Density for {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}"
-    )
-
     # 设置图例
-    ax.legend(
-        title="Type",
-        fontsize=10,
-        title_fontsize=10,
-        loc="upper left",
+    sns.move_legend(
+        g,
+        "upper left",
+        bbox_to_anchor=(0.16, 0.95),
+        title="Significance Type",
+        frameon=True,
+        fontsize=8,
+        title_fontsize=8,
     )
+
+    g.set_axis_labels("Genetic Correlation", "Count")
+    # g.fig.suptitle(
+    #     f"Genetic Correlation Density for {label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}"
+    # )
+    g.despine(top=False, right=False)
 
     plt.tight_layout()
     plt.savefig(
-        os.path.join(save_path, f"f3_cor_density_{target_qtdid}.png"),
-        dpi=300,
+        os.path.join(save_path, f"f3_cor_density_{target_qtdid}.pdf"),
         bbox_inches="tight",
     )
+    plt.close()
+
+
+# def f3_cor_density(summary_df, summary_sign_df, target_qtdid):
+#     # plot cor density and significant cor density
+#     # QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+    
+#     target_summary_df = summary_df.copy()
+
+#     # 剪切COR值以获得更好的可视化效果
+#     target_summary_df.loc[:, "COR"] = target_summary_df["COR"].clip(lower=-10, upper=10)
+#     # print(target_summary_df.COR.describe())
+
+#     # 使用 displot
+#     g = sns.displot(
+#         data=target_summary_df,
+#         x="COR",
+#         kind="hist",
+#         bins=100,
+#         stat="count",
+#         kde=True,
+#         alpha=0.5,
+#         color="#120eff",  # 直接使用蓝色
+#         height=4,
+#         aspect=1.2,
+#     )
+
+#     g.set_axis_labels("Genetic Correlation", "Count")
+#     g.fig.suptitle(
+#         f"Genetic Correlation Density \n{label_name_shorten[meta_data['id2celltype'][target_qtdid]]}: {meta_data['id2name'][target_qtdid]}"
+#     )
+#     g.despine(top=False, right=False)
+
+#     plt.tight_layout()
+#     plt.savefig(
+#         os.path.join(save_path, f"f3_cor_density_h2_sign_only_{target_qtdid}.pdf"),
+#         bbox_inches="tight",
+#     )
+#     plt.close()
 
 
 if __name__ == "__main__":
     summary_sign_df_all, summary_df_all = load_all_summary()
     for target_qtdid in target_qtdids:
         summary_df = summary_df_all[summary_df_all.QTDid == target_qtdid].copy()
+        summary_sign_df = summary_sign_df_all[
+            summary_sign_df_all.QTDid == target_qtdid
+        ].copy()
         # QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
         ## filter h2 not significant
-        f3_cor_density(summary_df, target_qtdid)
         z_threshold = p2z(0.05)
         summary_df.loc[:, "H1_SIGN"] = (
             summary_df.H1SQ / summary_df.H1SQSE
@@ -364,15 +366,13 @@ if __name__ == "__main__":
         summary_df.loc[:, "H2_SIGN"] = (
             summary_df.H2SQ / summary_df.H2SQSE
         ) > z_threshold
-        both_sign_index = summary_df.H1_SIGN & summary_df.H2_SIGN
+        both_sign_index = summary_df.H1_SIGN & summary_df.H2_SIGN & (summary_df.H1SQ > 1e-12) & (summary_df.H2SQ > 1e-12)
         summary_df = summary_df.loc[both_sign_index, :]
+        f3_cor_density(summary_df, summary_sign_df, target_qtdid)
         ## scatter plot
         f3_neff_scatter(summary_df, target_qtdid)
         f3_neff_scatter(summary_df, target_qtdid, text_annot=False)
         # ## cor group plot
-        summary_sign_df = summary_sign_df_all[
-            summary_sign_df_all.QTDid == target_qtdid
-        ].copy()
         f3_cor(summary_sign_df, target_qtdid)
         print(
             f"Processed {target_qtdid}: {meta_data['id2celltype'][target_qtdid]} - {meta_data['id2name'][target_qtdid]}"
