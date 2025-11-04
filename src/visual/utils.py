@@ -12,12 +12,12 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 1000)
 plt.rcParams["font.family"] = "DejaVu Sans"
 
-# study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_GTEx"
-# save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
+study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_GTEx"
+save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
 # study_path_main = "/home/group1/wjiang49/data/traceCB/AFR_GTEx"
 # save_path = "/home/group1/wjiang49/data/traceCB/AFR_GTEx/results"
-study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
-save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
+# study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
+# save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
 
 onek1k_path = "/home/wjiang49/group/wjiang49/data/traceCB/onek1k_supp/onek1k_esnp.csv"
 gtex_lookup_table_path = "/home/wjiang49/group/wjiang49/data/GTEx/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz"
@@ -79,7 +79,7 @@ def load_summary(study_dir):
     summary_df.loc[:, "COR"] = summary_df.COR_ORI.clip(-1, 1)  # clip cor to [-1,1]
     summary_df.loc[summary_df.COV_PVAL > 0.05, "COR"] = 1e-12  # if COR_PVAL>0.05, set COR=0
     summary_sign_df = summary_df.dropna()
-    na_raw = summary_df.TAR_CNEFF.isna()
+    na_raw = summary_df.TAR_CNEFF.isna() | summary_df.TAR_TNEFF.isna()
     summary_df.loc[na_raw, "TAR_CNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
     summary_df.loc[na_raw, "TAR_TNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
     summary_df.loc[na_raw, "AUX_CNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]

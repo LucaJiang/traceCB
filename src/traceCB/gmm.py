@@ -88,7 +88,6 @@ def GMMtissue(
     ldx: float,
     beta_t: float,
     se_t: float,
-    sigma_o: float,
     propt: float,
 ):
     """Apply cross population GMM (with tissue) to j th SNP
@@ -126,28 +125,33 @@ def GMMtissue(
     beta1_blue, se1_blue, beta2_blue, se2_blue: float
         GMM estimates for population 1 and population 2
     """
+    # breakpoint()
     Betas = np.array([beta1, beta2, beta_t]).reshape(-1, 1)
-    A = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, propt]])
+    A = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, propt, 1.0 - propt]])
     # weight omega by ld
     Omegaj = np.array(
-        [[Omega[0, 0] * ld1, Omega[0, 1] * ldx], [Omega[0, 1] * ldx, Omega[1, 1] * ld2]]
+        [[Omega[0, 0] * ld1, Omega[0, 1] * ldx, Omega[0, 2] * ldx], 
+         [Omega[0, 1] * ldx, Omega[1, 1] * ld2, Omega[2, 1] * ld2],
+         [Omega[0, 2] * ldx, Omega[2, 1] * ld2, Omega[2, 2] * ld2]]
     )
-    ## check if Omega is positive definite
-    Omegaj = make_pd_shrink(Omegaj)
+
+    ## ! check if Omega is positive definite
+    # Omegaj = make_pd_shrink(Omegaj)
+    # if not np.all(np.linalg.eigvals(Omegaj) > 0):
+    #     print("Warning: Omega matrix is not positive definite in GMMtissue.")
+    #     raise ValueError("Omega matrix is not positive definite in GMMtissue.")
     # weight C by se
     Sj = np.array([[se1, 0, 0], [0, se2, 0], [0, 0, se_t]])
     SCSj = Sj @ C @ Sj
     # lambda
     lambda1 = (
-        np.array([Omegaj[0, 0], Omegaj[0, 1], propt * Omegaj[0, 1]]).reshape(-1, 1)
+        np.array([Omegaj[0, 0], Omegaj[0, 1], propt * Omegaj[0, 1] + (1 - propt) * Omegaj[0, 2]]).reshape(-1, 1)
         / Omegaj[0, 0]
     )
     Lambda1_inv = A @ Omegaj @ A.T + SCSj - Omegaj[0, 0] * lambda1 @ lambda1.T
-    Lambda1_inv[2, 2] += sigma_o  # add variance of other cell types
     Lambda1 = np.linalg.inv(Lambda1_inv)
-    lambda2 = np.array([Omegaj[1, 0] / Omegaj[1, 1], 1, propt]).reshape(-1, 1)
+    lambda2 = np.array([Omegaj[1, 0] / Omegaj[1, 1], 1.0, propt + (1 - propt) * Omegaj[1, 2] / Omegaj[1, 1]]).reshape(-1, 1)
     Lambda2_inv = A @ Omegaj @ A.T + SCSj - Omegaj[1, 1] * lambda2 @ lambda2.T
-    Lambda2_inv[2, 2] += sigma_o  # add variance of other cell types
     Lambda2 = np.linalg.inv(Lambda2_inv)
     # blue estimates
     var1_blue = 1 / (lambda1.T @ Lambda1 @ lambda1).item()
@@ -165,7 +169,7 @@ if __name__ == "__main__":
     h2sq = 0.00004256252586151709
     cor = 0.000022333797435697717
     Omega = np.array([[h1sq, cor], [cor, h2sq]])  # covariance matrix
-    sigma_o = 0.0001  # variance of other cell types in tissue
+    # sigma_o = 0.0001  # variance of other cell types in tissue
     C2 = np.eye(2)  # genetic drift matrix
     C3 = np.eye(3)  # genetic drift matrix for GMMtissue
     propt = 0.4  # proportion of cell type in tissue
@@ -206,7 +210,7 @@ if __name__ == "__main__":
         ldx=ldx,
         beta_t=beta_t,
         se_t=se_t,
-        sigma_o=sigma_o,
+        # sigma_o=sigma_o,
         propt=propt,
     )
     print(f"beta1_blue = {beta1_blue:.6f}, se1_blue = {se1_blue:.6f}")

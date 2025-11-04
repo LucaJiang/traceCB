@@ -3,7 +3,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
 TAR_SAMPLE_SIZE = 103
-REMOVE_RATIO = 0.05  # remove top 5% of the effective sample size
+REMOVE_RATIO = 0.00  # remove top 5% of the effective sample size
 
 
 def remove_outliers(df):
@@ -19,6 +19,8 @@ def remove_outliers(df):
             )
             outlier_indices = qtd_df[remove_idx].index
             df.loc[outlier_indices, f"TAR_{method}"] = np.nan
+            # set negative to nan
+            df.loc[df[f"TAR_{method}"] < 0, f"TAR_{method}"] = np.nan
     return df
 
 

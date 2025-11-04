@@ -4,6 +4,7 @@ data/
 
 # temporary files
 tmp/
+log/
 
 # vscode settings
 .vscode/

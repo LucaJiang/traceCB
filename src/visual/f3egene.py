@@ -204,8 +204,8 @@ def f3egene(plot_df):
 
 
 if __name__ == "__main__":
-    summary_sign_df, _ = load_all_summary()
+    _, summary_df = load_all_summary()
     replicate_df = pd.read_csv("/home/group1/wjiang49/data/hum0343/hum0343_eGene.csv")
     replicate_egenes = replicate_df.gene
-    plot_df = count_egene(summary_sign_df, replicate_egenes)
+    plot_df = count_egene(summary_df, replicate_egenes)
     f3egene(plot_df)

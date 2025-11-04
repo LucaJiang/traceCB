@@ -17,6 +17,10 @@ eSNP_THRESHOLD = 1e-5
 ## Function to check if a matrix is positive definite
 is_pd = lambda x: np.all(np.linalg.eigvals(x) > -MIN_FLOAT)
 
+def is_pd(x):
+    """Check if a matrix is positive definite"""
+    eigns = np.linalg.eigvals(x)
+    return np.all(eigns > -MIN_FLOAT)
 
 @njit
 def is_pd_numba(x):
@@ -34,8 +38,8 @@ def make_pd_shrink(Omega, shrink=0.9):
     return Omega
     !NOTE: if the diagonal elements of Omega are negative, return a matrix with MIN_FLOAT on the diagonal.
     """
-    if Omega[0, 0] < 0 or Omega[1, 1] < 0:
-        return np.eye(2)
+    if np.any(np.diag(Omega) < 0):
+        return np.eye(Omega.shape[0]) * MIN_FLOAT
     if is_pd(Omega):
         return Omega
     diag_Omega = np.eye(Omega.shape[0]) * Omega
@@ -47,7 +51,7 @@ def make_pd_shrink(Omega, shrink=0.9):
         Omega = diag_Omega + off_Omega
         j += 1
         if j == 100:
-            return np.eye(2)
+            return np.eye(Omega.shape[0]) * MIN_FLOAT
     return Omega
 
 
@@ -56,8 +60,8 @@ def make_pd_shrink_numba(Omega, shrink=0.9):
     """Check if a matrix is positive definite using Numba
     !NOTE: if the diagonal elements of Omega are negative, return a matrix with MIN_FLOAT on the diagonal.
     """
-    if Omega[0, 0] < 0 or Omega[1, 1] < 0:
-        return np.eye(2)
+    if np.any(np.diag(Omega) < 0):
+        return np.eye(Omega.shape[0]) * MIN_FLOAT
     if is_pd_numba(Omega):
         return Omega
     diag_Omega = np.eye(Omega.shape[0]) * Omega
@@ -69,5 +73,5 @@ def make_pd_shrink_numba(Omega, shrink=0.9):
         Omega = diag_Omega + off_Omega
         j += 1
         if j == 100:
-            return np.eye(2)
+            return np.eye(Omega.shape[0]) * MIN_FLOAT
     return Omega
