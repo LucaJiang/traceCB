@@ -3,7 +3,7 @@
 from numba import njit
 import numpy as np
 
-from utils import make_pd_shrink_numba as make_pd_shrink
+from .utils import make_pd_shrink_numba as make_pd_shrink
 
 
 @njit(nogil=True)
@@ -130,9 +130,11 @@ def GMMtissue(
     A = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, propt, 1.0 - propt]])
     # weight omega by ld
     Omegaj = np.array(
-        [[Omega[0, 0] * ld1, Omega[0, 1] * ldx, Omega[0, 2] * ldx], 
-         [Omega[0, 1] * ldx, Omega[1, 1] * ld2, Omega[2, 1] * ld2],
-         [Omega[0, 2] * ldx, Omega[2, 1] * ld2, Omega[2, 2] * ld2]]
+        [
+            [Omega[0, 0] * ld1, Omega[0, 1] * ldx, Omega[0, 2] * ldx],
+            [Omega[0, 1] * ldx, Omega[1, 1] * ld2, Omega[2, 1] * ld2],
+            [Omega[0, 2] * ldx, Omega[2, 1] * ld2, Omega[2, 2] * ld2],
+        ]
     )
 
     ## ! check if Omega is positive definite
@@ -145,12 +147,24 @@ def GMMtissue(
     SCSj = Sj @ C @ Sj
     # lambda
     lambda1 = (
-        np.array([Omegaj[0, 0], Omegaj[0, 1], propt * Omegaj[0, 1] + (1 - propt) * Omegaj[0, 2]]).reshape(-1, 1)
+        np.array(
+            [
+                Omegaj[0, 0],
+                Omegaj[0, 1],
+                propt * Omegaj[0, 1] + (1 - propt) * Omegaj[0, 2],
+            ]
+        ).reshape(-1, 1)
         / Omegaj[0, 0]
     )
     Lambda1_inv = A @ Omegaj @ A.T + SCSj - Omegaj[0, 0] * lambda1 @ lambda1.T
     Lambda1 = np.linalg.inv(Lambda1_inv)
-    lambda2 = np.array([Omegaj[1, 0] / Omegaj[1, 1], 1.0, propt + (1 - propt) * Omegaj[1, 2] / Omegaj[1, 1]]).reshape(-1, 1)
+    lambda2 = np.array(
+        [
+            Omegaj[1, 0] / Omegaj[1, 1],
+            1.0,
+            propt + (1 - propt) * Omegaj[1, 2] / Omegaj[1, 1],
+        ]
+    ).reshape(-1, 1)
     Lambda2_inv = A @ Omegaj @ A.T + SCSj - Omegaj[1, 1] * lambda2 @ lambda2.T
     Lambda2 = np.linalg.inv(Lambda2_inv)
     # blue estimates

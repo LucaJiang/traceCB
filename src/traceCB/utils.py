@@ -17,10 +17,12 @@ eSNP_THRESHOLD = 1e-5
 ## Function to check if a matrix is positive definite
 is_pd = lambda x: np.all(np.linalg.eigvals(x) > -MIN_FLOAT)
 
+
 def is_pd(x):
     """Check if a matrix is positive definite"""
     eigns = np.linalg.eigvals(x)
     return np.all(eigns > -MIN_FLOAT)
+
 
 @njit
 def is_pd_numba(x):

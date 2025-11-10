@@ -1,5 +1,6 @@
 # datafiles
 data/
+bench/
 .DS_Store
 bench/
 
