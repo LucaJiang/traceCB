@@ -303,8 +303,8 @@ def main(args, chr):
         #     print(np.linalg.eigvals(OmegaCB))
         #     OmegaCB = make_pd_shrink(OmegaCB, shrink=0.9)
         
-        omega_12_cor = Omega[1, 0] / np.sqrt(Omega[0,0] * Omega[1,1])
-        print(f"{gene},{Omega[0,0]:.8e},{Omega[0,1]:.8e},{Omega[1,1]:.8e},{omega_xo:.8e},{omega_co:.8e},{omega_oo:.8e},{omega_12_cor:.2f},{omega_co_cor:.2f},{omega_xo_cor:.2f}")
+        # omega_12_cor = Omega[1, 0] / np.sqrt(Omega[0,0] * Omega[1,1])
+        # print(f"{gene},{Omega[0,0]:.8e},{Omega[0,1]:.8e},{Omega[1,1]:.8e},{omega_xo:.8e},{omega_co:.8e},{omega_oo:.8e},{omega_12_cor:.2f},{omega_co_cor:.2f},{omega_xo_cor:.2f}")
         # print("="*20, "\n")
         
         ## run GMM for each SNP in the gene
