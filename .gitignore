@@ -1,6 +1,7 @@
 # datafiles
 data/
 .DS_Store
+bench/
 
 # temporary files
 tmp/
