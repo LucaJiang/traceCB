@@ -1,4 +1,4 @@
-source("~/Documents/Research/Project/sc_eQTL/gmm_functions.R")
+source("/home/wjiang49/traceCB/src/super_good_boss/gmm_functions.R")
 library(mvtnorm)
 library(data.table)
 library(susieR)
@@ -32,13 +32,13 @@ ldsc_warp <- function(sumstat1,sumstat2,ldscore1,ldscore2,ldscorex,
   fit_ldsc
 }
 
-dat_tar <- fread("/Users/cmx/Downloads/TAR_chr2.csv")
-dat_aux <- fread("/Users/cmx/Downloads/AUX_chr2.csv")
-dat_tis <- fread("/Users/cmx/Downloads/Tissue_chr2.csv")
+dat_tar <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/TAR_Monocytes/chr1.csv")
+dat_aux <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/AUX_Monocytes/chr1.csv")
+dat_tis <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/Tissue/chr1.csv")
 
-ld1 <- fread("/Users/cmx/Downloads/TAR_AUX_std_chr2_pop1.gz",data.table = F)
-ld2 <- fread("/Users/cmx/Downloads/TAR_AUX_std_chr2_pop2.gz",data.table = F)
-ldx <- fread("/Users/cmx/Downloads/TAR_AUX_std_chr2_te.gz",data.table = F)
+ld1 <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/LDSC/LDSC_gene/TAR_AUX_std_chr1_pop1.gz",data.table = F)
+ld2 <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/LDSC/LDSC_gene/TAR_AUX_std_chr1_pop2.gz",data.table = F)
+ldx <- fread("/home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx/QTD000081/LDSC/LDSC_gene/TAR_AUX_std_chr1_te.gz",data.table = F)
 
 pic <- 0.15
 pio <- 1-pic
@@ -73,12 +73,14 @@ for(g in 1: G){
   o1 <- fit12$tau1$coefs[2]
   oc <- fit12$tau2$coefs[2]
   o1c <- fit12$theta$coefs[2]
-  oco <- fit2t$theta$coefs[2]/pio
+  # oco <- fit2t$theta$coefs[2] / pio #! origianl
+  oco <- (fit2t$theta$coefs[2] - pic*oc) / pio #! fixed
   oo <- (fitt$tau1$coefs[2] - pic^2*oc -2*pic*pio*oco)/pio^2
   oxo <- (fit1t$theta$coefs[2] - pic*o1c)/pio
   
   
-  if(o1<0 | fit12$tau1$pval>0.05){
+  # if(o1<0 | fit12$tau1$pval>0.05){ # ! original
+  if(o1<0 | fit12$tau1$pval>0.05 | fit12$theta$pval>0.05){ # ! fixed
     cat(g,"-th gene",genes[g],"skipped \n")
     g_sk <- g_sk + 1
     next
@@ -198,6 +200,45 @@ for(g in 1: G){
   # abline(a=0,b=1)
   # par(mfrow=c(1,1))
 }
+res_out <- out
 
 pval_gene <- sapply(out[,c("TAR_P","AUX_P","TISSUE_P","GMM0_P","GMM12O_P","GMM12O_noCor_P","GMM_noSigO_P")],function(x) tapply(x,out$GENE,min))
 colSums(pval_gene<1e-5,na.rm = T)
+
+# if gene g have been skipped, then set all its SNPs' p-values to TAR_P
+for(g in 1: G){
+  snps <- subset(dat_tar,GENE==genes[g])$RSID
+  if(genes[g] %in% out$GENE){
+    next
+  } else {
+    out <- rbind(out,data.frame(SNP=snps,
+                                GENE=rep(genes[g],length(snps)),
+                                TAR_BETA=subset(dat_tar,GENE==genes[g])$BETA,
+                                TAR_SE=subset(dat_tar,GENE==genes[g])$SE,
+                                TAR_P=2*pnorm(abs(subset(dat_tar,GENE==genes[g])$BETA/subset(dat_tar,GENE==genes[g])$SE),lower.tail = F),
+                                AUX_BETA=subset(dat_aux,GENE==genes[g])$BETA,
+                                AUX_SE=subset(dat_aux,GENE==genes[g])$SE,
+                                AUX_P=2*pnorm(abs(subset(dat_aux,GENE==genes[g])$BETA/subset(dat_aux,GENE==genes[g])$SE),lower.tail = F),
+                                TISSUE_BETA=subset(dat_tis,GENE==genes[g])$BETA,
+                                TISSUE_SE=subset(dat_tis,GENE==genes[g])$SE,
+                                TISSUE_P=2*pnorm(abs(subset(dat_tis,GENE==genes[g])$BETA/subset(dat_tis,GENE==genes[g])$SE),lower.tail = F),
+                                GMM0_BETA=subset(dat_tar,GENE==genes[g])$BETA,
+                                GMM0_SE=subset(dat_tar,GENE==genes[g])$SE,
+                                GMM0_P=2*pnorm(abs(subset(dat_tar,GENE==genes[g])$BETA/subset(dat_tar,GENE==genes[g])$SE),lower.tail = F),
+                                GMM12O_BETA=subset(dat_tar,GENE==genes[g])$BETA,
+                                GMM12O_SE=subset(dat_tar,GENE==genes[g])$SE,
+                                GMM12O_P=2*pnorm(abs(subset(dat_tar,GENE==genes[g])$BETA/subset(dat_tar,GENE==genes[g])$SE),lower.tail = F),
+                                GMM12O_noCor_BETA=subset(dat_tar,GENE==genes[g])$BETA,
+                                GMM12O_noCor_SE=subset(dat_tar,GENE==genes[g])$SE,
+                                GMM12O_noCor_P=2*pnorm(abs(subset(dat_tar,GENE==genes[g])$BETA/subset(dat_tar,GENE==genes[g])$SE),lower.tail = F),
+                                GMM_noSigO_BETA=subset(dat_tar,GENE==genes[g])$BETA,
+                                GMM_noSigO_SE=subset(dat_tar,GENE==genes[g])$SE,
+                                GMM_noSigO_P=2*pnorm(abs(subset(dat_tar,GENE==genes[g])$BETA/subset(dat_tar,GENE==genes[g])$SE),lower.tail = F)
+    ))
+  }
+}
+pval_gene <- sapply(out[,c("TAR_P","AUX_P","TISSUE_P","GMM0_P","GMM12O_P","GMM12O_noCor_P","GMM_noSigO_P")],function(x) tapply(x,out$GENE,min))
+colSums(pval_gene<1e-5,na.rm = T)
+
+# save to csv
+write.csv(out,"/home/wjiang49/traceCB/src/super_good_boss/real_data_results_chr1.csv",row.names = F)

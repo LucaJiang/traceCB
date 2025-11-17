@@ -1,5 +1,12 @@
 # visualize eSNP eGene NEFF
 # cmd: python -m pdb src/visual.py -d /gpfs1/scratch/wjiang49/xpmm/EAS_GTEx/ -s QTD000067 -t CD4+T_cells -tpn 100 -apn 400 -tin 1000
+import sys
+from pathlib import Path
+
+SRC_DIR = Path(__file__).parent.parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -9,7 +16,7 @@ import argparse
 import os
 import glob
 import upsetplot
-from utils import P_VAL_THRED_Z
+from traceCB.utils import P_VAL_THRED_Z
 
 MAX_NEFF_RATIO = 10.0
 method_list = ["Original", "GMM", "GMM+"]

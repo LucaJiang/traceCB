@@ -10,6 +10,7 @@ z2p = lambda z: 2 * norm.sf(abs(z))
 
 ## Constants
 MIN_FLOAT = 1e-64
+MAX_CORR = 0.99
 P_VAL_THRED = 0.05
 P_VAL_THRED_Z = p2z(P_VAL_THRED)  # convert p-value threshold to z-score threshold
 eSNP_THRESHOLD = 1e-5

@@ -53,7 +53,7 @@ def GMM(
         [[Omega[0, 0] * ld1, Omega[0, 1] * ldx], [Omega[0, 1] * ldx, Omega[1, 1] * ld2]]
     )
     ## check if Omega is positive definite
-    Omegaj = make_pd_shrink(Omegaj)
+    # Omegaj = make_pd_shrink(Omegaj)
     # weight C by se
     Sj = np.array([[se1, 0], [0, se2]])
     SCSj = Sj @ C @ Sj

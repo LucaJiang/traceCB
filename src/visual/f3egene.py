@@ -17,7 +17,6 @@ def count_egene(df, replicate_egenes):
             df.loc[:, "is_replicate"] & df.loc[:, f"TAR_{m}eGene"]
         ).astype(int)
 
-    # --- 新增逻辑：计算新发现 eGene 的复现情况 ---
     # traceC 相对于 Original 的新 eGene
     df['new_in_C'] = (df['TAR_CeGene'] > 0) & (df['TAR_SeGene'] == 0)
     df['new_in_C_replicate'] = df['new_in_C'] & df['is_replicate']
@@ -25,7 +24,6 @@ def count_egene(df, replicate_egenes):
     # traceCB 相对于 traceC 的新 eGene
     df['new_in_T'] = (df['TAR_TeGene'] > 0) & (df['TAR_CeGene'] == 0)
     df['new_in_T_replicate'] = df['new_in_T'] & df['is_replicate']
-    # --- 结束新增逻辑 ---
 
     count_df = df.groupby("QTDid").agg(
         S=("TAR_SeGene", "sum"),
@@ -34,18 +32,11 @@ def count_egene(df, replicate_egenes):
         S_replicate=("TAR_SeGene_replicate", "sum"),
         C_replicate=("TAR_CeGene_replicate", "sum"),
         T_replicate=("TAR_TeGene_replicate", "sum"),
-        # --- 新增逻辑：聚合新 eGene 计数 ---
         new_in_C=("new_in_C", "sum"),
         new_in_C_replicate=("new_in_C_replicate", "sum"),
         new_in_T=("new_in_T", "sum"),
         new_in_T_replicate=("new_in_T_replicate", "sum"),
-        # --- 结束新增逻辑 ---
     )
-    # count_df.loc[:, "improve_ratio"] = count_df.C / count_df.S
-    # count_df.loc[:, "T"] = count_df.loc[:, "T"] - count_df.C
-    # count_df.loc[:, "T"] = count_df.loc[:, "T"].clip(lower=0)
-    # count_df.C = count_df.C - count_df.S
-    # count_df.C = count_df.C.clip(lower=0)
     count_df = count_df.rename(
         columns={
             "S": meta_data["method_name"][0],
@@ -53,10 +44,6 @@ def count_egene(df, replicate_egenes):
             "T": meta_data["method_name"][2],
         }
     )
-    # count_df.T_replicate = count_df.T_replicate - count_df.C_replicate
-    # count_df.T_replicate = count_df.T_replicate.clip(lower=0)
-    # count_df.C_replicate = count_df.C_replicate - count_df.S_replicate
-    # count_df.C_replicate = count_df.C_replicate.clip(lower=0)
     count_df = count_df.rename(
         columns={
             "S_replicate": meta_data["method_name"][0] + "_replicate",
@@ -78,7 +65,7 @@ def count_egene(df, replicate_egenes):
     print("Average replicate rate:")
     print(replicate_rate)
 
-    # --- 新增逻辑：计算并打印新发现 eGene 的平均复现率 ---
+    # 计算并打印新发现 eGene 的平均复现率
     print("\nAverage replicate rate for newly discovered eGenes:")
     new_C_total = count_df['new_in_C'].sum()
     new_C_replicate_total = count_df['new_in_C_replicate'].sum()
@@ -89,7 +76,6 @@ def count_egene(df, replicate_egenes):
     new_T_replicate_total = count_df['new_in_T_replicate'].sum()
     new_T_rate = new_T_replicate_total / new_T_total if new_T_total > 0 else 0
     print(f"New in traceCB (vs traceC): {new_T_rate:.2%}")
-    # --- 结束新增逻辑 ---
 
     return count_df
 
@@ -208,4 +194,4 @@ if __name__ == "__main__":
     replicate_df = pd.read_csv("/home/group1/wjiang49/data/hum0343/hum0343_eGene.csv")
     replicate_egenes = replicate_df.gene
     plot_df = count_egene(summary_df, replicate_egenes)
-    f3egene(plot_df)
+    # f3egene(plot_df)

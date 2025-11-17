@@ -1,4 +1,11 @@
 # run gmm.py: Run GMM for a given study and cell type and calculate effective sample size
+import sys
+from pathlib import Path
+
+SRC_DIR = Path(__file__).parent.parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 import argparse
 import time
 import os
@@ -6,13 +13,18 @@ import numpy as np
 import pandas as pd
 from numba import prange, njit
 
-from ldsc import Run_single_LDSC, Run_cross_LDSC
-from gmm import GMM, GMMtissue
-from .utils import make_pd_shrink, z2p, P_VAL_THRED, MIN_FLOAT, eSNP_THRESHOLD
+from traceCB.gmm import GMM, GMMtissue
+from traceCB.ldsc import Run_single_LDSC, Run_cross_LDSC
+from traceCB.utils import (
+    z2p,
+    make_pd_shrink,
+    MIN_FLOAT,
+    P_VAL_THRED,
+    MAX_CORR,
+    eSNP_THRESHOLD,
+)
 
 # cmd: python src/traceCB/run_gmm.py -s QTD000081 -t Monocytes -c 1 -d /home/wjiang49/group/wjiang49/data/traceCB/EAS_GTEx >> log/test_sigmao_QTD000081_Monocytes.csv 2>&1
-
-MAX_CORR = 0.99
 
 
 def parse_args():
@@ -187,7 +199,6 @@ def main(args, chr):
             gene_df.LD_x.to_numpy(),
             np.array([1.0, 1.0, 0.0]),
         )
-
         Omega_p = z2p(Omega / Omega_se)
         summary_df.loc[gene, "H1SQ"] = Omega[0, 0]
         summary_df.loc[gene, "H1SQSE"] = Omega_se[0, 0]
@@ -216,14 +227,20 @@ def main(args, chr):
         summary_df.loc[gene, "TISSUE_SeSNP"] = count_eSNPs(
             gene_df.PVAL_tissue.to_numpy()
         )
-        ### threshold Omega
-        for i in range(Omega.shape[0]):
-            for j in range(Omega.shape[1]):
-                if Omega_p[i, j] > P_VAL_THRED:
-                    Omega[i, j] = MIN_FLOAT
-        if np.any(Omega <= MIN_FLOAT):
-            continue  # skip genes with unsignificant heritability or correlation
-        # Omega = make_pd_shrink(Omega, shrink=0.9)
+        # ### threshold Omega
+        # for i in range(Omega.shape[0]):
+        #     for j in range(Omega.shape[1]):
+        #         if Omega_p[i, j] > P_VAL_THRED:
+        #             Omega[i, j] = MIN_FLOAT
+        # if np.any(Omega <= MIN_FLOAT):
+        #     continue  # skip genes with unsignificant heritability or correlation
+        if Omega_p[0, 0] >= P_VAL_THRED:
+            continue  # skip genes with unsignificant tar heritability
+        run_gmm = True
+        if Omega_p[0, 1] >= P_VAL_THRED:
+            Omega[0, 1] = 0.0
+            Omega[1, 0] = 0.0
+            run_gmm = False
 
         ## ! get omega_co, omega_oo
         aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
@@ -238,19 +255,18 @@ def main(args, chr):
         )
         ## omega_co: var between target celltype in aux pop and tissue
         # aux_Omega_matrix[0, 1] = celltype_proportion * omega_2 + (1-celltype_proportion) * omega_co
-        # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-        # else:
-        #     omega_co = MIN_FLOAT
         omega_co = (aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1]) / (
             1 - celltype_proportion
         )
+        # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) >= P_VAL_THRED:
+        #     omega_co = MIN_FLOAT
         omega_co_se = (
             aux_Omega_matrix_se[0, 1] ** 2
             + (celltype_proportion**2) * (Omega_se[1, 1] ** 2)
         ) ** 0.5 / (1 - celltype_proportion)
         omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
-        if omega_co_p > P_VAL_THRED:
-            omega_co = MIN_FLOAT
+        if omega_co_p >= P_VAL_THRED:
+            omega_co = 0.0
         ## omega_oo: var of non-target celltype in tissue
         ## aux_Omega_matrix[1, 1] = celltype_proportion^2 * omega_2 + 2*celltype_proportion*(1-celltype_proportion)*omega_co + (1-celltype_proportion)^2 * omega_oo
         omega_oo = (
@@ -260,18 +276,15 @@ def main(args, chr):
         ) / ((1 - celltype_proportion) ** 2)
         omega_oo = np.maximum(omega_oo, 1e-12)
 
-        omega_co_cor = omega_co / (Omega[1, 1] ** 0.5 * omega_oo**0.5)
+        omega_co_cor = omega_co / (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
         if omega_co_cor > MAX_CORR:
-            omega_co = MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5)
+            omega_co = MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
         elif omega_co_cor < -MAX_CORR:
-            omega_co = -MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5)
+            omega_co = -MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
             # if z2p(aux_Omega_matrix[1, 1] / aux_Omega_matrix_se[1, 1]) < P_VAL_THRED:
             # else:
             #     omega_oo = 1e-12
         # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (celltype_proportion**4) * (Omega_se[1, 1]**2) + (2*celltype_proportion*(1-celltype_proportion))**2 * (omega_co_se**2))**0.5 / ((1-celltype_proportion)**2)
-        # omega_oo_p = z2p(omega_oo / omega_oo_se)
-        # if omega_oo_p > P_VAL_THRED:
-        #     omega_oo = MIN_FLOAT
 
         ## ! get omega_xo
         tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
@@ -286,25 +299,23 @@ def main(args, chr):
         )
         ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
         ## tar_tissue_Omega_matrix[0, 1] = celltype_proportion * omega_x + (1-celltype_proportion) * omega_xo
-        # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-        # else:
-        #     omega_xo = MIN_FLOAT
         omega_xo = (
             tar_tissue_Omega_matrix[0, 1] - celltype_proportion * Omega[0, 1]
         ) / (1 - celltype_proportion)
+        # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) >= P_VAL_THRED:
+        #     omega_xo = MIN_FLOAT
         omega_xo_se = (
             tar_tissue_Omega_matrix_se[0, 1] ** 2
             + (celltype_proportion**2) * (Omega_se[0, 1] ** 2)
         ) ** 0.5 / (1 - celltype_proportion)
         omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
-        if omega_xo_p > P_VAL_THRED:
-            omega_xo = MIN_FLOAT
-        omega_xo_cor = omega_xo / (Omega[0, 0] ** 0.5 * omega_oo**0.5)
+        if omega_xo_p >= P_VAL_THRED:
+            omega_xo = 0.0
+        omega_xo_cor = omega_xo / (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
         if omega_xo_cor > MAX_CORR:
-            omega_xo = MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5)
+            omega_xo = MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
         elif omega_xo_cor < -MAX_CORR:
-            omega_xo = -MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5)
-
+            omega_xo = -MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
         ## construct OmegaCB for GMMtissue
         OmegaCB = np.array(
             [
@@ -321,9 +332,19 @@ def main(args, chr):
 
         # omega_12_cor = Omega[1, 0] / np.sqrt(Omega[0, 0] * Omega[1, 1])
         # print(
-            f"{gene},{Omega[0,0]:.8e},{Omega[0,1]:.8e},{Omega[1,1]:.8e},{omega_xo:.8e},{omega_co:.8e},{omega_oo:.8e},{omega_12_cor:.2f},{omega_co_cor:.2f},{omega_xo_cor:.2f}"
-        )
+        #     f"{gene},{Omega[0,0]:.8e},{Omega[0,1]:.8e},{Omega[1,1]:.8e},{omega_xo:.8e},{omega_co:.8e},{omega_oo:.8e},{omega_12_cor:.2f},{omega_co_cor:.2f},{omega_xo_cor:.2f}"
+        # )
         # print("="*20, "\n")
+
+        # if (
+        #     # summary_df.loc[gene, "TISSUE_SNEFF"] > summary_df.loc[gene, "AUX_SNEFF"]
+        #     omega_oo > 1e-12
+        #     and gene_df.PVAL_tissue.min() < 1e-5
+        # ):
+        #     run_gmm_tissue = True
+        # else:
+        #     run_gmm_tissue = False
+        run_gmm_tissue = True
 
         ## run GMM for each SNP in the gene
         gmm_b_tar = np.full((nsnp, 2), np.nan)  # cross, cross+tissue
@@ -332,8 +353,13 @@ def main(args, chr):
         gmm_se_aux = np.full((nsnp, 2), np.nan)
         for i in prange(nsnp):
             try:
-                gmm_b_tar[i, 0], gmm_se_tar[i, 0], gmm_b_aux[i, 0], gmm_se_aux[i, 0] = (
-                    GMM(
+                if run_gmm:
+                    (
+                        gmm_b_tar[i, 0],
+                        gmm_se_tar[i, 0],
+                        gmm_b_aux[i, 0],
+                        gmm_se_aux[i, 0],
+                    ) = GMM(
                         Omega,
                         np.eye(2),
                         gene_df.BETA_tar.iloc[i].item(),
@@ -344,9 +370,18 @@ def main(args, chr):
                         gene_df.LD_aux.iloc[i].item(),
                         gene_df.LD_x.iloc[i].item(),
                     )
-                )
-                gmm_b_tar[i, 1], gmm_se_tar[i, 1], gmm_b_aux[i, 1], gmm_se_aux[i, 1] = (
-                    GMMtissue(
+                else:  # don't use cross-population info
+                    gmm_b_tar[i, 0] = gene_df.BETA_tar.iloc[i].item()
+                    gmm_se_tar[i, 0] = gene_df.SE_tar.iloc[i].item()
+                    gmm_b_aux[i, 0] = gene_df.BETA_aux.iloc[i].item()
+                    gmm_se_aux[i, 0] = gene_df.SE_aux.iloc[i].item()
+                if run_gmm_tissue:
+                    (
+                        gmm_b_tar[i, 1],
+                        gmm_se_tar[i, 1],
+                        gmm_b_aux[i, 1],
+                        gmm_se_aux[i, 1],
+                    ) = GMMtissue(
                         OmegaCB,
                         np.eye(3),
                         gene_df.BETA_tar.iloc[i].item(),
@@ -360,19 +395,24 @@ def main(args, chr):
                         gene_df.SE_tissue.iloc[i].item(),
                         celltype_proportion,
                     )
-                )
-                # print(gmm_b_tar[i, 1], gmm_se_tar[i, 1], gmm_b_aux[i, 1], gmm_se_aux[i, 1])
+                else:  # don't use tissue info
+                    gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
+                    gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
+                    gmm_b_aux[i, 1] = gmm_b_aux[i, 0]
+                    gmm_se_aux[i, 1] = gmm_se_aux[i, 0]
             except Exception as e:
                 print(
-                    f"Error in GMM for gene {gene}, SNP {gene_df.index[i]}: {e}. \
-h1sq: {Omega[0, 0]}, h2sq: {Omega[1, 1]}, \
-Cor: {Omega[0, 1]}, tar_beta: {gene_df.BETA_tar.iloc[i]}, \
-aux_beta: {gene_df.BETA_aux.iloc[i]}, tissue_beta: \
-{gene_df.BETA_tissue.iloc[i]}, tar_se: {gene_df.SE_tar.iloc[i]}, \
-aux_se: {gene_df.SE_aux.iloc[i]}, tissue_se: {gene_df.SE_tissue.iloc[i]},\
-tar_ld: {gene_df.LD_tar.iloc[i]}, aux_ld: {gene_df.LD_aux.iloc[i]}, \
-x_ld: {gene_df.LD_x.iloc[i]}"
+                    f"Error in GMM for gene {gene}, SNP {gene_df.index[i]}: {e}. "
+                    f"h1sq: {Omega[0, 0]}, h2sq: {Omega[1, 1]}, "
+                    f"Cor: {Omega[0, 1]}, tar_beta: {gene_df.BETA_tar.iloc[i]}, "
+                    f"aux_beta: {gene_df.BETA_aux.iloc[i]}, tissue_beta: {gene_df.BETA_tissue.iloc[i]}, "
+                    f"tar_se: {gene_df.SE_tar.iloc[i]}, aux_se: {gene_df.SE_aux.iloc[i]}, "
+                    f"tissue_se: {gene_df.SE_tissue.iloc[i]}, tar_ld: {gene_df.LD_tar.iloc[i]}, "
+                    f"aux_ld: {gene_df.LD_aux.iloc[i]}, x_ld: {gene_df.LD_x.iloc[i]}",
+                    file=sys.stderr,
+                    flush=True,
                 )
+                # print(tissue_improved_aux_beta, tissue_improved_aux_se, flush=True)
                 if gmm_b_tar[i, 0] is not np.nan and gmm_se_tar[i, 0] is not np.nan:
                     gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
                     gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
@@ -489,12 +529,12 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
 
     start_time = time.time()
-    # print(
-    #     f"Running GMM for study {args.studyid} in cell type {args.celltype} on chromosomes {chr_list} at {time.ctime(start_time)}"
-    # )
+    print(
+        f"Running GMM for study {args.studyid} in cell type {args.celltype} on chromosomes {chr_list} at {time.ctime(start_time)}"
+    )
     for chr in chr_list:
         main(args, chr)  # run GMM for each chromosome
     end_time = time.time()
-    # print(
-    #     f"GMM finished for study {args.studyid} in cell type {args.celltype} on chromosomes {chr_list} at {time.ctime(end_time)} which took {end_time - start_time:.2f} seconds"
-    # )
+    print(
+        f"GMM finished for study {args.studyid} in cell type {args.celltype} on chromosomes {chr_list} at {time.ctime(end_time)} which took {end_time - start_time:.2f} seconds"
+    )

@@ -409,100 +409,105 @@ def simulation(
             np.array([1, 1, 0]),
         )
         Omega_p = z2p(Omega / Omega_se)
-        for i in range(Omega.shape[0]):
-            for j in range(Omega.shape[1]):
-                if Omega_p[i, j] > P_VAL_THRED:
-                    Omega[i, j] = MIN_FLOAT
-        Omega = make_pd_shrink(Omega, shrink=0.9)
-
-        ## ! get omega_co, omega_oo
-        aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
-            b2_hat / se2_hat,
-            n2,
-            ld2,
-            bt_hat / se_t_hat,
-            nt,
-            ldx,
-            ldx,
-            np.array([1.0, 1.0, 0.0]),
-        )
-        ## omega_co: var between target celltype in aux pop and tissue
-        # aux_Omega_matrix[0, 1] = propt * omega_2 + (1-propt) * omega_co
-        # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-        # else:
-        #     omega_co = MIN_FLOAT
-        omega_co = (aux_Omega_matrix[0, 1] - propt * Omega[1, 1]) / (1 - propt)
-        omega_co_se = (
-            aux_Omega_matrix_se[0, 1] ** 2 + (propt**2) * (Omega_se[1, 1] ** 2)
-        ) ** 0.5 / (1 - propt)
-        omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
-        if omega_co_p > P_VAL_THRED:
-            omega_co = MIN_FLOAT
-        ## omega_oo: var of non-target celltype in tissue
-        ## aux_Omega_matrix[1, 1] = propt^2 * omega_2 + 2*propt*(1-propt)*omega_co + (1-propt)^2 * omega_oo
-        omega_oo = (
-            aux_Omega_matrix[1, 1]
-            - propt**2 * Omega[1, 1]
-            - 2 * propt * (1 - propt) * omega_co
-        ) / ((1 - propt) ** 2)
-        omega_oo = np.maximum(omega_oo, 1e-12)
-
-        omega_co_cor = omega_co / (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
-        if omega_co_cor > MAX_CORR:
-            omega_co = MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
-        elif omega_co_cor < -MAX_CORR:
-            omega_co = -MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
-            # if z2p(aux_Omega_matrix[1, 1] / aux_Omega_matrix_se[1, 1]) < P_VAL_THRED:
+        if Omega_p[0, 0] >= P_VAL_THRED:
+            run_gmm = False  # skip genes with unsignificant tar heritability
+        else:
+            run_gmm = True
+        if Omega_p[0, 1] >= P_VAL_THRED:
+            Omega[0, 1] = 0.0
+            Omega[1, 0] = 0.0
+        if run_gmm:
+            ## ! get omega_co, omega_oo
+            aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
+                b2_hat / se2_hat,
+                n2,
+                ld2,
+                bt_hat / se_t_hat,
+                nt,
+                ldx,
+                ldx,
+                np.array([1.0, 1.0, 0.0]),
+            )
+            ## omega_co: var between target celltype in aux pop and tissue
+            # aux_Omega_matrix[0, 1] = propt * omega_2 + (1-propt) * omega_co
+            # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) < P_VAL_THRED:
             # else:
-            #     omega_oo = 1e-12
-        # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (propt**4) * (Omega_se[1, 1]**2) + (2*propt*(1-propt))**2 * (omega_co_se**2))**0.5 / ((1-propt)**2)
-        # omega_oo_p = z2p(omega_oo / omega_oo_se)
-        # if omega_oo_p > P_VAL_THRED:
-        #     omega_oo = MIN_FLOAT
+            #     omega_co = MIN_FLOAT
+            omega_co = (aux_Omega_matrix[0, 1] - propt * Omega[1, 1]) / (1 - propt)
+            omega_co_se = (
+                aux_Omega_matrix_se[0, 1] ** 2 + (propt**2) * (Omega_se[1, 1] ** 2)
+            ) ** 0.5 / (1 - propt)
+            omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
+            if omega_co_p >= P_VAL_THRED:
+                omega_co = 0.0
+            ## omega_oo: var of non-target celltype in tissue
+            ## aux_Omega_matrix[1, 1] = propt^2 * omega_2 + 2*propt*(1-propt)*omega_co + (1-propt)^2 * omega_oo
+            omega_oo = (
+                aux_Omega_matrix[1, 1]
+                - propt**2 * Omega[1, 1]
+                - 2 * propt * (1 - propt) * omega_co
+            ) / ((1 - propt) ** 2)
+            omega_oo = np.maximum(omega_oo, 1e-12)
 
-        ## ! get omega_xo
-        tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
-            b1_hat / se1_hat,
-            n1,
-            ld1,
-            b2_hat / se2_hat,
-            n2,
-            ld2,
-            ldx,
-            np.array([1.0, 1.0, 0.0]),
-        )
-        ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
-        ## tar_tissue_Omega_matrix[0, 1] = propt * omega_x + (1-propt) * omega_xo
-        # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-        # else:
-        #     omega_xo = MIN_FLOAT
-        omega_xo = (tar_tissue_Omega_matrix[0, 1] - propt * Omega[0, 1]) / (1 - propt)
-        omega_xo_se = (
-            tar_tissue_Omega_matrix_se[0, 1] ** 2 + (propt**2) * (Omega_se[0, 1] ** 2)
-        ) ** 0.5 / (1 - propt)
-        omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
-        if omega_xo_p > P_VAL_THRED:
-            omega_xo = MIN_FLOAT
-        omega_xo_cor = omega_xo / (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
-        if omega_xo_cor > MAX_CORR:
-            omega_xo = MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
-        elif omega_xo_cor < -MAX_CORR:
-            omega_xo = -MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
+            omega_co_cor = omega_co / (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
+            if omega_co_cor > MAX_CORR:
+                omega_co = MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
+            elif omega_co_cor < -MAX_CORR:
+                omega_co = -MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + 1e-12)
+                # if z2p(aux_Omega_matrix[1, 1] / aux_Omega_matrix_se[1, 1]) < P_VAL_THRED:
+                # else:
+                #     omega_oo = 1e-12
+            # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (propt**4) * (Omega_se[1, 1]**2) + (2*propt*(1-propt))**2 * (omega_co_se**2))**0.5 / ((1-propt)**2)
+            # omega_oo_p = z2p(omega_oo / omega_oo_se)
+            # if omega_oo_p > P_VAL_THRED:
+            #     omega_oo = MIN_FLOAT
 
-        ## construct OmegaCB for GMMtissue
-        OmegaCB = np.array(
-            [
-                [Omega[0, 0], Omega[0, 1], omega_xo],
-                [Omega[0, 1], Omega[1, 1], omega_co],
-                [omega_xo, omega_co, omega_oo],
-            ]
-        )
-        if np.all(Omega > MIN_FLOAT):
-            print("True Omega:\n", Omega_causal / nsnp)
-            print("Estimated Omega:\n", Omega)
-            print("Estimated OmegaCB:\n", OmegaCB)
-            print(f"xo_cor: {omega_xo_cor:.4f}, co_cor: {omega_co_cor:.4f}")
-            print("=" * 10, "\n")
+            ## ! get omega_xo
+            tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
+                b1_hat / se1_hat,
+                n1,
+                ld1,
+                b2_hat / se2_hat,
+                n2,
+                ld2,
+                ldx,
+                np.array([1.0, 1.0, 0.0]),
+            )
+            ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
+            ## tar_tissue_Omega_matrix[0, 1] = propt * omega_x + (1-propt) * omega_xo
+            # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) < P_VAL_THRED:
+            # else:
+            #     omega_xo = MIN_FLOAT
+            omega_xo = (tar_tissue_Omega_matrix[0, 1] - propt * Omega[0, 1]) / (
+                1 - propt
+            )
+            omega_xo_se = (
+                tar_tissue_Omega_matrix_se[0, 1] ** 2
+                + (propt**2) * (Omega_se[0, 1] ** 2)
+            ) ** 0.5 / (1 - propt)
+            omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
+            if omega_xo_p > P_VAL_THRED:
+                omega_xo = MIN_FLOAT
+            omega_xo_cor = omega_xo / (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
+            if omega_xo_cor > MAX_CORR:
+                omega_xo = MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
+            elif omega_xo_cor < -MAX_CORR:
+                omega_xo = -MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + 1e-12)
+
+            ## construct OmegaCB for GMMtissue
+            OmegaCB = np.array(
+                [
+                    [Omega[0, 0], Omega[0, 1], omega_xo],
+                    [Omega[0, 1], Omega[1, 1], omega_co],
+                    [omega_xo, omega_co, omega_oo],
+                ]
+            )
+            # if np.all(Omega > MIN_FLOAT):
+            #     print("True Omega:\n", Omega_causal / nsnp)
+            #     print("Estimated Omega:\n", Omega)
+            #     print("Estimated OmegaCB:\n", OmegaCB)
+            #     print(f"xo_cor: {omega_xo_cor:.4f}, co_cor: {omega_co_cor:.4f}")
+            #     print("=" * 10, "\n")
 
     else:  # true omega
         raise NotImplementedError("True omega not implemented yet")
@@ -516,51 +521,61 @@ def simulation(
     pop1_se[:, 0] = se1_hat
     pop2_beta[:, 0] = b2_hat
     pop2_se[:, 0] = se2_hat
+
+    if run_gmm:
+        for j in prange(nsnp):
+            pop1_beta[j, 1], pop1_se[j, 1], pop2_beta[j, 1], pop2_se[j, 1] = GMM(
+                Omega,
+                np.eye(2),
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+            )
+            pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
+                OmegaCB,
+                np.eye(3),
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+                bt_hat[j],
+                se_t_hat[j],
+                propt,
+            )
+        pop1_z = pop1_beta / pop1_se
+        pop2_z = pop2_beta / pop2_se
+    else:  # no run gmm, keep sumstat results
+        pop1_z = np.zeros((nsnp, 3))
+        pop2_z = np.zeros((nsnp, 3))
+        pop1_z[:, 0] = b1_hat / se1_hat
+        pop1_z[:, 1] = b1_hat / se1_hat
+        pop1_z[:, 2] = b1_hat / se1_hat
+        pop2_z[:, 0] = b2_hat / se2_hat
+        pop2_z[:, 1] = b2_hat / se2_hat
+        pop2_z[:, 2] = b2_hat / se2_hat
+
     ## meta-analysis
     meta_beta = np.zeros((nsnp,))
     meta_se = np.zeros((nsnp,))
     meta_tissue_beta = np.zeros((nsnp,))
     meta_tissue_se = np.zeros((nsnp,))
-
     for j in prange(nsnp):
-        pop1_beta[j, 1], pop1_se[j, 1], pop2_beta[j, 1], pop2_se[j, 1] = GMM(
-            Omega,
-            np.eye(2),
-            b1_hat[j],
-            se1_hat[j],
-            ld1[j],
-            b2_hat[j],
-            se2_hat[j],
-            ld2[j],
-            ldx[j],
-        )
-        pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
-            OmegaCB,
-            np.eye(3),
-            b1_hat[j],
-            se1_hat[j],
-            ld1[j],
-            b2_hat[j],
-            se2_hat[j],
-            ld2[j],
-            ldx[j],
-            bt_hat[j],
-            se_t_hat[j],
-            propt,
-        )
         ## meta-analysis
-        # meta_beta[j], meta_se[j] = re2_meta(
-        #     np.array([b1_hat[j], b2_hat[j]]),
-        #     np.array([se1_hat[j], se2_hat[j]]),
-        # )
-        # meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
-        #     np.array([b1_hat[j], b2_hat[j], bt_hat[j]]),
-        #     np.array([se1_hat[j], se2_hat[j], se_t_hat[j]]),
-        # )
-        meta_beta[j], meta_se[j] = 0, 1
-        meta_tissue_beta[j], meta_tissue_se[j] = 0, 1
-    pop1_z = pop1_beta / pop1_se
-    pop2_z = pop2_beta / pop2_se
+        meta_beta[j], meta_se[j] = re2_meta(
+            np.array([b1_hat[j], b2_hat[j]]),
+            np.array([se1_hat[j], se2_hat[j]]),
+        )
+        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
+            np.array([b1_hat[j], b2_hat[j], bt_hat[j]]),
+            np.array([se1_hat[j], se2_hat[j], se_t_hat[j]]),
+        )
     # save results
     all_results_columns = [
         "causal",

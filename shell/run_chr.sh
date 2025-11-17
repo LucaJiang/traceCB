@@ -3,9 +3,9 @@ source ./shell/setting.sh
 conda activate $python_env
 
 # 最大并行任务数
-MAX_JOBS=8
+MAX_JOBS=10
 i=6
-
+log_file="${log_path}/run_gmm_chr.log"
 # ensure log dir
 mkdir -p "$log_path"
 TIME_LOG="${log_path}/run_gmm_time.log"
@@ -25,7 +25,7 @@ run_task() {
         echo "Starting GMM for chr${j} ${QTDids[$i]} - ${Celltypes[$i]} of $target_population using $use_tissue data..."
         task_start=$(date +%s)
 
-        python $src_path/traceCB/run_gmm.py -s ${QTDids[$i]} -t ${Celltypes[$i]} -c ${j} -d $save_path_main >>"${log_path}/run_gmm_cor_t1.csv" 2>&1
+        python $src_path/traceCB/run_gmm.py -s ${QTDids[$i]} -t ${Celltypes[$i]} -c ${j} -d $save_path_main >>"$log_file" 2>&1
 
         task_end=$(date +%s)
         task_elapsed=$((task_end - task_start))
@@ -48,6 +48,9 @@ done
 
 # 等待所有后台任务完成
 wait
+
+python src/visual/f3egene.py >>"$log_file" 2>&1
+python src/visual/f3violin.py >>"$log_file" 2>&1
 
 script_end=$(date +%s)
 total_elapsed=$((script_end - script_start))

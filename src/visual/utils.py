@@ -40,8 +40,9 @@ OASIS_celltype_dict = {
     "CD4+T_cells": ["CD4T"],
     "CD8+T_cells": ["CD8T"],
     "B_cells": ["B"],
-    "NK_cells": ["NK"]
+    "NK_cells": ["NK"],
 }
+
 
 def load_json(json_file="metadata.json"):
     """
@@ -65,11 +66,14 @@ def load_summary(study_dir):
     """
     #     <save_path_main>/QTD@/GMM/chr@/summary.csv
     # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+    # summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr1", "summary.csv"))
     summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr*", "summary.csv"))
     summary_df = pd.DataFrame()
     for summary_file in summary_dirs:
         df = pd.read_csv(summary_file, header=0, index_col=None)
-        df.loc[:, "CHR"] = os.path.basename(os.path.dirname(summary_file)).replace("chr", "")
+        df.loc[:, "CHR"] = os.path.basename(os.path.dirname(summary_file)).replace(
+            "chr", ""
+        )
         summary_df = (
             df if summary_df.empty else pd.concat([summary_df, df], ignore_index=True)
         )
@@ -77,19 +81,21 @@ def load_summary(study_dir):
         summary_df.COV / summary_df.H1SQ.apply(np.sqrt) / summary_df.H2SQ.apply(np.sqrt)
     )  # convert correlation to genetic correlation, original cor
     summary_df.loc[:, "COR"] = summary_df.COR_ORI.clip(-1, 1)  # clip cor to [-1,1]
-    summary_df.loc[summary_df.COV_PVAL > 0.05, "COR"] = 1e-12  # if COR_PVAL>0.05, set COR=0
+    summary_df.loc[summary_df.COV_PVAL > 0.05, "COR"] = (
+        1e-12  # if COR_PVAL>0.05, set COR=0
+    )
     summary_sign_df = summary_df.dropna()
-    na_raw = summary_df.TAR_CNEFF.isna() | summary_df.TAR_TNEFF.isna()
+    na_raw = summary_df.TAR_CNEFF.isna()
     summary_df.loc[na_raw, "TAR_CNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
-    summary_df.loc[na_raw, "TAR_TNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
     summary_df.loc[na_raw, "AUX_CNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]
-    summary_df.loc[na_raw, "AUX_TNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]
     summary_df.loc[na_raw, "TAR_CeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
-    summary_df.loc[na_raw, "TAR_TeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
     summary_df.loc[na_raw, "AUX_CeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
+    na_raw = summary_df.TAR_TNEFF.isna()
+    summary_df.loc[na_raw, "TAR_TNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
+    summary_df.loc[na_raw, "AUX_TNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]
+    summary_df.loc[na_raw, "TAR_TeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
     summary_df.loc[na_raw, "AUX_TeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
     return summary_sign_df.copy(), summary_df.copy()
-
 
 
 def load_all_summary(study_path_main=study_path_main):
@@ -118,6 +124,7 @@ def load_all_summary(study_path_main=study_path_main):
         )
     return all_summary_sign_df, all_summary_df
 
+
 def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
     """
     Loads eGenes from OASIS dataset, grouped by cell type.
@@ -126,15 +133,20 @@ def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
     oasis_egenes_by_celltype = {cell: set() for cell in OASIS_celltype_dict.keys()}
     for celltype, aliases in OASIS_celltype_dict.items():
         for alias in aliases:
-            file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            file_path = (
+                f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            )
             if not os.path.exists(file_path):
                 print(f"File not found: {file_path}")
                 continue
             df = pd.read_csv(file_path, sep="\t")
             # OASIS文件使用'phenotype_id'作为gene id列
-            replicated_genes = set(df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"])
+            replicated_genes = set(
+                df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"]
+            )
             oasis_egenes_by_celltype[celltype].update(replicated_genes)
     return oasis_egenes_by_celltype
+
 
 class onek1k_geneid2name(object):
 

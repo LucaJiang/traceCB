@@ -75,6 +75,94 @@ def get_pred(
     return coef * ldscore * sqrt_nprod + intercept
 
 
+def regression_jk(
+    x: np.ndarray,
+    y: np.ndarray,
+    intercept: float = np.nan,     # fixed intercept if not NaN (R: constrain_intercept with `subtract`)
+    estimate_se: bool = True,
+    jackknife: bool = True,
+    nblocks: int = 200,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Least squares with optional fixed intercept and block jackknife SE
+    replicating ldsc.R::regression().
+
+    x : (N, p) design matrix (first column should be the intercept column if present)
+    y : (N,) response
+    intercept : fixed intercept value; if NaN, intercept is estimated
+    estimate_se : whether to compute SEs
+    jackknife : whether to use block jackknife (R parity)
+    nblocks : number of blocks for jackknife
+    """
+    y = y.reshape(-1)
+    n, p = x.shape
+
+    # precompute cross-products
+    xtx = x.T @ x
+    xty = x.T @ y
+
+    # coefficients (R parity)
+    if not np.isnan(intercept):  # constrained intercept
+        coefs = np.zeros(p)
+        # solve for slopes using the submatrix (drop intercept column/row)
+        if p == 1:
+            # degenerate case: only intercept column present
+            coefs[0] = intercept
+        else:
+            coefs[1:] = np.linalg.solve(xtx[1:, 1:], xty[1:])
+            coefs[0] = intercept
+    else:
+        coefs = np.linalg.solve(xtx, xty)
+
+    if not estimate_se:
+        return coefs, np.full(p, np.nan)
+
+    if not jackknife:
+        # fallback: classic OLS SEs
+        k = p if np.isnan(intercept) else (p - 1)  # number of estimated params
+        resid = y - x @ coefs
+        sigsq = (resid @ resid) / max(n - k, 1)
+        cov_beta = sigsq * np.linalg.inv(xtx if np.isnan(intercept) else xtx)
+        return coefs, np.sqrt(np.maximum(np.diag(cov_beta), 0.0))
+
+    # --- block jackknife (R parity) ---
+    # floor(seq(1, N, length.out = nblocks+1)) but 0-based in Python
+    edges = np.floor(np.linspace(0, n, num=nblocks + 1)).astype(int)
+    # drop empty blocks (can happen when N < nblocks)
+    blocks = [(edges[i], edges[i + 1]) for i in range(len(edges) - 1) if edges[i + 1] > edges[i]]
+    B = len(blocks)
+    if B < 2:
+        # not enough blocks to jackknife — return NaNs (or OLS as fallback if you prefer)
+        return coefs, np.full(p, np.nan)
+
+    coefs_jk = np.zeros((B, p))
+    for b, (lo, hi) in enumerate(blocks):
+        # leave-one-block-out cross-products
+        xtx_blk = x[lo:hi, :].T @ x[lo:hi, :]
+        xty_blk = x[lo:hi, :].T @ y[lo:hi]
+        xtx_loo = xtx - xtx_blk
+        xty_loo = xty - xty_blk
+
+        # solve on the reduced system
+        if not np.isnan(intercept):  # constrained intercept: only (p-1) unknowns
+            coef_b = np.zeros(p)
+            if p > 1:
+                coef_b[1:] = np.linalg.solve(xtx_loo[1:, 1:], xty_loo[1:])
+            coef_b[0] = intercept
+        else:
+            coef_b = np.linalg.solve(xtx_loo, xty_loo)
+        coefs_jk[b, :] = coef_b
+
+    # R does: jk_cov <- cov(coefs_jk) * (nblocks - 1)
+    # np.cov with rowvar=False, ddof=1 == sample covariance (divide by B-1)
+    jk_cov = np.cov(coefs_jk, rowvar=False, ddof=1) * (B - 1)
+    jk_se = np.sqrt(np.maximum(np.diag(jk_cov), 0.0))
+
+    # NOTE: in constrained-intercept mode, R fills only the slope columns in coefs_jk
+    # and leaves intercept column as 0, so the intercept SE is ~0. We replicate that.
+    return coefs, jk_se
+
+
 def regression(
     x: np.ndarray,
     y: np.ndarray,
@@ -197,7 +285,7 @@ def update_weights(weights: np.ndarray, preds: np.ndarray) -> np.ndarray:
     """
     var_all = np.zeros((len(preds), 3))
     var_all[:, :2] = 2.0 * np.square(preds[:, :2])
-    var_all[:, 2] = preds[:, 0] * preds[:, 1] + np.square(preds[:, 2])
+    var_all[:, 2] = preds[:, 0] * preds[:, 1] + np.square(preds[:, 2]) #! test，its wrong
     return weights / var_all
 
 
@@ -336,8 +424,9 @@ def ldscore_regression_gc(
         Arrays for population 1, population 2, and cross-population results,
         each with shape (4,) containing [intercept, coef, intercept_se, coef_se]
     """
-    reg_w1 = 1 / ldscore[:, 0]
-    reg_w2 = 1 / ldscore[:, 1]
+    reg_w1 = 1.0 / np.maximum(ldscore[:, 0], 1.0)
+    reg_w2 = 1.0 / np.maximum(ldscore[:, 1], 1.0)
+
     # If any intercept is NaN, estimate intercept
     if np.any(np.isnan(intercept)):
         # coefs shape (3, 4) for [pop1, pop2, popx]
