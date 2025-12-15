@@ -3,7 +3,7 @@
 from numba import njit
 import numpy as np
 
-from .utils import make_pd_shrink_numba as make_pd_shrink
+# from .utils import make_pd_shrink_numba as make_pd_shrink
 
 
 @njit(nogil=True)
@@ -91,6 +91,7 @@ def GMMtissue(
     propt: float,
 ):
     """Apply cross population GMM (with tissue) to j th SNP
+    if non-positive definite, return original estimates
     Parameters
     ----------
     Omega : np.ndarray
@@ -115,8 +116,6 @@ def GMMtissue(
         beta for snp j in tissue
     se_t : float
         standard error for snp j in tissue
-    sigma_o : float
-        variance of other cell types in tissue
     propt : float
         proportion of cell type in tissue
 
@@ -169,12 +168,97 @@ def GMMtissue(
     Lambda2 = np.linalg.inv(Lambda2_inv)
     # blue estimates
     var1_blue = 1 / (lambda1.T @ Lambda1 @ lambda1).item()
-    se1_blue = np.sqrt(var1_blue)
     beta1_blue = (var1_blue * lambda1.T @ Lambda1 @ Betas).item()
     var2_blue = 1 / (lambda2.T @ Lambda2 @ lambda2).item()
-    se2_blue = np.sqrt(var2_blue)
     beta2_blue = (var2_blue * lambda2.T @ Lambda2 @ Betas).item()
+    if var1_blue <= 0:
+        beta1_blue = beta1
+        se1_blue = se1
+    else:
+        se1_blue = np.sqrt(var1_blue)
+    if var2_blue <= 0:
+        beta2_blue = beta2
+        se2_blue = se2
+    else:
+        se2_blue = np.sqrt(var2_blue)
     return beta1_blue, se1_blue, beta2_blue, se2_blue
+
+
+# @njit(cache=True, nogil=True)
+# def GMMtissue(
+#     Omega: np.ndarray,
+#     C: np.ndarray,
+#     beta1: float,
+#     se1: float,
+#     ld1: float,
+#     beta2: float,
+#     se2: float,
+#     ld2: float,
+#     ldx: float,
+#     beta_t: float,
+#     se_t: float,
+#     propt: float,
+# ):
+#     """Apply cross population GMM (with tissue) to j th SNP
+#     Parameters
+#     ----------
+#     Omega : np.ndarray
+#         (2, 2) per-snp covariance matrix
+#     C : np.ndarray
+#         (3, 3) genetic drift matrix estimated from the LDSC
+#     beta1 : float
+#         beta for snp j in population 1
+#     se1 : float
+#         standard error for snp j in population 1
+#     ld1 : float
+#         LD between snp j and the rest of the snps of target gene in population 1
+#     beta2 : float
+#         beta for snp j in population 2
+#     se2 : float
+#         standard error for snp j in population 2
+#     ld2 : float
+#         LD between snp j and the rest of the snps of target gene in population 2
+#     ldx : float
+#         LD of snp j between population 1 and population 2
+#     beta_t : float
+#         beta for snp j in tissue
+#     se_t : float
+#         standard error for snp j in tissue
+#     propt : float
+#         proportion of cell type in tissue
+
+#     Returns
+#     -------
+#     beta1_blue, se1_blue, beta2_blue, se2_blue: float
+#         GMM estimates for population 1 and population 2
+#     """
+#     Betas = np.array([beta1, beta2, beta_t]).reshape(-1, 1)
+#     A = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, propt]])
+#     # weight omega by ld
+#     Omegaj = np.array(
+#         [[Omega[0, 0] * ld1, Omega[0, 1] * ldx], [Omega[0, 1] * ldx, Omega[1, 1] * ld2]]
+#     )
+#     # weight C by se
+#     Sj = np.array([[se1, 0, 0], [0, se2, 0], [0, 0, se_t]])
+#     SCSj = Sj @ C @ Sj
+#     # lambda
+#     lambda1 = (
+#         np.array([Omegaj[0, 0], Omegaj[0, 1], propt * Omegaj[0, 1]]).reshape(-1, 1)
+#         / Omegaj[0, 0]
+#     )
+#     Lambda1_inv = A @ Omegaj @ A.T + SCSj - Omegaj[0, 0] * lambda1 @ lambda1.T
+#     Lambda1 = np.linalg.inv(Lambda1_inv)
+#     lambda2 = np.array([Omegaj[1, 0] / Omegaj[1, 1], 1, propt]).reshape(-1, 1)
+#     Lambda2_inv = A @ Omegaj @ A.T + SCSj - Omegaj[1, 1] * lambda2 @ lambda2.T
+#     Lambda2 = np.linalg.inv(Lambda2_inv)
+#     # blue estimates
+#     var1_blue = 1 / (lambda1.T @ Lambda1 @ lambda1).item()
+#     se1_blue = np.sqrt(var1_blue)
+#     beta1_blue = (var1_blue * lambda1.T @ Lambda1 @ Betas).item()
+#     var2_blue = 1 / (lambda2.T @ Lambda2 @ lambda2).item()
+#     se2_blue = np.sqrt(var2_blue)
+#     beta2_blue = (var2_blue * lambda2.T @ Lambda2 @ Betas).item()
+#     return beta1_blue, se1_blue, beta2_blue, se2_blue
 
 
 if __name__ == "__main__":

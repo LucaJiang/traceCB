@@ -1,8 +1,6 @@
-# Preprocess eQTLCatalogue data
+#!/bin/bash
 
-run following python script
-
-```python
+python3 <<'EOF'
 import pandas as pd
 import os
 import numpy as np
@@ -81,5 +79,6 @@ for file_id, sample_size in data_samplesize_dict.items():
         ]
         save_file_name = f"{save_path}{file_id}/chr{chr}.csv"
         df_new.to_csv(save_file_name, index=False)
+EOF
 
-```
+echo "Finish preprocessing eQTLCatalogue data."

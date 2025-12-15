@@ -14,11 +14,12 @@ import pandas as pd
 from numba import prange, njit
 
 from traceCB.gmm import GMM, GMMtissue
-from traceCB.ldsc import Run_single_LDSC, Run_cross_LDSC
+from traceCB.ldsc import Run_cross_LDSC
 from traceCB.utils import (
     z2p,
-    make_pd_shrink,
+    # make_pd_shrink,
     MIN_FLOAT,
+    MIN_HERITABILITY,
     P_VAL_THRED,
     MAX_CORR,
     eSNP_THRESHOLD,
@@ -61,7 +62,7 @@ def calculate_Neff(z: np.ndarray, omega: float, ld: np.ndarray) -> float:
     """
     Calculate effective sample size from z-scores, heritability omega, and LD vector.
     """
-    return ((np.mean(z**2) - 1) / omega / np.mean(ld)).item()
+    return (np.mean(z**2) - 1) / (omega + MIN_FLOAT) / (np.mean(ld).item() + MIN_FLOAT)
 
 
 def count_eSNPs(pval_list: np.ndarray) -> int:
@@ -69,6 +70,19 @@ def count_eSNPs(pval_list: np.ndarray) -> int:
     Count the number of eSNPs based on p-values.
     """
     return np.sum(pval_list < eSNP_THRESHOLD).item()
+
+
+def clip_correlation(var1: float, var2: float, cov: float) -> tuple[float, float]:
+    """
+    Clip the correlation coefficient to be within [-MAX_CORR, MAX_CORR].
+    returns the adjusted covariance and correlation.
+    """
+    denominator = var1**0.5 * var2**0.5 + MIN_FLOAT
+    cor = cov / denominator
+    if abs(cor) > MAX_CORR:
+        cor = np.sign(cor) * MAX_CORR
+        cov = cor * denominator
+    return cov, cor
 
 
 def main(args, chr):
@@ -113,6 +127,7 @@ def main(args, chr):
         0
     ]
     celltype_proportion = celltype_proportion_percentage / 100.0
+
     ## run gmm for each gene
     gene_list = tarLDdf.columns[4:].tolist()
     summary_df = pd.DataFrame(
@@ -124,11 +139,15 @@ def main(args, chr):
             "H1SQSE",
             "H2SQ",
             "H2SQSE",
-            "COV",
-            "COV_PVAL",
-            "TAR_SNEFF",
-            "TAR_CNEFF",
-            "TAR_TNEFF",
+            "COV_PVAL",  # Genetic covariance between target and auxiliary cell types
+            "COR_1C",  # Genetic correlation between target and auxiliary cell types
+            "COR_1O",  # Genetic correlation between target cell type in target pop and non-target cell type in aux tissue
+            "COR_CO",  # Genetic correlation between target cell type in aux pop and non-target cell type in aux tissue
+            "RUN_GMM",  # Whether run cross-population GMM
+            "RUN_GMM_TISSUE",  # Whether run GMM with tissue
+            "TAR_SNEFF",  # effective sample size, S is for summary statistics
+            "TAR_CNEFF",  # effective sample size, C is for using cross-population GMM
+            "TAR_TNEFF",  # effective sample size, T is for using GMM with tissue
             "TAR_SeSNP",  # number of eSNP
             "TAR_CeSNP",
             "TAR_TeSNP",
@@ -143,7 +162,9 @@ def main(args, chr):
         ],
     )
     summary_df.index.name = "GENE"
+    summary_df = summary_df.astype({"RUN_GMM": "boolean", "RUN_GMM_TISSUE": "boolean"})
     # for gene in gene_list:
+    # breakpoint()
     for gene_idx in prange(len(gene_list)):
         gene = gene_list[gene_idx]
         ## collect data for the gene
@@ -185,8 +206,8 @@ def main(args, chr):
         )  # RSID,GENE,BETA_tar,SE_tar,Z_tar,PVAL_tar,N_tar,BETA_aux,SE_aux,Z_aux,PVAL_aux,N_aux,BETA_tissue,SE_tissue,Z_tissue,PVAL_tissue,N_tissue,tarLD,auxLD,xLD
         nsnp = gene_df.shape[0]
         summary_df.loc[gene, "NSNP"] = nsnp
-        if nsnp < 10:
-            continue  # skip genes with less than 10 SNPs
+        if nsnp < 100:  # skip genes with less than 100 SNPs
+            continue
 
         ## run ldsc to get Omega
         Omega, Omega_se = Run_cross_LDSC(
@@ -204,7 +225,6 @@ def main(args, chr):
         summary_df.loc[gene, "H1SQSE"] = Omega_se[0, 0]
         summary_df.loc[gene, "H2SQ"] = Omega[1, 1]
         summary_df.loc[gene, "H2SQSE"] = Omega_se[1, 1]
-        summary_df.loc[gene, "COV"] = Omega[0, 1]
         summary_df.loc[gene, "COV_PVAL"] = Omega_p[0, 1]
         ### get neff of summary statistics
         summary_df.loc[gene, "TAR_SNEFF"] = calculate_Neff(
@@ -228,21 +248,24 @@ def main(args, chr):
             gene_df.PVAL_tissue.to_numpy()
         )
         # ### threshold Omega
-        # for i in range(Omega.shape[0]):
-        #     for j in range(Omega.shape[1]):
-        #         if Omega_p[i, j] > P_VAL_THRED:
-        #             Omega[i, j] = MIN_FLOAT
-        # if np.any(Omega <= MIN_FLOAT):
-        #     continue  # skip genes with unsignificant heritability or correlation
         if Omega_p[0, 0] >= P_VAL_THRED:
+            summary_df.loc[gene, "RUN_GMM"] = False
+            summary_df.loc[gene, "RUN_GMM_TISSUE"] = False
             continue  # skip genes with unsignificant tar heritability
+        if Omega_p[1, 1] >= P_VAL_THRED:
+            Omega[1, 1] = MIN_HERITABILITY
         run_gmm = True
-        if Omega_p[0, 1] >= P_VAL_THRED:
+        if np.any(Omega_p >= P_VAL_THRED):
             Omega[0, 1] = 0.0
             Omega[1, 0] = 0.0
             run_gmm = False
+        omega_1c_cor = Omega[0, 1] / np.sqrt(
+            Omega[0, 0] * Omega[1, 1] + MIN_FLOAT
+        )  # have been clipped at ldsc
+        summary_df.loc[gene, "COR_1C"] = omega_1c_cor
+        summary_df.loc[gene, "RUN_GMM"] = run_gmm
 
-        ## ! get omega_co, omega_oo
+        ## get omega_co, omega_oo
         aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
             (gene_df.BETA_aux / gene_df.SE_aux).to_numpy(),
             gene_df.N_aux.to_numpy(),
@@ -258,14 +281,12 @@ def main(args, chr):
         omega_co = (aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1]) / (
             1 - celltype_proportion
         )
-        # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) >= P_VAL_THRED:
-        #     omega_co = MIN_FLOAT
         omega_co_se = (
             aux_Omega_matrix_se[0, 1] ** 2
             + (celltype_proportion**2) * (Omega_se[1, 1] ** 2)
         ) ** 0.5 / (1 - celltype_proportion)
         omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
-        if omega_co_p >= P_VAL_THRED:
+        if omega_co_p >= P_VAL_THRED or Omega_p[1, 1] >= P_VAL_THRED:
             omega_co = 0.0
         ## omega_oo: var of non-target celltype in tissue
         ## aux_Omega_matrix[1, 1] = celltype_proportion^2 * omega_2 + 2*celltype_proportion*(1-celltype_proportion)*omega_co + (1-celltype_proportion)^2 * omega_oo
@@ -274,48 +295,40 @@ def main(args, chr):
             - celltype_proportion**2 * Omega[1, 1]
             - 2 * celltype_proportion * (1 - celltype_proportion) * omega_co
         ) / ((1 - celltype_proportion) ** 2)
-        omega_oo = np.maximum(omega_oo, 1e-12)
-
-        omega_co_cor = omega_co / (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
-        if omega_co_cor > MAX_CORR:
-            omega_co = MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
-        elif omega_co_cor < -MAX_CORR:
-            omega_co = -MAX_CORR * (Omega[1, 1] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
-            # if z2p(aux_Omega_matrix[1, 1] / aux_Omega_matrix_se[1, 1]) < P_VAL_THRED:
-            # else:
-            #     omega_oo = 1e-12
+        omega_oo = np.maximum(omega_oo, MIN_HERITABILITY)
         # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (celltype_proportion**4) * (Omega_se[1, 1]**2) + (2*celltype_proportion*(1-celltype_proportion))**2 * (omega_co_se**2))**0.5 / ((1-celltype_proportion)**2)
+        omega_co, omega_co_cor = clip_correlation(Omega[1, 1], omega_oo, omega_co)
 
-        ## ! get omega_xo
-        tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
-            (gene_df.BETA_tar / gene_df.SE_tar).to_numpy(),
-            gene_df.N_tar.to_numpy(),
-            gene_df.LD_tar.to_numpy(),
-            (gene_df.BETA_tissue / gene_df.SE_tissue).to_numpy(),
-            gene_df.N_tissue.to_numpy(),
-            gene_df.LD_aux.to_numpy(),
-            gene_df.LD_x.to_numpy(),
-            np.array([1.0, 1.0, 0.0]),
-        )
-        ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
-        ## tar_tissue_Omega_matrix[0, 1] = celltype_proportion * omega_x + (1-celltype_proportion) * omega_xo
-        omega_xo = (
-            tar_tissue_Omega_matrix[0, 1] - celltype_proportion * Omega[0, 1]
-        ) / (1 - celltype_proportion)
-        # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) >= P_VAL_THRED:
-        #     omega_xo = MIN_FLOAT
-        omega_xo_se = (
-            tar_tissue_Omega_matrix_se[0, 1] ** 2
-            + (celltype_proportion**2) * (Omega_se[0, 1] ** 2)
-        ) ** 0.5 / (1 - celltype_proportion)
-        omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
-        if omega_xo_p >= P_VAL_THRED:
+        ## get omega_xo
+        # tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
+        #     (gene_df.BETA_tar / gene_df.SE_tar).to_numpy(),
+        #     gene_df.N_tar.to_numpy(),
+        #     gene_df.LD_tar.to_numpy(),
+        #     (gene_df.BETA_tissue / gene_df.SE_tissue).to_numpy(),
+        #     gene_df.N_tissue.to_numpy(),
+        #     gene_df.LD_aux.to_numpy(),
+        #     gene_df.LD_x.to_numpy(),
+        #     np.array([1.0, 1.0, 0.0]),
+        # )
+        # ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
+        # ## tar_tissue_Omega_matrix[0, 1] = celltype_proportion * omega_x + (1-celltype_proportion) * omega_xo
+        # omega_xo = (
+        #     tar_tissue_Omega_matrix[0, 1] - celltype_proportion * Omega[0, 1]
+        # ) / (1 - celltype_proportion)
+        # omega_xo_se = (
+        #     tar_tissue_Omega_matrix_se[0, 1] ** 2
+        #     + (celltype_proportion**2) * (Omega_se[0, 1] ** 2)
+        # ) ** 0.5 / (1 - celltype_proportion)
+        # omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
+        # if omega_xo_p >= P_VAL_THRED:
+        #     omega_xo = 0.0
+        omega_xo = 0.0  # !for now, set omega_xo to 0
+        omega_xo, omega_xo_cor = clip_correlation(Omega[0, 0], omega_oo, omega_xo)
+
+        if abs(omega_oo - MIN_HERITABILITY) < MIN_FLOAT:
             omega_xo = 0.0
-        omega_xo_cor = omega_xo / (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
-        if omega_xo_cor > MAX_CORR:
-            omega_xo = MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
-        elif omega_xo_cor < -MAX_CORR:
-            omega_xo = -MAX_CORR * (Omega[0, 0] ** 0.5 * omega_oo**0.5 + MIN_FLOAT)
+            omega_co = 0.0
+
         ## construct OmegaCB for GMMtissue
         OmegaCB = np.array(
             [
@@ -324,27 +337,13 @@ def main(args, chr):
                 [omega_xo, omega_co, omega_oo],
             ]
         )
-        # if np.any(np.linalg.eigvals(OmegaCB) < 0):
-        #     print(f"Warning: OmegaCB matrix is not positive definite for gene {gene} in GMMtissue.")
-        #     print(OmegaCB)
-        #     print(np.linalg.eigvals(OmegaCB))
-        #     OmegaCB = make_pd_shrink(OmegaCB, shrink=0.9)
 
-        # omega_12_cor = Omega[1, 0] / np.sqrt(Omega[0, 0] * Omega[1, 1])
-        # print(
-        #     f"{gene},{Omega[0,0]:.8e},{Omega[0,1]:.8e},{Omega[1,1]:.8e},{omega_xo:.8e},{omega_co:.8e},{omega_oo:.8e},{omega_12_cor:.2f},{omega_co_cor:.2f},{omega_xo_cor:.2f}"
-        # )
-        # print("="*20, "\n")
-
-        # if (
-        #     # summary_df.loc[gene, "TISSUE_SNEFF"] > summary_df.loc[gene, "AUX_SNEFF"]
-        #     omega_oo > 1e-12
-        #     and gene_df.PVAL_tissue.min() < 1e-5
-        # ):
-        #     run_gmm_tissue = True
-        # else:
-        #     run_gmm_tissue = False
         run_gmm_tissue = True
+        if (omega_xo == 0.0 and omega_co == 0.0) or Omega[0, 1] == 0.0:
+            run_gmm_tissue = False
+        summary_df.loc[gene, "COR_1O"] = omega_xo_cor
+        summary_df.loc[gene, "COR_CO"] = omega_co_cor
+        summary_df.loc[gene, "RUN_GMM_TISSUE"] = run_gmm_tissue
 
         ## run GMM for each SNP in the gene
         gmm_b_tar = np.full((nsnp, 2), np.nan)  # cross, cross+tissue
@@ -403,26 +402,33 @@ def main(args, chr):
             except Exception as e:
                 print(
                     f"Error in GMM for gene {gene}, SNP {gene_df.index[i]}: {e}. "
-                    f"h1sq: {Omega[0, 0]}, h2sq: {Omega[1, 1]}, "
-                    f"Cor: {Omega[0, 1]}, tar_beta: {gene_df.BETA_tar.iloc[i]}, "
-                    f"aux_beta: {gene_df.BETA_aux.iloc[i]}, tissue_beta: {gene_df.BETA_tissue.iloc[i]}, "
-                    f"tar_se: {gene_df.SE_tar.iloc[i]}, aux_se: {gene_df.SE_aux.iloc[i]}, "
-                    f"tissue_se: {gene_df.SE_tissue.iloc[i]}, tar_ld: {gene_df.LD_tar.iloc[i]}, "
-                    f"aux_ld: {gene_df.LD_aux.iloc[i]}, x_ld: {gene_df.LD_x.iloc[i]}",
-                    file=sys.stderr,
-                    flush=True,
+                    f"h1sq: {OmegaCB[0, 0]}, h2sq: {OmegaCB[1, 1]}, hosq: {OmegaCB[2, 2]}, "
+                    f"cor_1c: {omega_1c_cor}, cor_1o: {omega_xo_cor}, cor_co: {omega_co_cor}, "
+                    f"tar_beta: {gene_df.BETA_tar.iloc[i]}, tar_se: {gene_df.SE_tar.iloc[i]}, "
+                    f"tar_ld: {gene_df.LD_tar.iloc[i]}, aux_beta: {gene_df.BETA_aux.iloc[i]}, "
+                    f"aux_se: {gene_df.SE_aux.iloc[i]}, aux_ld: {gene_df.LD_aux.iloc[i]}, x_ld: {gene_df.LD_x.iloc[i]}, "
+                    f"tissue_beta: {gene_df.BETA_tissue.iloc[i]}, tissue_se: {gene_df.SE_tissue.iloc[i]}, "
+                    f"celltype_proportion: {celltype_proportion}"
                 )
-                # print(tissue_improved_aux_beta, tissue_improved_aux_se, flush=True)
-                if gmm_b_tar[i, 0] is not np.nan and gmm_se_tar[i, 0] is not np.nan:
-                    gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
-                    gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
-                    gmm_b_aux[i, 1] = gmm_b_aux[i, 0]
-                    gmm_se_aux[i, 1] = gmm_se_aux[i, 0]
-                else:
-                    gmm_b_tar[i, :] = gene_df.BETA_tar.iloc[i]
-                    gmm_b_aux[i, :] = gene_df.BETA_aux.iloc[i]
-                    gmm_se_tar[i, :] = gene_df.SE_tar.iloc[i]
-                    gmm_se_aux[i, :] = gene_df.SE_aux.iloc[i]
+            if np.isnan(gmm_b_tar[i, 0]) or np.isnan(
+                gmm_se_tar[i, 0]
+                or np.isnan(gmm_b_aux[i, 0])
+                or np.isnan(gmm_se_aux[i, 0])
+            ):  # check gmm output
+                gmm_b_tar[i, 0] = gene_df.BETA_tar.iloc[i]
+                gmm_se_tar[i, 0] = gene_df.SE_tar.iloc[i]
+                gmm_b_aux[i, 0] = gene_df.BETA_aux.iloc[i]
+                gmm_se_aux[i, 0] = gene_df.SE_aux.iloc[i]
+            if (
+                np.isnan(gmm_b_tar[i, 1])
+                or np.isnan(gmm_se_tar[i, 1])
+                or np.isnan(gmm_b_aux[i, 1])
+                or np.isnan(gmm_se_aux[i, 1])
+            ):
+                gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
+                gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
+                gmm_b_aux[i, 1] = gmm_b_aux[i, 0]
+                gmm_se_aux[i, 1] = gmm_se_aux[i, 0]
 
         gmm_z_tar = gmm_b_tar / gmm_se_tar
         gmm_z_aux = gmm_b_aux / gmm_se_aux

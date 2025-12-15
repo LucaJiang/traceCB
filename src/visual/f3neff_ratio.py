@@ -3,6 +3,7 @@ from f3violin import remove_outliers
 from adjustText import adjust_text
 from scipy import stats
 
+
 # 计算regression置信区间
 def prediction_interval(x, y, new_x, confidence=0.95):
     """计算预测区间"""
@@ -64,7 +65,9 @@ def f3neff_ratio_samplesize(summary_sign_df):
     )
     line_y = slope * line_x + intercept
     margin = prediction_interval(x, y, line_x, confidence=0.95)
-    print(f"Regression line: y = {slope:.4f} * x + {intercept:.4f}, R^2 = {r_value**2:.4f}")
+    print(
+        f"Regression line: y = {slope:.4f} * x + {intercept:.4f}, R^2 = {r_value**2:.4f}"
+    )
 
     # 绘制回归线
     ax.plot(
@@ -150,9 +153,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
     )
 
     plt.tight_layout()
-    plt.savefig(
-        f"{save_path}/f3neff_ratio_samplesize.pdf", bbox_inches="tight"
-    )
+    plt.savefig(f"{save_path}/f3neff_ratio_samplesize.pdf", bbox_inches="tight")
     print(f"Sample size plot saved to: {save_path}/f3neff_ratio_samplesize.pdf")
 
 
@@ -182,7 +183,7 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
 
     print("Celltype proportion plot data:")
     print(celltype_proportion_df)
-    
+
     # plot
     fig, ax = plt.subplots(figsize=(6, 4))
     # 添加回归线和置信区间
@@ -196,7 +197,9 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
     line_x_lower = np.linspace(x_lower.min(), x_lower.max(), 100)
     line_y_lower = slope_lower * line_x_lower + intercept_lower
     margin_lower = prediction_interval(x_lower, y_lower, line_x_lower, confidence=0.95)
-    print(f"Regression line: y = {slope_lower:.4f} * x + {intercept_lower:.4f}, R^2 = {r_value_lower**2:.4f}")
+    print(
+        f"Regression line: y = {slope_lower:.4f} * x + {intercept_lower:.4f}, R^2 = {r_value_lower**2:.4f}"
+    )
 
     # 绘制回归线
     ax.plot(
@@ -228,7 +231,7 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
         edgecolor="gray",
         linewidth=0.5,
     )
-    
+
     # 采用斜向偏移策略
     texts_lower = []
     for i, row in celltype_proportion_df.iterrows():
@@ -284,11 +287,13 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
         f"{save_path}/f3neff_ratio_celltype_proportion.pdf",
         bbox_inches="tight",
     )
-    print(f"Cell type proportion plot saved to: {save_path}/f3neff_ratio_celltype_proportion.pdf")
+    print(
+        f"Cell type proportion plot saved to: {save_path}/f3neff_ratio_celltype_proportion.pdf"
+    )
 
 
 if __name__ == "__main__":
-    summary_sign_df, _ = load_all_summary()    
+    summary_sign_df, _ = load_all_summary()
     summary_sign_df = remove_outliers(summary_sign_df)
     summary_sign_df.loc[:, "NAME"] = summary_sign_df.QTDid.map(meta_data["id2name"])
 

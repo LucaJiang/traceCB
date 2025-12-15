@@ -1,13 +1,4 @@
 #!/bin/bash
-#SBATCH -A pa_bios_department
-#SBATCH -p special_bios
-#SBATCH -J GTEx_preprocess
-#SBATCH -o log/GTEx_preprocess.log
-#SBATCH -N 1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=64GB
-#SBATCH -t 10:00:00
 
 GTEx_main_path="/gpfs1/scratch/ResearchGroups/bios_mingxcai/data/GTEx"
 GTEx_raw_file="${GTEx_main_path}/GTEx_Analysis_v8_QTLs-GTEx_Analysis_v8_eQTL_all_associations-Whole_Blood.allpairs.txt.gz"
@@ -52,6 +43,7 @@ zcat "$GTEx_lookup_file" | tail -n +2 |
 # chr10_100000235_C_T_b38	chr10	100000235	C	T	rs11596870
 
 for chr in {1..22}; do
+(
     echo "Processing chromosome $chr"
     output_file="$OUT_PATH/chr${chr}.csv"
 
@@ -86,8 +78,8 @@ for chr in {1..22}; do
               $8,         # CHR
               $9,        # POS
               int($3),    # TSS_DISTANCE
-              $11,        # A1
-              $10,        # A2
+              $10,        # A1
+              $11,        # A2
               $4,         # MAF
               $5,         # PVAL
               $6,         # BETA
@@ -96,11 +88,14 @@ for chr in {1..22}; do
 
     # head -n 3 "$temp_dir/chr${chr}_formatted.txt"
     # GENE  RSID    CHR  POS    TSS_DISTANCE    A1  A2  MAF PVAL    BETA    SE
-    # ENSG00000227232    rs1209314672    1    13550    -16003    T    C    0.0141791    0.734151    0.0587242    0.172837
+    # ENSG00000227232    rs1209314672    1    13550    -16003    C    T    0.0141791    0.734151    0.0587242    0.172837
 
     # Sort and append to output file
     sort -t',' -k1,1 -k4,4n "$temp_dir/chr${chr}_formatted.txt" >>"$output_file"
+) &
 done
+
+wait
 
 # Clean up
 rm -rf "$temp_dir"

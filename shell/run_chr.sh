@@ -25,7 +25,7 @@ run_task() {
         echo "Starting GMM for chr${j} ${QTDids[$i]} - ${Celltypes[$i]} of $target_population using $use_tissue data..."
         task_start=$(date +%s)
 
-        python $src_path/traceCB/run_gmm.py -s ${QTDids[$i]} -t ${Celltypes[$i]} -c ${j} -d $save_path_main >>"$log_file" 2>&1
+        python $src_path/traceCB/run_double_gmm.py -s ${QTDids[$i]} -t ${Celltypes[$i]} -c ${j} -d $save_path_main >>"$log_file" 2>&1
 
         task_end=$(date +%s)
         task_elapsed=$((task_end - task_start))

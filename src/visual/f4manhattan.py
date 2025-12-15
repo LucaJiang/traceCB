@@ -29,9 +29,9 @@ plot_gene_info = (
     # ("ENSG00000104518", "QTD000081", 8, "GSDMD"),
     # ("ENSG00000166928", "QTD000021", 11, "MS4A14"),
     ## heatmap bcx mon
-    ("ENSG00000172543", "QTD000021", 11, "CTSW"),
-    ("ENSG00000172543", "QTD000081", 11, "CTSW"),
-    ("ENSG00000172543", "QTD000069", 11, "CTSW"),
+    # ("ENSG00000172543", "QTD000021", 11, "CTSW"),
+    # ("ENSG00000172543", "QTD000081", 11, "CTSW"),
+    # ("ENSG00000172543", "QTD000069", 11, "CTSW"),
     # ("ENSG00000011454", "QTD000021", 9, "RABGAP1"),
     # ("ENSG00000011454", "QTD000069", 9, "RABGAP1"),
     # ("ENSG00000011454", "QTD000081", 9, "RABGAP1"),
@@ -52,14 +52,16 @@ plot_gene_info = (
     # ("ENSG00000114742", "QTD000115", 3, "WDR48"),
     # ("ENSG00000114742", "QTD000371", 3, "WDR48"),
     # ("ENSG00000114742", "QTD000372", 3, "WDR48"),
-
+    # ("ENSG00000079277", "QTD000081", 1, "GeneName"),
+    ("ENSG00000138964", "QTD000081", 22, "test"),
 )
 
 gwas_path = "/home/wjiang49/group/wjiang49/data/xpmm/coloc/bcx/bcx_mon_GWAS.csv"
 
 MIN_PVAL = 1e-20
 MAX_RANGE = 200_000
-lookup_table = get_gtex_lookup_table().set_index("RSID") # RSID, POS
+lookup_table = get_gtex_lookup_table().set_index("RSID")  # RSID, POS
+
 
 def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
     """
@@ -86,9 +88,13 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
         mid_pos = (min_pos + max_pos) / 2
         new_min_pos = mid_pos - MAX_RANGE / 2
         new_max_pos = mid_pos + MAX_RANGE / 2
-        merged_df = merged_df[(merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)]
-        print(f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}")
-    
+        merged_df = merged_df[
+            (merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)
+        ]
+        print(
+            f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}"
+        )
+
     # # convert pos to b38
     # merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
     # sort by POS
@@ -107,7 +113,7 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
     # Clip PVAL to avoid log10(0)
     for col in target_methods[1:] + ["PVAL"]:
         merged_df[col] = merged_df[col].clip(lower=MIN_PVAL)
-    
+
         ## verbose output
         ### print SNP info which has PVAL < 1e-8
         if (merged_df[col] < 1e-8).any():
@@ -118,7 +124,11 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
     fig, axes = plt.subplots(4, 1, figsize=(8, 4), sharex=True, sharey=True)
 
     # 添加总标题
-    fig.suptitle(f"Manhattan Plot of {gene_name} in GWAS and {meta_data["id2name"][qtdid]}", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        f"Manhattan Plot of {gene_name} in GWAS and {meta_data["id2name"][qtdid]}",
+        fontsize=14,
+        fontweight="bold",
+    )
 
     for i, method in enumerate(target_methods):
         if method == "GWAS":
@@ -191,6 +201,7 @@ def plot_manhattan(gene_id, qtdid, chromosome, gene_name):
 
     return save_name
 
+
 def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
     """
     Plot auxiliary population Manhattan plot for a given gene.
@@ -205,22 +216,28 @@ def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
     if not os.path.exists(tissue_eqtl_path):
         print(f"Tissue eQTL file not found: {tissue_eqtl_path}")
         return None
-    celltype_eqtl_df = pd.read_csv(celltype_eqtl_path) # RSID,GENE,BETA,SE,Z,PVAL,N
+    celltype_eqtl_df = pd.read_csv(celltype_eqtl_path)  # RSID,GENE,BETA,SE,Z,PVAL,N
     celltype_eqtl_df = celltype_eqtl_df[celltype_eqtl_df["GENE"] == gene_id]
     tissue_eqtl_df = pd.read_csv(tissue_eqtl_path)
     tissue_eqtl_df = tissue_eqtl_df[tissue_eqtl_df["GENE"] == gene_id]
     if celltype_eqtl_df.empty or tissue_eqtl_df.empty:
-        print(f"No eQTL data found for gene {gene_id} in {qtdid} at chromosome {chromosome}.")
+        print(
+            f"No eQTL data found for gene {gene_id} in {qtdid} at chromosome {chromosome}."
+        )
         return None
 
     # Load GWAS data
     gwas_df = pd.read_csv(gwas_path)  # SNP,Z,CHR,POS,MAF,BETA,SE
     gwas_df = gwas_df[gwas_df["CHR"] == chromosome]
     gwas_df.loc[:, "PVAL"] = gwas_df.Z.apply(z2p)
-    
+
     # Merge data on RSID/SNP
-    merged_df = pd.merge(celltype_eqtl_df, tissue_eqtl_df, on="RSID", suffixes=("_celltype", "_tissue"))
-    merged_df = pd.merge(merged_df, gwas_df, left_on="RSID", right_on="SNP", how="inner")
+    merged_df = pd.merge(
+        celltype_eqtl_df, tissue_eqtl_df, on="RSID", suffixes=("_celltype", "_tissue")
+    )
+    merged_df = pd.merge(
+        merged_df, gwas_df, left_on="RSID", right_on="SNP", how="inner"
+    )
     merged_df.rename(columns={"PVAL": "PVAL_gwas"}, inplace=True)
 
     save_name = f"{save_path}/{qtdid}_{gene_id}_{gene_name}_aux_manhattan.png"
@@ -235,12 +252,16 @@ def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
         mid_pos = (min_pos + max_pos) / 2
         new_min_pos = mid_pos - MAX_RANGE / 2
         new_max_pos = mid_pos + MAX_RANGE / 2
-        merged_df = merged_df[(merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)]
-        print(f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}")
-        
+        merged_df = merged_df[
+            (merged_df["POS"] >= new_min_pos) & (merged_df["POS"] <= new_max_pos)
+        ]
+        print(
+            f"Clipped position range for {gene_name} in {qtdid}: {new_min_pos} - {new_max_pos} from {min_pos} - {max_pos}"
+        )
+
     # # convert pos to b38
     # merged_df.loc[:, "POS"] = merged_df.RSID.map(lookup_table.POS)
-    
+
     # plot 3 manhattan plots (GWAS + celltype + tissue)
     target_methods = ["PVAL_gwas", "PVAL_celltype", "PVAL_tissue"]
     method_labels = [
@@ -251,7 +272,11 @@ def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
     # Create subplots
     fig, axes = plt.subplots(3, 1, figsize=(8, 4), sharex=True, sharey=True)
     # 添加总标题
-    fig.suptitle(f"Auxiliary Manhattan Plot of {gene_name} in {meta_data['id2name'][qtdid]}", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        f"Auxiliary Manhattan Plot of {gene_name} in {meta_data['id2name'][qtdid]}",
+        fontsize=14,
+        fontweight="bold",
+    )
     for i, method in enumerate(target_methods):
         log10p = -np.log10(merged_df[method])
         pos = merged_df["POS"] / 1e6  # 转换为Mb
@@ -307,10 +332,10 @@ def plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name):
     plt.tight_layout()
     plt.savefig(save_name, dpi=300, bbox_inches="tight")
     plt.close()
-    
+
 
 if __name__ == "__main__":
-    for (gene_id, qtdid, chromosome, gene_name) in plot_gene_info:
+    for gene_id, qtdid, chromosome, gene_name in plot_gene_info:
         save_name = plot_manhattan(gene_id, qtdid, chromosome, gene_name)
         # plot_aux_manhattan(gene_id, qtdid, chromosome, gene_name)
         print(f"Manhattan plot saved to: {save_name}")

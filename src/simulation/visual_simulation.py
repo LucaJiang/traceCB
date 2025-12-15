@@ -24,8 +24,6 @@ z2p = lambda z: 2 * norm.sf(abs(z))
 P_THRESHOLD = 0.05
 sns.set_theme(style="darkgrid", palette="muted", color_codes=True)
 
-base_path = "/Users/lucajiang/learn/CityU/traceCB/bench/result/"
-
 
 def calculate_metrics(gt, pred, eval_method):
     tp = np.sum(gt & pred)
@@ -366,6 +364,13 @@ def plot_alpha_analysis(
 
 def add_parser(parser):
     parser.add_argument(
+        "--base_path",
+        "-b",
+        type=str,
+        default="/home/wjiang49/traceCB/bench/result/",
+        help="base path for the simulation results",
+    )
+    parser.add_argument(
         "--runname",
         "-r",
         type=str,
@@ -399,6 +404,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser = add_parser(parser)
     args = parser.parse_args()
+    base_path = args.base_path
     metric = args.metric
     target = args.target
     runname = args.runname
@@ -424,4 +430,3 @@ if __name__ == "__main__":
         ymax=ymax,
         save_name=os.path.join(base_path, "img", runname),
     )
-    print("Visual done")

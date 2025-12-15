@@ -3,10 +3,9 @@
 ## returns: Omega, Omega_se which are 2x2 matrices for per-snp heritability or covariance
 ## !Attention: outputs have been clipped
 import numpy as np
+from traceCB.utils import MIN_HERITABILITY, MAX_CORR, MIN_FLOAT
 
 # Set Threshold
-MIN_FLOAT = 1e-12  #  For heritability
-MAX_CORR = 1 - MIN_FLOAT  # Maximum correlation
 MIN_WEIGHT = 1e-12  # Minimum weight for IRWLS
 
 
@@ -78,7 +77,7 @@ def get_pred(
 def regression_jk(
     x: np.ndarray,
     y: np.ndarray,
-    intercept: float = np.nan,     # fixed intercept if not NaN (R: constrain_intercept with `subtract`)
+    intercept: float = np.nan,  # fixed intercept if not NaN (R: constrain_intercept with `subtract`)
     estimate_se: bool = True,
     jackknife: bool = True,
     nblocks: int = 200,
@@ -129,7 +128,11 @@ def regression_jk(
     # floor(seq(1, N, length.out = nblocks+1)) but 0-based in Python
     edges = np.floor(np.linspace(0, n, num=nblocks + 1)).astype(int)
     # drop empty blocks (can happen when N < nblocks)
-    blocks = [(edges[i], edges[i + 1]) for i in range(len(edges) - 1) if edges[i + 1] > edges[i]]
+    blocks = [
+        (edges[i], edges[i + 1])
+        for i in range(len(edges) - 1)
+        if edges[i + 1] > edges[i]
+    ]
     B = len(blocks)
     if B < 2:
         # not enough blocks to jackknife — return NaNs (or OLS as fallback if you prefer)
@@ -285,7 +288,9 @@ def update_weights(weights: np.ndarray, preds: np.ndarray) -> np.ndarray:
     """
     var_all = np.zeros((len(preds), 3))
     var_all[:, :2] = 2.0 * np.square(preds[:, :2])
-    var_all[:, 2] = preds[:, 0] * preds[:, 1] + np.square(preds[:, 2]) #! test，its wrong
+    var_all[:, 2] = preds[:, 0] * preds[:, 1] + np.square(
+        preds[:, 2]
+    )  #! test，its wrong
     return weights / var_all
 
 
@@ -535,7 +540,7 @@ def Run_single_LDSC(
         estimate_se=True,
     )
 
-    h2 = max(result[1], MIN_FLOAT)
+    h2 = max(result[1], MIN_HERITABILITY)
     h2_se = result[3]
     return h2, h2_se
 
@@ -612,8 +617,10 @@ def Run_cross_LDSC(
     Omega_se[1, 0] = cross[3]
 
     # Clip to suitable range
-    Omega = np.maximum(Omega, MIN_FLOAT)
-    thred = np.sqrt(Omega[0, 0] * Omega[1, 1]) * MAX_CORR
+    # Omega = np.maximum(Omega, MIN_HERITABILITY)
+    Omega[0, 0] = max(Omega[0, 0], MIN_HERITABILITY)
+    Omega[1, 1] = max(Omega[1, 1], MIN_HERITABILITY)
+    thred = np.sqrt(Omega[0, 0] * Omega[1, 1] + MIN_FLOAT) * MAX_CORR
     Omega[0, 1] = np.minimum(np.maximum(Omega[0, 1], -thred), thred)
     Omega[1, 0] = Omega[0, 1]
     return Omega, Omega_se

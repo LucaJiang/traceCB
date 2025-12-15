@@ -3,24 +3,36 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
 TAR_SAMPLE_SIZE = 103
-REMOVE_RATIO = 0.00  # remove top 5% of the effective sample size
+REMOVE_RATIO = 0.00  # remove top of the effective sample size
 
 
 def remove_outliers(df):
-    # set outliers to NaN
-    for qtdid in df.QTDid.unique():
-        qtd_df = df[df.QTDid == qtdid]
+    """
+    Remove outliers from the dataframe based on quantiles per QTDid group.
+    Rows are removed if they are outliers in either TAR_CNEFF or TAR_TNEFF.
+    """
+    # Group by QTDid to calculate quantiles within each study
+    for _, group in df.groupby("QTDid"):
+        # Initialize mask for this group
+        group_outlier_mask = pd.Series(False, index=group.index)
+
         for method in ["CNEFF", "TNEFF"]:
-            remove_idx = (
-                qtd_df[f"TAR_{method}"]
-                > qtd_df[f"TAR_{method}"].quantile(1 - REMOVE_RATIO)
-            ) | (
-                qtd_df[f"TAR_{method}"] < qtd_df[f"TAR_{method}"].quantile(REMOVE_RATIO)
-            )
-            outlier_indices = qtd_df[remove_idx].index
-            df.loc[outlier_indices, f"TAR_{method}"] = np.nan
-            # set negative to nan
-            df.loc[df[f"TAR_{method}"] < 0, f"TAR_{method}"] = np.nan
+            col_name = f"TAR_{method}"
+            values = group[col_name]
+
+            lower_bound = values.quantile(REMOVE_RATIO)
+            upper_bound = values.quantile(1 - REMOVE_RATIO)
+
+            # Identify outliers
+            is_outlier = (values < lower_bound) | (values > upper_bound)
+            # set neff to na
+            group_outlier_mask = group_outlier_mask | is_outlier
+
+        # Set values to NA for rows identified as outliers in this group
+        # Use index to avoid boolean series alignment issues with the full dataframe
+        outlier_indices = group_outlier_mask[group_outlier_mask].index
+        df.loc[outlier_indices, ["TAR_CNEFF", "TAR_TNEFF"]] = pd.NA
+
     return df
 
 
@@ -77,9 +89,11 @@ def f3violin(summary_sign_df):
     plt.legend(handles=handles, labels=labels, title="Method", loc="upper right")
 
     y_limits = plt.ylim()
-    plt.ylim(0, y_limits[1])  # set y-limits lower bound to 0
+    plt.ylim(-5, 510)  # set y-limits lower bound to 0
+    plt.xlim(-0.5, len(meta_data["Names"]) - 0.5)
+    # plt.ylim(0, y_limits[1])  # set y-limits lower bound to 0
     plt.xticks(rotation=30, ha="right")
-    plt.xlabel("Study")
+    plt.xlabel("")
     plt.ylabel("Effective Sample Size")
 
     # Add celltype background rectangles
@@ -92,7 +106,7 @@ def f3violin(summary_sign_df):
         "NK_cells": (8.5, 1),
     }
     y_min, y_max = 0, y_limits[1]
-    margin = 0.05
+    margin = 0.02
     for celltype, (x_start, width) in celltype_ranges.items():
         ax.add_patch(
             Rectangle(
@@ -124,30 +138,34 @@ def f3violin(summary_sign_df):
         x_center = x_start + width / 2
         ax.text(
             x_center,
-            y_min + (y_max - y_min) * 0.04,  # 位于标注线上方
+            y_min + (y_max - y_min) * 0.08,  # 位于标注线上方
             label_name_shorten[celltype],
             color="black",
-            # fontsize=10,
+            fontsize=10,
             ha="center",
             va="top",
             clip_on=False,
+            zorder=8,
         )
 
     plt.tight_layout()
-    plt.savefig(os.path.join(save_path, "f3boxen.pdf"), bbox_inches="tight")
-    print("Figure saved to:", os.path.join(save_path, "f3boxen.pdf"))
+    plt.savefig(os.path.join(save_path, "f3violin.pdf"), bbox_inches="tight")
+    print("Figure saved to:", os.path.join(save_path, "f3violin.pdf"))
 
 
 if __name__ == "__main__":
     summary_sign_df, _ = load_all_summary()
     # QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
-    summary_sign_df = remove_outliers(summary_sign_df)
     summary_sign_df.loc[:, "NAME"] = summary_sign_df.QTDid.map(meta_data["id2name"])
     summary_sign_df.loc[:, "celltype"] = summary_sign_df.QTDid.map(
         meta_data["id2celltype"]
     )
     print("Summary Sign DataFrame:")
-    print(summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]].groupby("NAME").agg(
-        TraceC=("TAR_CNEFF", "mean"), TraceCB=("TAR_TNEFF", "mean")
-    ))
+    agg_df = (
+        summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]]
+        .groupby("NAME")
+        .agg(TraceC=("TAR_CNEFF", "mean"), TraceCB=("TAR_TNEFF", "mean"))
+    )
+    print(agg_df.round(2))
+    summary_sign_df = remove_outliers(summary_sign_df)
     f3violin(summary_sign_df)

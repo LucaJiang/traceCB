@@ -18,7 +18,6 @@ save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
 # save_path = "/home/group1/wjiang49/data/traceCB/AFR_GTEx/results"
 # study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
 # save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
-
 onek1k_path = "/home/wjiang49/group/wjiang49/data/traceCB/onek1k_supp/onek1k_esnp.csv"
 gtex_lookup_table_path = "/home/wjiang49/group/wjiang49/data/GTEx/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz"
 
@@ -43,6 +42,9 @@ OASIS_celltype_dict = {
     "NK_cells": ["NK"],
 }
 
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+
 
 def load_json(json_file="metadata.json"):
     """
@@ -53,19 +55,19 @@ def load_json(json_file="metadata.json"):
     return data
 
 
-# json path is same as utils.py path
+# metadata.json at src/visual/
 json_file_path = os.path.join(os.path.dirname(__file__), "metadata.json")
 meta_data = load_json(json_file_path)
 
 
-def load_summary(study_dir):
+def _load_summary(study_dir):
     """
     Load summary data from GMM results.
     returns summary_sign_df: DataFrame with significant correlations
     returns summary_df: all results DataFrame
     """
     #     <save_path_main>/QTD@/GMM/chr@/summary.csv
-    # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+    # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV_PVAL,COR_1C,COR_1O,COR_CO,RUN_GMM,RUN_GMM_TISSUE,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
     # summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr1", "summary.csv"))
     summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr*", "summary.csv"))
     summary_df = pd.DataFrame()
@@ -77,39 +79,50 @@ def load_summary(study_dir):
         summary_df = (
             df if summary_df.empty else pd.concat([summary_df, df], ignore_index=True)
         )
-    summary_df.loc[:, "COR_ORI"] = (
-        summary_df.COV / summary_df.H1SQ.apply(np.sqrt) / summary_df.H2SQ.apply(np.sqrt)
-    )  # convert correlation to genetic correlation, original cor
-    summary_df.loc[:, "COR"] = summary_df.COR_ORI.clip(-1, 1)  # clip cor to [-1,1]
-    summary_df.loc[summary_df.COV_PVAL > 0.05, "COR"] = (
-        1e-12  # if COR_PVAL>0.05, set COR=0
-    )
-    summary_sign_df = summary_df.dropna()
+    # summary_df.loc[:, "COR"] = summary_df.loc[:, "COR_1C"]
+    # define RUN_GMM == True and RUN_GMM_TISSUE == True as significant
+    summary_sign_df = summary_df.loc[
+        (summary_df.RUN_GMM == True)
+        | (summary_df.RUN_GMM_TISSUE == True)
+        # & (summary_df.COR_CO > 0.0)
+        # & (summary_df.COR_1O > 0.0)
+    ]
+
+    # fill NA values for summary_sign_df
+    na_raw = summary_sign_df.TAR_CNEFF.isna()
+    summary_sign_df.loc[na_raw, "TAR_CNEFF"] = summary_sign_df.loc[na_raw, "TAR_SNEFF"]
+    summary_sign_df.loc[na_raw, "TAR_CeSNP"] = summary_sign_df.loc[na_raw, "TAR_SeSNP"]
+    na_raw = summary_sign_df.TAR_TNEFF.isna()
+    summary_sign_df.loc[na_raw, "TAR_TNEFF"] = summary_sign_df.loc[na_raw, "TAR_CNEFF"]
+    summary_sign_df.loc[na_raw, "TAR_TeSNP"] = summary_sign_df.loc[na_raw, "TAR_CeSNP"]
+    # fill NA values for summary_df
     na_raw = summary_df.TAR_CNEFF.isna()
     summary_df.loc[na_raw, "TAR_CNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
     summary_df.loc[na_raw, "AUX_CNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]
     summary_df.loc[na_raw, "TAR_CeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
     summary_df.loc[na_raw, "AUX_CeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
     na_raw = summary_df.TAR_TNEFF.isna()
-    summary_df.loc[na_raw, "TAR_TNEFF"] = summary_df.loc[na_raw, "TAR_SNEFF"]
-    summary_df.loc[na_raw, "AUX_TNEFF"] = summary_df.loc[na_raw, "AUX_SNEFF"]
-    summary_df.loc[na_raw, "TAR_TeSNP"] = summary_df.loc[na_raw, "TAR_SeSNP"]
-    summary_df.loc[na_raw, "AUX_TeSNP"] = summary_df.loc[na_raw, "AUX_SeSNP"]
+    summary_df.loc[na_raw, "TAR_TNEFF"] = summary_df.loc[na_raw, "TAR_CNEFF"]
+    summary_df.loc[na_raw, "AUX_TNEFF"] = summary_df.loc[na_raw, "AUX_CNEFF"]
+    summary_df.loc[na_raw, "TAR_TeSNP"] = summary_df.loc[na_raw, "TAR_CeSNP"]
+    summary_df.loc[na_raw, "AUX_TeSNP"] = summary_df.loc[na_raw, "AUX_CeSNP"]
     return summary_sign_df.copy(), summary_df.copy()
 
 
 def load_all_summary(study_path_main=study_path_main):
     """
     Load all summary data from GMM results in the main study directory.
-    Returns two DataFrames with significant correlations and all results.
-    columns: QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+
+    Returns: two DataFrames with **significant** correlations and **all** results.
+
+    Columns: QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
     """
     all_qtdids = meta_data["QTDids"]
     all_summary_sign_df = pd.DataFrame()
     all_summary_df = pd.DataFrame()
     for qtdid in all_qtdids:
         study_dir = os.path.join(study_path_main, qtdid)
-        summary_sign_df, summary_df = load_summary(study_dir)
+        summary_sign_df, summary_df = _load_summary(study_dir)
         summary_df.loc[:, "QTDid"] = qtdid
         summary_sign_df.loc[:, "QTDid"] = qtdid
         all_summary_sign_df = (
@@ -216,3 +229,11 @@ if __name__ == "__main__":
     json_file = load_json(json_file_path)
     for key, value in json_file.items():
         print(f"{key}: {value}")
+
+    sign_df, all_df = load_all_summary()
+    # save  to csv
+    sign_df.to_csv(f"{save_path}/all_significant_summary.csv", index=False)
+    all_df.to_csv(f"{save_path}/all_summary.csv", index=False)
+    print(
+        f"Summary data saved to: {save_path}/all_significant_summary.csv and {save_path}/all_summary.csv"
+    )

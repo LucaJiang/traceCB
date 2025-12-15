@@ -80,22 +80,6 @@ echo "$(date '+%F %T') - All GMM tasks completed in ${gmm_elapsed_fmt}" >> "$tim
 
 # --- Part 2: Run post-processing scripts sequentially ---
 echo "-----------------------------------------------------------------"
-echo "Starting post-processing (visualization)..."
-
-# Now that all GMM runs are done, loop through studies to run visualization
-for i in $(seq 0 $((num_studies - 1))); do
-    study_id="${QTDids[$i]}"
-    cell_type="${Celltypes[$i]}"
-    echo "Running visualization for study '${study_id}'..."
-    python "$src_path/traceCB/visual.py" \
-        -s "$study_id" \
-        -t "$cell_type" \
-        -d "$save_path_main" \
-        -tin "${tissue_samplesize[$i]}" \
-        -tpn "${target_population_samplesize[$i]}" \
-        -apn "${aux_population_samplesize[$i]}" >> "${log_dir}/visual_${study_id}.log" 2>&1
-done
-
 # Run final summary scripts
 echo "Running final summary scripts..."
 python "$src_path/visual/f3egene.py" >> "${log_dir}/final_f3egene.log" 2>&1

@@ -9,7 +9,8 @@ p2z = lambda p: np.abs(norm.ppf(p / 2))
 z2p = lambda z: 2 * norm.sf(abs(z))
 
 ## Constants
-MIN_FLOAT = 1e-64
+MIN_FLOAT = np.finfo(float).eps
+MIN_HERITABILITY = 1e-12
 MAX_CORR = 0.99
 P_VAL_THRED = 0.05
 P_VAL_THRED_Z = p2z(P_VAL_THRED)  # convert p-value threshold to z-score threshold
@@ -42,7 +43,7 @@ def make_pd_shrink(Omega, shrink=0.9):
     !NOTE: if the diagonal elements of Omega are negative, return a matrix with MIN_FLOAT on the diagonal.
     """
     if np.any(np.diag(Omega) < 0):
-        return np.eye(Omega.shape[0]) * MIN_FLOAT
+        return np.eye(Omega.shape[0]) * MIN_HERITABILITY
     if is_pd(Omega):
         return Omega
     diag_Omega = np.eye(Omega.shape[0]) * Omega
@@ -54,7 +55,7 @@ def make_pd_shrink(Omega, shrink=0.9):
         Omega = diag_Omega + off_Omega
         j += 1
         if j == 100:
-            return np.eye(Omega.shape[0]) * MIN_FLOAT
+            return np.eye(Omega.shape[0]) * MIN_HERITABILITY
     return Omega
 
 
@@ -64,7 +65,7 @@ def make_pd_shrink_numba(Omega, shrink=0.9):
     !NOTE: if the diagonal elements of Omega are negative, return a matrix with MIN_FLOAT on the diagonal.
     """
     if np.any(np.diag(Omega) < 0):
-        return np.eye(Omega.shape[0]) * MIN_FLOAT
+        return np.eye(Omega.shape[0]) * MIN_HERITABILITY
     if is_pd_numba(Omega):
         return Omega
     diag_Omega = np.eye(Omega.shape[0]) * Omega
@@ -76,5 +77,5 @@ def make_pd_shrink_numba(Omega, shrink=0.9):
         Omega = diag_Omega + off_Omega
         j += 1
         if j == 100:
-            return np.eye(Omega.shape[0]) * MIN_FLOAT
+            return np.eye(Omega.shape[0]) * MIN_HERITABILITY
     return Omega
