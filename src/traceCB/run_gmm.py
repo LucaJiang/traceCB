@@ -1,11 +1,4 @@
 # run gmm.py: Run GMM for a given study and cell type and calculate effective sample size
-import sys
-from pathlib import Path
-
-SRC_DIR = Path(__file__).parent.parent
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
 import argparse
 import time
 import os
@@ -282,6 +275,7 @@ def main(args, chr):
         omega_co, omega_co_cor = clip_correlation(Omega[1, 1], omega_oo, omega_co)
         # omega_co_cor = omega_co / np.sqrt(Omega[1, 1] * omega_oo + MIN_FLOAT)
         summary_df.loc[gene, "COR_CO"] = omega_co_cor
+        pi2_omega_o = (1 - celltype_proportion) ** 2 * omega_oo
 
         ## run GMM for each SNP in the gene
         gmm_b_tar = np.full((nsnp, 2), np.nan)  # cross, cross+tissue
@@ -323,7 +317,7 @@ def main(args, chr):
                     gene_df.LD_x.iloc[i].item(),
                     gene_df.BETA_tissue.iloc[i].item(),
                     gene_df.SE_tissue.iloc[i].item(),
-                    omega_oo,
+                    pi2_omega_o,
                     celltype_proportion,
                 )
             else:

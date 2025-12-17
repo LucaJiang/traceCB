@@ -14,7 +14,7 @@ from numba import njit, prange
 
 from ..traceCB.ldsc import Run_cross_LDSC
 from ..traceCB.gmm import GMM, GMMtissue
-from ..traceCB.utils import make_pd_shrink, z2p, MIN_HERITABILITY
+from ..traceCB.utils import z2p, MIN_HERITABILITY
 from ..traceCB.run_gmm import clip_correlation
 
 MIN_FLOAT = 1e-32
@@ -401,7 +401,9 @@ def simulation(
         pi_mean,
     ) = generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal)
     run_gmm = True
-    if not true_omega:
+    omega_oo = 0.0
+    Omega = np.zeros((2, 2))
+    if not true_omega:  # estimate omega
         Omega, Omega_se = Run_cross_LDSC(
             b1_hat / se1_hat,
             n1,
@@ -413,14 +415,10 @@ def simulation(
             np.array([1, 1, 0]),
         )
         Omega_p = z2p(Omega / Omega_se)
-        if Omega_p[0, 0] >= P_VAL_THRED:
+        if np.any(Omega_p >= P_VAL_THRED):
             run_gmm = False  # skip genes with unsignificant tar heritability
-        else:
-            if Omega_p[0, 1] >= P_VAL_THRED:
-                Omega[0, 1] = 0.0
-                Omega[1, 0] = 0.0
             ## ! get omega_co, omega_oo
-            aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
+            aux_Omega_matrix, _ = Run_cross_LDSC(
                 b2_hat / se2_hat,
                 n2,
                 ld2,
@@ -432,16 +430,7 @@ def simulation(
             )
             ## omega_co: var between target celltype in aux pop and tissue
             # aux_Omega_matrix[0, 1] = propt * omega_2 + (1-propt) * omega_co
-            # if z2p(aux_Omega_matrix[0, 1] / aux_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-            # else:
-            #     omega_co = MIN_FLOAT
             omega_co = (aux_Omega_matrix[0, 1] - propt * Omega[1, 1]) / (1 - propt)
-            omega_co_se = (
-                aux_Omega_matrix_se[0, 1] ** 2 + (propt**2) * (Omega_se[1, 1] ** 2)
-            ) ** 0.5 / (1 - propt)
-            omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
-            if omega_co_p >= P_VAL_THRED:
-                omega_co = 0.0
             ## omega_oo: var of non-target celltype in tissue
             ## aux_Omega_matrix[1, 1] = propt^2 * omega_2 + 2*propt*(1-propt)*omega_co + (1-propt)^2 * omega_oo
             omega_oo = (
@@ -451,52 +440,10 @@ def simulation(
             ) / ((1 - propt) ** 2)
             omega_oo = np.maximum(omega_oo, MIN_HERITABILITY)
             omega_co, _ = clip_correlation(Omega[1, 1], omega_oo, omega_co)
-            # if z2p(aux_Omega_matrix[1, 1] / aux_Omega_matrix_se[1, 1]) < P_VAL_THRED:
-            # else:
-            #     omega_oo = 1e-12
-            # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (propt**4) * (Omega_se[1, 1]**2) + (2*propt*(1-propt))**2 * (omega_co_se**2))**0.5 / ((1-propt)**2)
-            # omega_oo_p = z2p(omega_oo / omega_oo_se)
-            # if omega_oo_p > P_VAL_THRED:
-            #     omega_oo = MIN_FLOAT
 
-            ## ! get omega_xo
-            tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
-                b1_hat / se1_hat,
-                n1,
-                ld1,
-                b2_hat / se2_hat,
-                n2,
-                ld2,
-                ldx,
-                np.array([1.0, 1.0, 0.0]),
-            )
-            ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
-            ## tar_tissue_Omega_matrix[0, 1] = propt * omega_x + (1-propt) * omega_xo
-            # if z2p(tar_tissue_Omega_matrix[0, 1] / tar_tissue_Omega_matrix_se[0, 1]) < P_VAL_THRED:
-            # else:
-            #     omega_xo = MIN_FLOAT
-            omega_xo = (tar_tissue_Omega_matrix[0, 1] - propt * Omega[0, 1]) / (
-                1 - propt
-            )
-            omega_xo_se = (
-                tar_tissue_Omega_matrix_se[0, 1] ** 2
-                + (propt**2) * (Omega_se[0, 1] ** 2)
-            ) ** 0.5 / (1 - propt)
-            omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
-            if omega_xo_p > P_VAL_THRED:
-                omega_xo = MIN_FLOAT
-            omega_xo, _ = clip_correlation(Omega[0, 0], omega_oo, omega_xo)
-
-            ## construct OmegaCB for GMMtissue
-            OmegaCB = np.array(
-                [
-                    [Omega[0, 0], Omega[0, 1], omega_xo],
-                    [Omega[0, 1], Omega[1, 1], omega_co],
-                    [omega_xo, omega_co, omega_oo],
-                ]
-            )
-    else:  # true omega
-        Omega = OmegaCB[:2, :2]
+    else:  # true Omega
+        omega_oo = OmegaCB[2, 2]
+    pi2_omega_o = (1 - pi_mean) ** 2 * omega_oo
     # GMM
     pop1_beta = np.zeros((nsnp, 3))  # sumstat, cross, tissue
     pop2_beta = np.zeros((nsnp, 3))
@@ -521,7 +468,7 @@ def simulation(
                 ldx[j],
             )
             pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
-                OmegaCB,
+                Omega,
                 np.eye(3),
                 b1_hat[j],
                 se1_hat[j],
@@ -532,6 +479,7 @@ def simulation(
                 ldx[j],
                 bt_hat[j],
                 se_t_hat[j],
+                pi2_omega_o,
                 propt,
             )
         pop1_z = pop1_beta / pop1_se

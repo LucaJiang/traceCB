@@ -96,7 +96,7 @@ def GMMtissue(
     ldx: float,
     beta_t: float,
     se_t: float,
-    sigma_o: float,
+    pi2_omega_o: float,
     propt: float,
 ):
     """Apply cross population GMM (with tissue) to j th SNP
@@ -124,7 +124,7 @@ def GMMtissue(
         beta for snp j in tissue
     se_t : float
         standard error for snp j in tissue
-    sigma_o : float
+    pi2_omega_o : float
         variance of other cell types in tissue
     propt : float
         proportion of cell type in tissue
@@ -149,11 +149,11 @@ def GMMtissue(
         / Omegaj[0, 0]
     )
     Lambda1_inv = A @ Omegaj @ A.T + SCSj - Omegaj[0, 0] * lambda1 @ lambda1.T
-    Lambda1_inv[2, 2] += sigma_o  # add variance of other cell types
+    Lambda1_inv[2, 2] += pi2_omega_o * ld2  # add variance of other cell types
     Lambda1 = np.linalg.inv(Lambda1_inv)
     lambda2 = np.array([Omegaj[1, 0] / Omegaj[1, 1], 1, propt]).reshape(-1, 1)
     Lambda2_inv = A @ Omegaj @ A.T + SCSj - Omegaj[1, 1] * lambda2 @ lambda2.T
-    Lambda2_inv[2, 2] += sigma_o  # add variance of other cell types
+    Lambda2_inv[2, 2] += pi2_omega_o * ld2  # add variance of other cell types
     Lambda2 = np.linalg.inv(Lambda2_inv)
     # blue estimates
     var1_blue = 1 / (lambda1.T @ Lambda1 @ lambda1).item()
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     h2sq = 0.00004256252586151709
     cor = 0.000022333797435697717
     Omega = np.array([[h1sq, cor], [cor, h2sq]])  # covariance matrix
-    # sigma_o = 0.0001  # variance of other cell types in tissue
+    # pi2_omega_o = 0.0001  # variance of other cell types in tissue
     C2 = np.eye(2)  # genetic drift matrix
     C3 = np.eye(3)  # genetic drift matrix for GMMtissue
     propt = 0.4  # proportion of cell type in tissue
@@ -406,7 +406,7 @@ if __name__ == "__main__":
         ldx=ldx,
         beta_t=beta_t,
         se_t=se_t,
-        # sigma_o=sigma_o,
+        # pi2_omega_o=pi2_omega_o,
         propt=propt,
     )
     print(f"beta1_blue = {beta1_blue:.6f}, se1_blue = {se1_blue:.6f}")
