@@ -3,7 +3,7 @@ source ./shell/setting.sh
 conda activate $python_env
 
 # 最大并行任务数
-MAX_JOBS=15
+MAX_JOBS=22
 i=6
 log_file="${log_path}/run_gmm_chr.log"
 # ensure log dir

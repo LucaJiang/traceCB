@@ -1,5 +1,5 @@
-from utils import *
-from f3violin import remove_outliers
+from visual.utils import *
+from visual.f3violin import remove_outliers
 from adjustText import adjust_text
 from scipy import stats
 
@@ -140,7 +140,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
     )
     ax.set_xlabel("Sample Size of Study")
     ax.set_ylabel(
-        f"{meta_data['method_name'][1]} / {meta_data['method_name'][0]} (median)"
+        f"{meta_data['method_name'][1]} / {meta_data['method_name'][0]} (mean)"
     )
 
     handles, labels = ax.get_legend_handles_labels()
@@ -166,7 +166,7 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
     celltype_proportion_df = (
         summary_sign_df.groupby("QTDid")
         .agg(
-            TAR_TNEFF_CNEFF_RATIO=("TAR_TNEFF_CNEFF_RATIO", "median"),
+            TAR_TNEFF_CNEFF_RATIO=("TAR_TNEFF_CNEFF_RATIO", "mean"),
         )
         .reset_index()
         .copy()

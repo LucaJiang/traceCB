@@ -255,6 +255,7 @@ def get_coef(
     ld_rescale = ldscore * sqrt_nprod / nbar
     ld_rescale_add_column = np.ones((len(ld_rescale), 2))
     ld_rescale_add_column[:, 1] = ld_rescale
+    weight = np.maximum(weight, MIN_WEIGHT)
     weight_sqrt = np.sqrt(weight).reshape(-1, 1)
 
     # Weighted regression
