@@ -1,9 +1,9 @@
-from utils import *
+from visual.utils import *
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
 TAR_SAMPLE_SIZE = 103
-REMOVE_RATIO = 0.00  # remove top of the effective sample size
+REMOVE_RATIO = 0.01  # remove top of the effective sample size
 
 
 def remove_outliers(df):
@@ -89,10 +89,10 @@ def f3violin(summary_sign_df):
     plt.legend(handles=handles, labels=labels, title="Method", loc="upper right")
 
     y_limits = plt.ylim()
-    plt.ylim(-5, 510)  # set y-limits lower bound to 0
+    plt.ylim(-5, 810)  # set y-limits lower bound to 0
     plt.xlim(-0.5, len(meta_data["Names"]) - 0.5)
     # plt.ylim(0, y_limits[1])  # set y-limits lower bound to 0
-    plt.xticks(rotation=30, ha="right")
+    plt.xticks(rotation=20, ha="right")
     plt.xlabel("")
     plt.ylabel("Effective Sample Size")
 
@@ -105,7 +105,7 @@ def f3violin(summary_sign_df):
         "B_cells": (7.5, 1),
         "NK_cells": (8.5, 1),
     }
-    y_min, y_max = 0, y_limits[1]
+    y_min, y_max = y_limits
     margin = 0.02
     for celltype, (x_start, width) in celltype_ranges.items():
         ax.add_patch(
@@ -124,24 +124,24 @@ def f3violin(summary_sign_df):
         # 添加celltype标注线
         x_end = x_start + width
         ax.hlines(
-            y=y_min + (y_max - y_min) * 0.015,  # 位于x轴上方
+            y=16,  # 位于x轴上方
             xmin=x_start + margin,
             xmax=x_end - margin,
             colors=celltype_colors[celltype],
-            linewidth=6,
+            linewidth=13,
             linestyle="-",
             clip_on=False,
             zorder=5,
         )
-
+    # 添加celltype名称
     for celltype, (x_start, width) in celltype_ranges.items():
         x_center = x_start + width / 2
         ax.text(
             x_center,
-            y_min + (y_max - y_min) * 0.08,  # 位于标注线上方
-            label_name_shorten[celltype],
+            25,  # 位于标注线上方
+            cell_label_name[celltype],
             color="black",
-            fontsize=10,
+            fontsize=11,
             ha="center",
             va="top",
             clip_on=False,
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     agg_df = (
         summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]]
         .groupby("NAME")
-        .agg(TraceC=("TAR_CNEFF", "mean"), TraceCB=("TAR_TNEFF", "mean"))
+        .agg(TraceC=("TAR_CNEFF", "median"), TraceCB=("TAR_TNEFF", "median"))
     )
     print(agg_df.round(2))
     summary_sign_df = remove_outliers(summary_sign_df)

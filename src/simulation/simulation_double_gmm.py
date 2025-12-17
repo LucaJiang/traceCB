@@ -204,22 +204,20 @@ def simulation(
     nt_vec = np.full(nsnp, nt)
 
     # 1. Run TAR + AUX to get traceC (OmegaC)
-    if not true_omega:
-        OmegaC, OmegaC_se = Run_cross_LDSC(
-            z1,
-            n1_vec,
-            ld1,
-            z2,
-            n2_vec,
-            ld2,
-            ldx,
-            np.array([1.0, 1.0, 0.0]),  # Intercepts fixed
-        )
-    else:
-        # Use true Omega for TraceC
-        # OmegaCB is 3x3: [[h1, cov12, cov1x], [cov12, h2, cov2x], [cov1x, cov2x, hx]]
-        # TraceC uses 2x2 part
-        OmegaC = OmegaCB[:2, :2]
+    run_trace_c = False
+    OmegaC, OmegaC_se = Run_cross_LDSC(
+        z1,
+        n1_vec,
+        ld1,
+        z2,
+        n2_vec,
+        ld2,
+        ldx,
+        np.array([1.0, 1.0, 0.0]),  # Intercepts fixed
+    )
+    OmegaC_p = z2p(OmegaC / OmegaC_se)
+    if np.all(OmegaC_p < P_VAL_THRED):
+        run_trace_c = True
 
     # Run GMM (TraceC)
     gmm_b_tar = np.full(nsnp, np.nan)
@@ -227,35 +225,46 @@ def simulation(
     gmm_b_aux = np.full(nsnp, np.nan)
     gmm_se_aux = np.full(nsnp, np.nan)
 
-    for i in range(nsnp):
-        (gmm_b_tar[i], gmm_se_tar[i], gmm_b_aux[i], gmm_se_aux[i]) = GMM(
-            OmegaC,
-            np.eye(2),
-            b1_hat[i],
-            se1_hat[i],
-            ld1[i],
-            b2_hat[i],
-            se2_hat[i],
-            ld2[i],
-            ldx[i],
-        )
+    if run_trace_c:
+        for i in range(nsnp):
+            (gmm_b_tar[i], gmm_se_tar[i], gmm_b_aux[i], gmm_se_aux[i]) = GMM(
+                OmegaC,
+                np.eye(2),
+                b1_hat[i],
+                se1_hat[i],
+                ld1[i],
+                b2_hat[i],
+                se2_hat[i],
+                ld2[i],
+                ldx[i],
+            )
+    else:
+        gmm_b_tar = b1_hat
+        gmm_se_tar = se1_hat
+        gmm_b_aux = b2_hat
+        gmm_se_aux = se2_hat
 
     gmm_z_tar = gmm_b_tar / gmm_se_tar
     gmm_z_aux = gmm_b_aux / gmm_se_aux
 
     # 2. Run AUX + Tissue to get updated AUX
-    if not true_omega:
-        Omega_aux_tissue, Omega_aux_tissue_se = Run_cross_LDSC(
-            z2,
-            n2_vec,
-            ld2,
-            zt,
-            nt_vec,
-            ld2,
-            ld2,
-            np.array([1.0, 1.0, 0.0]),
-        )
+    run_aux_tissue = False
+    OmegaCB_aux_tissue = None
 
+    Omega_aux_tissue, Omega_aux_tissue_se = Run_cross_LDSC(
+        z2,
+        n2_vec,
+        ld2,
+        zt,
+        nt_vec,
+        ld2,
+        ld2,
+        np.array([1.0, 1.0, 0.0]),
+    )
+    Omega_aux_tissue_p = z2p(Omega_aux_tissue / Omega_aux_tissue_se)
+
+    if np.all(Omega_aux_tissue_p < P_VAL_THRED):
+        run_aux_tissue = True
         # Construct OmegaCB for GMMtissue
         # This is for updating Aux using Tissue. Target is dummy.
         OmegaCB_aux_tissue = np.array(
@@ -265,94 +274,43 @@ def simulation(
                 [0.0, Omega_aux_tissue[0, 1], Omega_aux_tissue[1, 1]],
             ]
         )
-    else:
-        # Use true Omega for Aux+Tissue
-        # OmegaCB is [[h1, cov12, cov1x], [cov12, h2, cov2x], [cov1x, cov2x, hx]]
-        # We need [[1, 0, 0], [0, h2, cov2x], [0, cov2x, hx]]
-        # Note: OmegaCB from generate_data is [[h1, cov12, cov1u], [cov12, h2, cov2u], [cov1u, cov2u, hu]]
-        # where u is unknown cell type.
-        # But GMMtissue expects Omega for [Tar, Aux, Tissue].
-        # Wait, generate_data returns Omega for [beta1, beta2, beta_unknown].
-        # But GMMtissue needs Omega for [beta1, beta2, beta_tissue].
-        # In simulation.py, it constructs OmegaCB using LDSC estimates.
-        # If true_omega is True, simulation.py uses OmegaCB[:2, :2] for GMM, but what about GMMtissue?
-        # simulation.py: if true_omega: Omega = OmegaCB[:2, :2].
-        # Then it calls GMMtissue(OmegaCB, ...).
-        # So OmegaCB passed to simulation() must be the correct one for GMMtissue.
-        # In generate_data, Omega is cov(beta1, beta2, beta_unknown).
-        # This is NOT cov(beta1, beta2, beta_tissue).
-        # beta_tissue is a mix of beta2 and beta_unknown.
-        # So we need to derive cov(beta1, beta2, beta_tissue) from cov(beta1, beta2, beta_unknown).
-        # But simulation.py seems to assume OmegaCB from generate_data IS the one to use?
-        # Let's check simulation.py again.
-        # generate_data returns Omega = np.cov(np.stack([beta1, beta2, beta_unknown])).
-        # Then simulation() uses this OmegaCB.
-        # But GMMtissue uses it.
-        # Is GMMtissue designed to take cov(beta1, beta2, beta_unknown)?
-        # GMMtissue takes Omega (3x3).
-        # Inside GMMtissue:
-        # A = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, propt, 1.0 - propt]])
-        # Omegaj = ... Omega ...
-        # Lambda1_inv = A @ Omegaj @ A.T ...
-        # So A transforms [beta1, beta2, beta_unknown] to [beta1, beta2, beta_tissue].
-        # Yes! beta_tissue = propt * beta2 + (1-propt) * beta_unknown.
-        # So OmegaCB from generate_data IS correct for GMMtissue if we assume the structure.
-
-        # For Aux+Tissue update, we treat Aux as "Target" (index 1 in 3x3) and Tissue as "Tissue" (index 2).
-        # But we need a 3x3 matrix where index 0 is dummy, index 1 is Aux, index 2 is Tissue.
-        # And we need cov(Aux, Tissue).
-        # From OmegaCB (true):
-        # h2 = OmegaCB[1, 1]
-        # h_unknown = OmegaCB[2, 2]
-        # cov_2_unknown = OmegaCB[1, 2]
-        # h_tissue = propt^2 * h2 + (1-propt)^2 * h_unknown + 2*propt*(1-propt)*cov_2_unknown
-        # cov_aux_tissue = cov(beta2, propt*beta2 + (1-propt)*beta_unknown)
-        #                = propt*h2 + (1-propt)*cov_2_unknown
-
-        # So we can construct OmegaCB_aux_tissue using these derived values.
-        # But wait, GMMtissue does the transformation internally using A!
-        # So we should pass the Omega for the underlying components [Dummy, Aux, Unknown].
-        # Dummy is independent.
-        # So [[1, 0, 0], [0, h2, cov_2_unknown], [0, cov_2_unknown, h_unknown]].
-
-        OmegaCB_aux_tissue = np.array(
-            [
-                [1.0, 0.0, 0.0],
-                [0.0, OmegaCB[1, 1], OmegaCB[1, 2]],
-                [0.0, OmegaCB[1, 2], OmegaCB[2, 2]],
-            ]
-        )
 
     # Update AUX summary statistics with GMMtissue
     gmm_b_aux_t = np.full(nsnp, np.nan)
     gmm_se_aux_t = np.full(nsnp, np.nan)
 
-    for i in range(nsnp):
-        (
-            _,
-            _,
-            gmm_b_aux_t[i],
-            gmm_se_aux_t[i],
-        ) = GMMtissue(
-            OmegaCB_aux_tissue,
-            np.eye(3),
-            b1_hat[i],  # Dummy
-            se1_hat[i],  # Dummy
-            ld1[i],  # Dummy
-            b2_hat[i],
-            se2_hat[i],
-            ld2[i],
-            ldx[i],  # Dummy? No, ld between pop1 and pop2. Here between Dummy and Aux.
-            bt_hat[i],
-            se_t_hat[i],
-            propt,
-        )
+    # Initialize TraceCB results
+    gmm_b_tar_cb = np.full(nsnp, np.nan)
+    gmm_se_tar_cb = np.full(nsnp, np.nan)
+    gmm_b_aux_cb = np.full(nsnp, np.nan)
+    gmm_se_aux_cb = np.full(nsnp, np.nan)
 
-    # 3. Run TAR + updated AUX to get final TAR (TraceCB)
-    # Use gmm_b_aux_t / gmm_se_aux_t as z-scores for updated Aux
-    z2_updated = gmm_b_aux_t / gmm_se_aux_t
+    run_trace_cb = False
+    if run_aux_tissue:
+        for i in range(nsnp):
+            (
+                _,
+                _,
+                gmm_b_aux_t[i],
+                gmm_se_aux_t[i],
+            ) = GMMtissue(
+                OmegaCB_aux_tissue,
+                np.eye(3),
+                b1_hat[i],  # Dummy
+                se1_hat[i],  # Dummy
+                ld1[i],  # Dummy
+                b2_hat[i],
+                se2_hat[i],
+                ld2[i],
+                ldx[i],
+                bt_hat[i],
+                se_t_hat[i],
+                propt,
+            )
 
-    if not true_omega:
+        # 3. Run TAR + updated AUX to get final TAR (TraceCB)
+        # Use gmm_b_aux_t / gmm_se_aux_t as z-scores for updated Aux
+        z2_updated = gmm_b_aux_t / gmm_se_aux_t
         Omega_final, Omega_final_se = Run_cross_LDSC(
             z1,
             n1_vec,
@@ -363,37 +321,32 @@ def simulation(
             ldx,
             np.array([1.0, 1.0, 0.0]),
         )
-    else:
-        # Use true Omega for TraceCB
-        # We need cov(Target, Updated Aux).
-        # Updated Aux is essentially Beta2 (but better estimated).
-        # So cov(Target, Updated Aux) should be close to cov(Target, Beta2) = cov12.
-        # So we can use OmegaCB[:2, :2].
-        Omega_final = OmegaCB[:2, :2]
+        Omega_final_p = z2p(Omega_final / Omega_final_se)
+        if np.all(Omega_final_p < P_VAL_THRED):
+            run_trace_cb = True
+            for i in range(nsnp):
+                (
+                    gmm_b_tar_cb[i],
+                    gmm_se_tar_cb[i],
+                    gmm_b_aux_cb[i],
+                    gmm_se_aux_cb[i],
+                ) = GMM(
+                    Omega_final,
+                    np.eye(2),
+                    b1_hat[i],
+                    se1_hat[i],
+                    ld1[i],
+                    gmm_b_aux_t[i],
+                    gmm_se_aux_t[i],
+                    ld2[i],
+                    ldx[i],
+                )
 
-    gmm_b_tar_cb = np.full(nsnp, np.nan)
-    gmm_se_tar_cb = np.full(nsnp, np.nan)
-    gmm_b_aux_cb = np.full(nsnp, np.nan)
-    gmm_se_aux_cb = np.full(nsnp, np.nan)
-
-    for i in range(nsnp):
-        (
-            gmm_b_tar_cb[i],
-            gmm_se_tar_cb[i],
-            gmm_b_aux_cb[i],
-            gmm_se_aux_cb[i],
-        ) = GMM(
-            Omega_final,
-            np.eye(2),
-            b1_hat[i],
-            se1_hat[i],
-            ld1[i],
-            gmm_b_aux_t[i],
-            gmm_se_aux_t[i],
-            ld2[i],
-            ldx[i],
-        )
-
+    if not run_trace_cb:
+        gmm_b_tar_cb = gmm_b_tar
+        gmm_se_tar_cb = gmm_se_tar
+        gmm_b_aux_cb = gmm_b_aux
+        gmm_se_aux_cb = gmm_se_aux
     gmm_z_tar_cb = gmm_b_tar_cb / gmm_se_tar_cb
     gmm_z_aux_cb = gmm_b_aux_cb / gmm_se_aux_cb
 

@@ -1,7 +1,7 @@
 # control data path for shell scripts
 
 ## Global Settings
-use_tissue="GTEx"       # Options: GTEx, eQTLGen
+use_tissue="eQTLGen"       # Options: GTEx, eQTLGen
 target_population="EAS" # Options: EAS, AFR
 chrs=($(seq 1 22))
 

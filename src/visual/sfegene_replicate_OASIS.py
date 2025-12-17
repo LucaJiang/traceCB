@@ -1,5 +1,5 @@
 # plot number of eGenes/eSNPs for each method
-from utils import *
+from visual.utils import *
 from matplotlib.patches import Rectangle
 
 
@@ -12,12 +12,13 @@ def count_egene(df, replicate_egenes_by_celltype):
     df = df.copy()
 
     # Map QTDid to celltype for each row
-    df['cell_type'] = df['QTDid'].map(meta_data['id2celltype'])
+    df["cell_type"] = df["QTDid"].map(meta_data["id2celltype"])
 
     # Determine if a gene is a replicate based on its celltype
-    df['is_replicate'] = df.apply(
-        lambda row: row['GENE'] in replicate_egenes_by_celltype.get(row['cell_type'], set()),
-        axis=1
+    df["is_replicate"] = df.apply(
+        lambda row: row["GENE"]
+        in replicate_egenes_by_celltype.get(row["cell_type"], set()),
+        axis=1,
     )
 
     for m in ["S", "C", "T"]:
@@ -28,12 +29,12 @@ def count_egene(df, replicate_egenes_by_celltype):
 
     # --- 新增逻辑：计算新发现 eGene 的复现情况 ---
     # traceC 相对于 Original 的新 eGene
-    df['new_in_C'] = (df['TAR_CeGene'] > 0) & (df['TAR_SeGene'] == 0)
-    df['new_in_C_replicate'] = df['new_in_C'] & df['is_replicate']
+    df["new_in_C"] = (df["TAR_CeGene"] > 0) & (df["TAR_SeGene"] == 0)
+    df["new_in_C_replicate"] = df["new_in_C"] & df["is_replicate"]
 
     # traceCB 相对于 traceC 的新 eGene
-    df['new_in_T'] = (df['TAR_TeGene'] > 0) & (df['TAR_CeGene'] == 0)
-    df['new_in_T_replicate'] = df['new_in_T'] & df['is_replicate']
+    df["new_in_T"] = (df["TAR_TeGene"] > 0) & (df["TAR_CeGene"] == 0)
+    df["new_in_T_replicate"] = df["new_in_T"] & df["is_replicate"]
     # --- 结束新增逻辑 ---
 
     count_df = df.groupby("QTDid").agg(
@@ -74,28 +75,31 @@ def count_egene(df, replicate_egenes_by_celltype):
         }
     )
     count_df.loc[:, "name"] = count_df.index.map(meta_data["id2name"])
-    count_df.name = pd.Categorical(
-        count_df.name, categories=meta_data["Names"], ordered=True
-    )
+    # count_df.name = pd.Categorical(
+    #     count_df.name, categories=meta_data["Names"], ordered=True
+    # )
     count_df = count_df.reset_index().sort_values("name")
 
     # find average replicate rate
     print(count_df)
     replicate_rate = (
-        count_df.loc[:, [m + "_replicate" for m in meta_data["method_name"]]].sum().values / count_df.loc[:, [m for m in meta_data["method_name"]]].sum().values
+        count_df.loc[:, [m + "_replicate" for m in meta_data["method_name"]]]
+        .sum()
+        .values
+        / count_df.loc[:, [m for m in meta_data["method_name"]]].sum().values
     )
     print("Average replicate rate:")
     print(replicate_rate)
 
     # --- 新增逻辑：计算并打印新发现 eGene 的平均复现率 ---
     print("\nAverage replicate rate for newly discovered eGenes:")
-    new_C_total = count_df['new_in_C'].sum()
-    new_C_replicate_total = count_df['new_in_C_replicate'].sum()
+    new_C_total = count_df["new_in_C"].sum()
+    new_C_replicate_total = count_df["new_in_C_replicate"].sum()
     new_C_rate = new_C_replicate_total / new_C_total if new_C_total > 0 else 0
     print(f"New in traceC (vs Original): {new_C_rate:.2%}")
 
-    new_T_total = count_df['new_in_T'].sum()
-    new_T_replicate_total = count_df['new_in_T_replicate'].sum()
+    new_T_total = count_df["new_in_T"].sum()
+    new_T_replicate_total = count_df["new_in_T_replicate"].sum()
     new_T_rate = new_T_replicate_total / new_T_total if new_T_total > 0 else 0
     print(f"New in traceCB (vs traceC): {new_T_rate:.2%}")
     # --- 结束新增逻辑 ---
@@ -109,6 +113,10 @@ def f3egene(plot_df):
     fig, ax = plt.subplots(figsize=(8, 5))  # 增加高度以容纳上方标注
 
     # 设置x轴位置
+    plot_df.QTDid = pd.Categorical(
+        plot_df.QTDid, categories=meta_data["QTDids"], ordered=True
+    )
+    plot_df = plot_df.sort_values("QTDid")
     studies = plot_df.name.unique()
     x = np.arange(len(studies))
     width = 0.35  # 条形宽度
@@ -130,7 +138,7 @@ def f3egene(plot_df):
         )
 
     ax.set_ylabel("Number of eGenes")
-    ax.set_xlabel("Study")
+    # ax.set_xlabel("Study")
     ax.set_xticks(x)
     ax.set_xticklabels(studies, rotation=20, ha="right")
 
@@ -143,10 +151,11 @@ def f3egene(plot_df):
         "B_cells": (7.5, 1),
         "NK_cells": (8.5, 1),
     }
-
-    # 获取y轴范围
+    ax.set_xlim(-0.5, len(meta_data["Names"]) - 0.5)
+    # 设置y轴范围以便添加标注线
     y_min, y_max = ax.get_ylim()
-    y_max -= (y_max - y_min) * 0.05  # 留出空间用于标注
+    y_max += (y_max - y_min) * 0.1
+    ax.set_ylim(y_min, y_max)  # 留出空间用于标注
     margin = 0.05
     for celltype, (x_start, width) in celltype_ranges.items():
         ax.add_patch(
@@ -165,11 +174,11 @@ def f3egene(plot_df):
         # 添加celltype标注线 - 在图形上边缘上方
         x_end = x_start + width
         ax.hlines(
-            y=y_max + (y_max - y_min) * 0.01,  # 位于图形上边缘上方
+            y=y_max - 110,  # 位于图形上边缘上方
             xmin=x_start + margin,
             xmax=x_end - margin,
             colors=celltype_colors[celltype],
-            linewidth=5,
+            linewidth=13,
             linestyle="-",
             clip_on=False,
             zorder=5,
@@ -181,12 +190,13 @@ def f3egene(plot_df):
         ax.text(
             x_center,
             y_max - (y_max - y_min) * 0.05,  # 位于标注线上方
-            label_name_shorten[celltype],
+            cell_label_name[celltype],
             color="black",
-            fontsize=10,
+            fontsize=11,
             ha="center",
             va="bottom",
             clip_on=False,
+            zorder=8,
         )
 
     # 图例handles和labels
@@ -202,13 +212,13 @@ def f3egene(plot_df):
         handles=ordered_handles,
         labels=ordered_labels,
         loc="upper right",
-        bbox_to_anchor=(1.0, 0.9),
+        bbox_to_anchor=(1.0, 0.93),
         title="Method",
     )
 
     plt.tight_layout()
-    save_name = "f3egene_replicate_OASIS.png"
-    plt.savefig(os.path.join(save_path, save_name), dpi=300)
+    save_name = "f3egene_replicate_OASIS.pdf"
+    plt.savefig(os.path.join(save_path, save_name))
     print(f"Figure saved to {os.path.join(save_path, save_name)}")
 
 
@@ -221,20 +231,26 @@ def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
     oasis_egenes_by_celltype = {cell: set() for cell in OASIS_celltype_dict.keys()}
     for celltype, aliases in OASIS_celltype_dict.items():
         for alias in aliases:
-            file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            file_path = (
+                f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            )
             if not os.path.exists(file_path):
                 print(f"File not found: {file_path}")
                 continue
             df = pd.read_csv(file_path, sep="\t")
-            replicated_genes = set(df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"])
+            replicated_genes = set(
+                df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"]
+            )
             oasis_egenes_by_celltype[celltype].update(replicated_genes)
     return oasis_egenes_by_celltype
 
 
 if __name__ == "__main__":
-    summary_sign_df, _ = load_all_summary()
+    _, summary_df = load_all_summary()
     # 获取按细胞类型分类的OASIS eGene
-    replicate_egenes_by_celltype = get_oasis_egene_by_celltype(egene_pval_threshold=5e-3)
+    replicate_egenes_by_celltype = get_oasis_egene_by_celltype(
+        egene_pval_threshold=5e-3
+    )
     # 传入字典进行计数
-    plot_df = count_egene(summary_sign_df, replicate_egenes_by_celltype)
+    plot_df = count_egene(summary_df, replicate_egenes_by_celltype)
     f3egene(plot_df)

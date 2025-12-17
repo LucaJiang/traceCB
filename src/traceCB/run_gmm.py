@@ -140,11 +140,9 @@ def main(args, chr):
             "H2SQ",
             "H2SQSE",
             "COV_PVAL",  # Genetic covariance between target and auxiliary cell types
-            "COR_1C",  # Genetic correlation between target and auxiliary cell types
-            "COR_1O",  # Genetic correlation between target cell type in target pop and non-target cell type in aux tissue
+            "COR_X",  # Genetic correlation between target and auxiliary cell types
             "COR_CO",  # Genetic correlation between target cell type in aux pop and non-target cell type in aux tissue
             "RUN_GMM",  # Whether run cross-population GMM
-            "RUN_GMM_TISSUE",  # Whether run GMM with tissue
             "TAR_SNEFF",  # effective sample size, S is for summary statistics
             "TAR_CNEFF",  # effective sample size, C is for using cross-population GMM
             "TAR_TNEFF",  # effective sample size, T is for using GMM with tissue
@@ -162,10 +160,10 @@ def main(args, chr):
         ],
     )
     summary_df.index.name = "GENE"
-    summary_df = summary_df.astype({"RUN_GMM": "boolean", "RUN_GMM_TISSUE": "boolean"})
+    summary_df = summary_df.astype({"RUN_GMM": "boolean"})
     # for gene in gene_list:
     # breakpoint()
-    for gene_idx in prange(len(gene_list)):
+    for gene_idx in range(len(gene_list)):
         gene = gene_list[gene_idx]
         ## collect data for the gene
         tarQTLgene_df = (
@@ -248,25 +246,16 @@ def main(args, chr):
             gene_df.PVAL_tissue.to_numpy()
         )
         # ### threshold Omega
-        if Omega_p[0, 0] >= P_VAL_THRED:
-            summary_df.loc[gene, "RUN_GMM"] = False
-            summary_df.loc[gene, "RUN_GMM_TISSUE"] = False
-            continue  # skip genes with unsignificant tar heritability
-        if Omega_p[1, 1] >= P_VAL_THRED:
-            Omega[1, 1] = MIN_HERITABILITY
-        run_gmm = True
         if np.any(Omega_p >= P_VAL_THRED):
-            Omega[0, 1] = 0.0
-            Omega[1, 0] = 0.0
-            run_gmm = False
-        omega_1c_cor = Omega[0, 1] / np.sqrt(
+            summary_df.loc[gene, "RUN_GMM"] = False
+            continue  # skip genes with unsignificant tar heritability
+        summary_df.loc[gene, "COR_X"] = Omega[0, 1] / np.sqrt(
             Omega[0, 0] * Omega[1, 1] + MIN_FLOAT
-        )  # have been clipped at ldsc
-        summary_df.loc[gene, "COR_1C"] = omega_1c_cor
-        summary_df.loc[gene, "RUN_GMM"] = run_gmm
+        )
+        summary_df.loc[gene, "RUN_GMM"] = True
 
         ## get omega_co, omega_oo
-        aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
+        aux_Omega_matrix, _ = Run_cross_LDSC(
             (gene_df.BETA_aux / gene_df.SE_aux).to_numpy(),
             gene_df.N_aux.to_numpy(),
             gene_df.LD_aux.to_numpy(),
@@ -281,13 +270,6 @@ def main(args, chr):
         omega_co = (aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1]) / (
             1 - celltype_proportion
         )
-        omega_co_se = (
-            aux_Omega_matrix_se[0, 1] ** 2
-            + (celltype_proportion**2) * (Omega_se[1, 1] ** 2)
-        ) ** 0.5 / (1 - celltype_proportion)
-        omega_co_p = z2p(omega_co / np.maximum(omega_co_se, MIN_FLOAT))
-        if omega_co_p >= P_VAL_THRED or Omega_p[1, 1] >= P_VAL_THRED:
-            omega_co = 0.0
         ## omega_oo: var of non-target celltype in tissue
         ## aux_Omega_matrix[1, 1] = celltype_proportion^2 * omega_2 + 2*celltype_proportion*(1-celltype_proportion)*omega_co + (1-celltype_proportion)^2 * omega_oo
         omega_oo = (
@@ -298,52 +280,8 @@ def main(args, chr):
         omega_oo = np.maximum(omega_oo, MIN_HERITABILITY)
         # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (celltype_proportion**4) * (Omega_se[1, 1]**2) + (2*celltype_proportion*(1-celltype_proportion))**2 * (omega_co_se**2))**0.5 / ((1-celltype_proportion)**2)
         omega_co, omega_co_cor = clip_correlation(Omega[1, 1], omega_oo, omega_co)
-
-        ## get omega_xo
-        # tar_tissue_Omega_matrix, tar_tissue_Omega_matrix_se = Run_cross_LDSC(
-        #     (gene_df.BETA_tar / gene_df.SE_tar).to_numpy(),
-        #     gene_df.N_tar.to_numpy(),
-        #     gene_df.LD_tar.to_numpy(),
-        #     (gene_df.BETA_tissue / gene_df.SE_tissue).to_numpy(),
-        #     gene_df.N_tissue.to_numpy(),
-        #     gene_df.LD_aux.to_numpy(),
-        #     gene_df.LD_x.to_numpy(),
-        #     np.array([1.0, 1.0, 0.0]),
-        # )
-        # ## omega_xo: var between target celltype in target pop and non-target celltype in aux tissue
-        # ## tar_tissue_Omega_matrix[0, 1] = celltype_proportion * omega_x + (1-celltype_proportion) * omega_xo
-        # omega_xo = (
-        #     tar_tissue_Omega_matrix[0, 1] - celltype_proportion * Omega[0, 1]
-        # ) / (1 - celltype_proportion)
-        # omega_xo_se = (
-        #     tar_tissue_Omega_matrix_se[0, 1] ** 2
-        #     + (celltype_proportion**2) * (Omega_se[0, 1] ** 2)
-        # ) ** 0.5 / (1 - celltype_proportion)
-        # omega_xo_p = z2p(omega_xo / np.maximum(omega_xo_se, MIN_FLOAT))
-        # if omega_xo_p >= P_VAL_THRED:
-        #     omega_xo = 0.0
-        omega_xo = 0.0  # !for now, set omega_xo to 0
-        omega_xo, omega_xo_cor = clip_correlation(Omega[0, 0], omega_oo, omega_xo)
-
-        if abs(omega_oo - MIN_HERITABILITY) < MIN_FLOAT:
-            omega_xo = 0.0
-            omega_co = 0.0
-
-        ## construct OmegaCB for GMMtissue
-        OmegaCB = np.array(
-            [
-                [Omega[0, 0], Omega[0, 1], omega_xo],
-                [Omega[0, 1], Omega[1, 1], omega_co],
-                [omega_xo, omega_co, omega_oo],
-            ]
-        )
-
-        run_gmm_tissue = True
-        if (omega_xo == 0.0 and omega_co == 0.0) or Omega[0, 1] == 0.0:
-            run_gmm_tissue = False
-        summary_df.loc[gene, "COR_1O"] = omega_xo_cor
+        # omega_co_cor = omega_co / np.sqrt(Omega[1, 1] * omega_oo + MIN_FLOAT)
         summary_df.loc[gene, "COR_CO"] = omega_co_cor
-        summary_df.loc[gene, "RUN_GMM_TISSUE"] = run_gmm_tissue
 
         ## run GMM for each SNP in the gene
         gmm_b_tar = np.full((nsnp, 2), np.nan)  # cross, cross+tissue
@@ -351,80 +289,44 @@ def main(args, chr):
         gmm_se_tar = np.full((nsnp, 2), np.nan)
         gmm_se_aux = np.full((nsnp, 2), np.nan)
         for i in prange(nsnp):
-            try:
-                if run_gmm:
-                    (
-                        gmm_b_tar[i, 0],
-                        gmm_se_tar[i, 0],
-                        gmm_b_aux[i, 0],
-                        gmm_se_aux[i, 0],
-                    ) = GMM(
-                        Omega,
-                        np.eye(2),
-                        gene_df.BETA_tar.iloc[i].item(),
-                        gene_df.SE_tar.iloc[i].item(),
-                        gene_df.LD_tar.iloc[i].item(),
-                        gene_df.BETA_aux.iloc[i].item(),
-                        gene_df.SE_aux.iloc[i].item(),
-                        gene_df.LD_aux.iloc[i].item(),
-                        gene_df.LD_x.iloc[i].item(),
-                    )
-                else:  # don't use cross-population info
-                    gmm_b_tar[i, 0] = gene_df.BETA_tar.iloc[i].item()
-                    gmm_se_tar[i, 0] = gene_df.SE_tar.iloc[i].item()
-                    gmm_b_aux[i, 0] = gene_df.BETA_aux.iloc[i].item()
-                    gmm_se_aux[i, 0] = gene_df.SE_aux.iloc[i].item()
-                if run_gmm_tissue:
-                    (
-                        gmm_b_tar[i, 1],
-                        gmm_se_tar[i, 1],
-                        gmm_b_aux[i, 1],
-                        gmm_se_aux[i, 1],
-                    ) = GMMtissue(
-                        OmegaCB,
-                        np.eye(3),
-                        gene_df.BETA_tar.iloc[i].item(),
-                        gene_df.SE_tar.iloc[i].item(),
-                        gene_df.LD_tar.iloc[i].item(),
-                        gene_df.BETA_aux.iloc[i].item(),
-                        gene_df.SE_aux.iloc[i].item(),
-                        gene_df.LD_aux.iloc[i].item(),
-                        gene_df.LD_x.iloc[i].item(),
-                        gene_df.BETA_tissue.iloc[i].item(),
-                        gene_df.SE_tissue.iloc[i].item(),
-                        celltype_proportion,
-                    )
-                else:  # don't use tissue info
-                    gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
-                    gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
-                    gmm_b_aux[i, 1] = gmm_b_aux[i, 0]
-                    gmm_se_aux[i, 1] = gmm_se_aux[i, 0]
-            except Exception as e:
-                print(
-                    f"Error in GMM for gene {gene}, SNP {gene_df.index[i]}: {e}. "
-                    f"h1sq: {OmegaCB[0, 0]}, h2sq: {OmegaCB[1, 1]}, hosq: {OmegaCB[2, 2]}, "
-                    f"cor_1c: {omega_1c_cor}, cor_1o: {omega_xo_cor}, cor_co: {omega_co_cor}, "
-                    f"tar_beta: {gene_df.BETA_tar.iloc[i]}, tar_se: {gene_df.SE_tar.iloc[i]}, "
-                    f"tar_ld: {gene_df.LD_tar.iloc[i]}, aux_beta: {gene_df.BETA_aux.iloc[i]}, "
-                    f"aux_se: {gene_df.SE_aux.iloc[i]}, aux_ld: {gene_df.LD_aux.iloc[i]}, x_ld: {gene_df.LD_x.iloc[i]}, "
-                    f"tissue_beta: {gene_df.BETA_tissue.iloc[i]}, tissue_se: {gene_df.SE_tissue.iloc[i]}, "
-                    f"celltype_proportion: {celltype_proportion}"
+            (
+                gmm_b_tar[i, 0],
+                gmm_se_tar[i, 0],
+                gmm_b_aux[i, 0],
+                gmm_se_aux[i, 0],
+            ) = GMM(
+                Omega,
+                np.eye(2),
+                gene_df.BETA_tar.iloc[i].item(),
+                gene_df.SE_tar.iloc[i].item(),
+                gene_df.LD_tar.iloc[i].item(),
+                gene_df.BETA_aux.iloc[i].item(),
+                gene_df.SE_aux.iloc[i].item(),
+                gene_df.LD_aux.iloc[i].item(),
+                gene_df.LD_x.iloc[i].item(),
+            )
+            if omega_co_cor > 0:
+                (  # cor between target cell type and proxy of non-target cell type in tissue
+                    gmm_b_tar[i, 1],
+                    gmm_se_tar[i, 1],
+                    gmm_b_aux[i, 1],
+                    gmm_se_aux[i, 1],
+                ) = GMMtissue(
+                    Omega,
+                    np.eye(3),
+                    gene_df.BETA_tar.iloc[i].item(),
+                    gene_df.SE_tar.iloc[i].item(),
+                    gene_df.LD_tar.iloc[i].item(),
+                    gene_df.BETA_aux.iloc[i].item(),
+                    gene_df.SE_aux.iloc[i].item(),
+                    gene_df.LD_aux.iloc[i].item(),
+                    gene_df.LD_x.iloc[i].item(),
+                    gene_df.BETA_tissue.iloc[i].item(),
+                    gene_df.SE_tissue.iloc[i].item(),
+                    omega_oo,
+                    celltype_proportion,
                 )
-            if np.isnan(gmm_b_tar[i, 0]) or np.isnan(
-                gmm_se_tar[i, 0]
-                or np.isnan(gmm_b_aux[i, 0])
-                or np.isnan(gmm_se_aux[i, 0])
-            ):  # check gmm output
-                gmm_b_tar[i, 0] = gene_df.BETA_tar.iloc[i]
-                gmm_se_tar[i, 0] = gene_df.SE_tar.iloc[i]
-                gmm_b_aux[i, 0] = gene_df.BETA_aux.iloc[i]
-                gmm_se_aux[i, 0] = gene_df.SE_aux.iloc[i]
-            if (
-                np.isnan(gmm_b_tar[i, 1])
-                or np.isnan(gmm_se_tar[i, 1])
-                or np.isnan(gmm_b_aux[i, 1])
-                or np.isnan(gmm_se_aux[i, 1])
-            ):
+            else:
                 gmm_b_tar[i, 1] = gmm_b_tar[i, 0]
                 gmm_se_tar[i, 1] = gmm_se_tar[i, 0]
                 gmm_b_aux[i, 1] = gmm_b_aux[i, 0]

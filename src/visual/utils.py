@@ -32,7 +32,13 @@ label_name_shorten = {
     "B_cells": "B",
     "NK_cells": "NK",
 }
-
+cell_label_name = {
+    "Monocytes": "Monocytes",
+    "CD4+T_cells": r"CD4$^+$T cells",
+    "CD8+T_cells": r"CD8$^+$T cells",
+    "B_cells": "B cells",
+    "NK_cells": "NK cells",
+}
 OASIS_path = "/home/wjiang49/group/wjiang49/data/hum0197/eQTL_summary_statistics"
 OASIS_celltype_dict = {
     "Monocytes": ["Mono"],
@@ -79,14 +85,14 @@ def _load_summary(study_dir):
         summary_df = (
             df if summary_df.empty else pd.concat([summary_df, df], ignore_index=True)
         )
-    # summary_df.loc[:, "COR"] = summary_df.loc[:, "COR_1C"]
+    summary_df.loc[:, "COR"] = summary_df.loc[:, "COR_X"]
     # define RUN_GMM == True and RUN_GMM_TISSUE == True as significant
     summary_sign_df = summary_df.loc[
         (summary_df.RUN_GMM == True)
-        | (summary_df.RUN_GMM_TISSUE == True)
         # & (summary_df.COR_CO > 0.0)
         # & (summary_df.COR_1O > 0.0)
     ]
+    # summary_sign_df = summary_df.loc[summary_df.COV_PVAL < 0.05]
 
     # fill NA values for summary_sign_df
     na_raw = summary_sign_df.TAR_CNEFF.isna()
