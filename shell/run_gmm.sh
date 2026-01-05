@@ -9,7 +9,7 @@ conda activate "$python_env"
 
 # --- Parallel Execution Settings ---
 # Maximum number of parallel jobs across ALL studies
-MAX_JOBS=128
+MAX_JOBS=256
 # Log file setup
 log_dir="$log_path"
 time_log_file="${log_dir}/run_gmm_timing.log"
@@ -78,12 +78,14 @@ echo "All GMM tasks completed. Total GMM time: ${gmm_elapsed_fmt}"
 echo "$(date '+%F %T') - All GMM tasks completed in ${gmm_elapsed_fmt}" >> "$time_log_file"
 
 
-# # --- Part 2: Run post-processing scripts sequentially ---
-# echo "-----------------------------------------------------------------"
-# # Run final summary scripts
-# echo "Running final summary scripts..."
-# python "$src_path/visual/f3egene.py" >> "${log_dir}/final_f3egene.log" 2>&1
-# python "$src_path/visual/f3violin.py" >> "${log_dir}/final_f3violin.log" 2>&1
+# --- Part 2: Run post-processing scripts sequentially ---
+echo "-----------------------------------------------------------------"
+# Run final summary scripts
+echo "Running final summary scripts..."
+echo "$(date '+%F %T') with tissue=${use_tissue}, target_population=${target_population}" >> "${log_dir}/final_f3egene.log"
+python "$src_path/visual/f3egene.py" >> "${log_dir}/final_f3egene.log" 2>&1
+echo "$(date '+%F %T') with tissue=${use_tissue}, target_population=${target_population}" >> "${log_dir}/final_f3violin.log"
+python "$src_path/visual/f3violin.py" >> "${log_dir}/final_f3violin.log" 2>&1
 
 # --- Final Summary ---
 script_end_time=$(date +%s)

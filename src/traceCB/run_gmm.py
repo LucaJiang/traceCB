@@ -116,10 +116,26 @@ def main(args, chr):
     )  # Cell_type,Proportion\nGranulocyte,53.120311443234144
     celltype_proportion_percentage = celltype_proportion_df.loc[
         celltype_proportion_df["Cell_type"] == celltype, "Proportion"
-    ].iloc[  # type: ignore
-        0
-    ]
+    ].iloc[0]
     celltype_proportion = celltype_proportion_percentage / 100.0
+    other_celltype_proportions = (
+        celltype_proportion_df.loc[
+            celltype_proportion_df["Cell_type"] != celltype, "Proportion"
+        ]
+        / 100.0
+    ).to_numpy()
+    pii_pij_sum = sum(
+        [
+            i * j
+            for i in other_celltype_proportions
+            for j in other_celltype_proportions
+            if i != j
+        ]
+    )
+    pi2_omega_sum_const = 2 * celltype_proportion + pii_pij_sum / (
+        1 - celltype_proportion
+    )
+    # print(pi2_omega_sum_const) 0.7860378076248147
 
     ## run gmm for each gene
     gene_list = tarLDdf.columns[4:].tolist()
@@ -134,7 +150,7 @@ def main(args, chr):
             "H2SQSE",
             "COV_PVAL",  # Genetic covariance between target and auxiliary cell types
             "COR_X",  # Genetic correlation between target and auxiliary cell types
-            "COR_CO",  # Genetic correlation between target cell type in aux pop and non-target cell type in aux tissue
+            "SIGMAO",  # Genetic correlation between target cell type in aux pop and non-target cell type in aux tissue
             "RUN_GMM",  # Whether run cross-population GMM
             "TAR_SNEFF",  # effective sample size, S is for summary statistics
             "TAR_CNEFF",  # effective sample size, C is for using cross-population GMM
@@ -242,13 +258,15 @@ def main(args, chr):
         if np.any(Omega_p >= P_VAL_THRED):
             summary_df.loc[gene, "RUN_GMM"] = False
             continue  # skip genes with unsignificant tar heritability
-        summary_df.loc[gene, "COR_X"] = Omega[0, 1] / np.sqrt(
-            Omega[0, 0] * Omega[1, 1] + MIN_FLOAT
-        )
+        cor_x = Omega[0, 1] / np.sqrt(Omega[0, 0] * Omega[1, 1] + MIN_FLOAT)
+        summary_df.loc[gene, "COR_X"] = cor_x
         summary_df.loc[gene, "RUN_GMM"] = True
 
-        ## get omega_co, omega_oo
-        aux_Omega_matrix, _ = Run_cross_LDSC(
+        # find sigma_o for non-target cell types in tissue
+        pi2_omega_sum = 0.0
+        run_gmm_tissue = True
+        # ## get omega_co, omega_oo
+        aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
             (gene_df.BETA_aux / gene_df.SE_aux).to_numpy(),
             gene_df.N_aux.to_numpy(),
             gene_df.LD_aux.to_numpy(),
@@ -258,24 +276,22 @@ def main(args, chr):
             gene_df.LD_aux.to_numpy(),
             np.array([1.0, 1.0, 0.0]),
         )
-        ## omega_co: var between target celltype in aux pop and tissue
-        # aux_Omega_matrix[0, 1] = celltype_proportion * omega_2 + (1-celltype_proportion) * omega_co
-        omega_co = (aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1]) / (
-            1 - celltype_proportion
-        )
-        ## omega_oo: var of non-target celltype in tissue
-        ## aux_Omega_matrix[1, 1] = celltype_proportion^2 * omega_2 + 2*celltype_proportion*(1-celltype_proportion)*omega_co + (1-celltype_proportion)^2 * omega_oo
-        omega_oo = (
-            aux_Omega_matrix[1, 1]
-            - celltype_proportion**2 * Omega[1, 1]
-            - 2 * celltype_proportion * (1 - celltype_proportion) * omega_co
-        ) / ((1 - celltype_proportion) ** 2)
-        omega_oo = np.maximum(omega_oo, MIN_HERITABILITY)
-        # omega_oo_se = (aux_Omega_matrix_se[1, 1]**2 + (celltype_proportion**4) * (Omega_se[1, 1]**2) + (2*celltype_proportion*(1-celltype_proportion))**2 * (omega_co_se**2))**0.5 / ((1-celltype_proportion)**2)
-        omega_co, omega_co_cor = clip_correlation(Omega[1, 1], omega_oo, omega_co)
-        # omega_co_cor = omega_co / np.sqrt(Omega[1, 1] * omega_oo + MIN_FLOAT)
-        summary_df.loc[gene, "COR_CO"] = omega_co_cor
-        pi2_omega_o = (1 - celltype_proportion) ** 2 * omega_oo
+        if np.all(
+            z2p(aux_Omega_matrix / aux_Omega_matrix_se) < P_VAL_THRED
+        ):  # constain cor_x>0?
+            # \text{LDSC}(z_t, z_t) - \pi_c^2 \omega_2 - (2\pi_c + \frac{\sum_{i \neq j} \pi_i \pi_j}{1-\pi_c}) (\text{LDSC}(z_2, z_t)-\pi_c \omega_2)
+            pi2_omega_sum = (
+                aux_Omega_matrix[1, 1]
+                - celltype_proportion**2 * Omega[1, 1]
+                - pi2_omega_sum_const
+                * np.maximum(aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1], 0)
+            )
+            pi2_omega_sum = np.maximum(
+                pi2_omega_sum, MIN_HERITABILITY
+            )  # if<0, dont run tissue?
+            summary_df.loc[gene, "SIGMAO"] = pi2_omega_sum
+        else:
+            run_gmm_tissue = False
 
         ## run GMM for each SNP in the gene
         gmm_b_tar = np.full((nsnp, 2), np.nan)  # cross, cross+tissue
@@ -299,8 +315,8 @@ def main(args, chr):
                 gene_df.LD_aux.iloc[i].item(),
                 gene_df.LD_x.iloc[i].item(),
             )
-            if omega_co_cor > 0:
-                (  # cor between target cell type and proxy of non-target cell type in tissue
+            if run_gmm_tissue:
+                (
                     gmm_b_tar[i, 1],
                     gmm_se_tar[i, 1],
                     gmm_b_aux[i, 1],
@@ -317,7 +333,7 @@ def main(args, chr):
                     gene_df.LD_x.iloc[i].item(),
                     gene_df.BETA_tissue.iloc[i].item(),
                     gene_df.SE_tissue.iloc[i].item(),
-                    pi2_omega_o,
+                    pi2_omega_sum,
                     celltype_proportion,
                 )
             else:
