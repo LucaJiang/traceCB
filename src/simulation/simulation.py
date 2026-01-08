@@ -1,10 +1,10 @@
 # generate test data and run simulation for gmm
-# python -m src.simulation.simulation --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname nt_n2_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 100 --n2 100 200 400 --nt 500 10000 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir bench/result --nrep 50 --estimate_omega
-# python -m src.simulation.simulation --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname h2sq_gc_propt --h1sq 0.1 --h2sq 0.1 0.2 --gc 0.01 0.5 0.9 --n1 100 --n2 200 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir bench/result --nrep 50 --estimate_omega
-# python -m src.simulation.simulation --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname n1_pcausal_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 50 100 --n2 200 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir bench/result --nrep 50 --estimate_omega
-# python -m src.simulation.simulation --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname alpha_h2sq_pcausal_propt --h1sq 0.000000000001 --h2sq 0.1 0.2 --gc 0 --n1 100 --n2 400 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir bench/result --nrep 50 --estimate_omega
+# python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname nt_n2_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 100 --n2 100 200 400 --nt 500 10000 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir bench/result --nrep 50 --estimate_omega
+# python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname h2sq_gc_propt --h1sq 0.1 --h2sq 0.1 0.2 --gc 0.01 0.5 0.9 --n1 100 --n2 200 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir bench/result --nrep 50 --estimate_omega
+# python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname n1_pcausal_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 50 100 --n2 200 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir bench/result --nrep 50 --estimate_omega
+# python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname alpha_h2sq_pcausal_propt --h1sq 0.000000000001 --h2sq 0.1 0.2 --gc 0 --n1 100 --n2 400 --nt 500 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir bench/result --nrep 50 --estimate_omega
 
-# python -m src.simulation.simulation --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname nt_n2_propt --h1sq 0.3 --h2sq 0.3 --gc 0.7 --n1 100 --n2 400 --nt 1000 --nsnp 2000 --propt 0.01 0.1 0.2 0.5 0.8 --pcausal 0.005 --out_dir bench/result --nrep 20 --estimate_omega
+# python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname nt_n2_propt --h1sq 0.3 --h2sq 0.3 --gc 0.7 --n1 100 --n2 500 --nt 1000 --nsnp 2000 --propt 0.01 0.4 0.8 --pcausal 0.01 --out_dir bench/result --nrep 20 --estimate_omega
 
 import argparse
 import time
@@ -12,10 +12,10 @@ import os
 import numpy as np
 from numba import njit, prange
 
-from ..traceCB.ldsc import Run_cross_LDSC
-from ..traceCB.gmm import GMM, GMMtissue
-from ..traceCB.utils import z2p, MIN_HERITABILITY
-from ..traceCB.run_gmm import clip_correlation
+from traceCB.ldsc import Run_cross_LDSC
+from traceCB.gmm import GMM, GMMtissue
+from traceCB.utils import z2p, MIN_HERITABILITY
+from traceCB.run_gmm import clip_correlation
 
 MIN_FLOAT = 1e-32
 P_VAL_THRED = 0.05  # for h2 and cov in omega
@@ -256,7 +256,9 @@ def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
     sigt = pvalt < P_VAL_THRED
     # breakpoint()
     # cal cov between target/auxiliary cell type and unknown cell type in tissue
-    Omega = np.cov(np.stack([beta1, beta2, beta_unknown]))
+    Omega = np.cov(
+        np.stack([beta1, beta2, beta2 * pi_mean + beta_unknown * (1 - pi_mean)])
+    )
     return (
         Omega,
         b1_hat,
@@ -400,10 +402,12 @@ def simulation(
         causal_ids,
         pi_mean,
     ) = generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal)
-    run_gmm = True
-    omega_oo = 0.0
+    pi2_omega_sum_const = 2 * propt + 0 / (1 - propt)
     Omega = np.zeros((2, 2))
     if not true_omega:  # estimate omega
+        run_gmm = False  # default no gmm
+        run_gmm_tissue = False  # default no gmm tissue
+        pi2_omega_sum = 0.0  # for sigma_o of non-target cell types in tissue
         Omega, Omega_se = Run_cross_LDSC(
             b1_hat / se1_hat,
             n1,
@@ -415,10 +419,11 @@ def simulation(
             np.array([1, 1, 0]),
         )
         Omega_p = z2p(Omega / Omega_se)
-        if np.any(Omega_p >= P_VAL_THRED):
-            run_gmm = False  # skip genes with unsignificant tar heritability
-            ## ! get omega_co, omega_oo
-            aux_Omega_matrix, _ = Run_cross_LDSC(
+        p_thred = 0.10
+        if np.all(Omega_p < p_thred):
+            #! if np.all(Omega_p < P_VAL_THRED):
+            run_gmm = True
+            aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
                 b2_hat / se2_hat,
                 n2,
                 ld2,
@@ -428,22 +433,32 @@ def simulation(
                 ldx,
                 np.array([1.0, 1.0, 0.0]),
             )
-            ## omega_co: var between target celltype in aux pop and tissue
-            # aux_Omega_matrix[0, 1] = propt * omega_2 + (1-propt) * omega_co
-            omega_co = (aux_Omega_matrix[0, 1] - propt * Omega[1, 1]) / (1 - propt)
-            ## omega_oo: var of non-target celltype in tissue
-            ## aux_Omega_matrix[1, 1] = propt^2 * omega_2 + 2*propt*(1-propt)*omega_co + (1-propt)^2 * omega_oo
-            omega_oo = (
-                aux_Omega_matrix[1, 1]
-                - propt**2 * Omega[1, 1]
-                - 2 * propt * (1 - propt) * omega_co
-            ) / ((1 - propt) ** 2)
-            omega_oo = np.maximum(omega_oo, MIN_HERITABILITY)
-            omega_co, _ = clip_correlation(Omega[1, 1], omega_oo, omega_co)
+            if np.all(
+                z2p(aux_Omega_matrix / aux_Omega_matrix_se)
+                < p_thred
+                #! z2p(aux_Omega_matrix / aux_Omega_matrix_se) < P_VAL_THRED
+            ):  # constain cor_x>0?
+                run_gmm_tissue = True
+                # \text{LDSC}(z_t, z_t) - \pi_c^2 \omega_2 - (2\pi_c + \frac{\sum_{i \neq j} \pi_i \pi_j}{1-\pi_c}) (\text{LDSC}(z_2, z_t)-\pi_c \omega_2)
+                pi2_omega_sum = (
+                    aux_Omega_matrix[1, 1]
+                    - propt**2 * Omega[1, 1]
+                    - pi2_omega_sum_const
+                    * np.maximum(aux_Omega_matrix[0, 1] - propt * Omega[1, 1], 0)
+                )
+                pi2_omega_sum = np.maximum(
+                    pi2_omega_sum, MIN_HERITABILITY
+                )  # if<0, dont run tissue?
 
     else:  # true Omega
-        omega_oo = OmegaCB[2, 2]
-    pi2_omega_o = (1 - pi_mean) ** 2 * omega_oo
+        Omega = OmegaCB[:2, :2]
+        run_gmm = True
+        run_gmm_tissue = True
+        pi2_omega_sum = (
+            OmegaCB[2, 2]
+            - propt**2 * OmegaCB[1, 1]
+            - pi2_omega_sum_const * (OmegaCB[1, 2] - propt * OmegaCB[1, 1])
+        )
     # GMM
     pop1_beta = np.zeros((nsnp, 3))  # sumstat, cross, tissue
     pop2_beta = np.zeros((nsnp, 3))
@@ -467,6 +482,13 @@ def simulation(
                 ld2[j],
                 ldx[j],
             )
+    else:  # no run gmm, keep sumstat results
+        pop1_beta[:, 1] = b1_hat
+        pop1_se[:, 1] = se1_hat
+        pop2_beta[:, 1] = b2_hat
+        pop2_se[:, 1] = se2_hat
+    if run_gmm_tissue:
+        for j in prange(nsnp):
             pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
                 Omega,
                 np.eye(3),
@@ -479,21 +501,17 @@ def simulation(
                 ldx[j],
                 bt_hat[j],
                 se_t_hat[j],
-                pi2_omega_o,
+                pi2_omega_sum,
                 propt,
             )
-        pop1_z = pop1_beta / pop1_se
-        pop2_z = pop2_beta / pop2_se
     else:  # no run gmm, keep sumstat results
-        pop1_z = np.zeros((nsnp, 3))
-        pop2_z = np.zeros((nsnp, 3))
-        pop1_z[:, 0] = b1_hat / se1_hat
-        pop1_z[:, 1] = b1_hat / se1_hat
-        pop1_z[:, 2] = b1_hat / se1_hat
-        pop2_z[:, 0] = b2_hat / se2_hat
-        pop2_z[:, 1] = b2_hat / se2_hat
-        pop2_z[:, 2] = b2_hat / se2_hat
+        pop1_beta[:, 2] = pop1_beta[:, 1]
+        pop1_se[:, 2] = pop1_se[:, 1]
+        pop2_beta[:, 2] = pop2_beta[:, 1]
+        pop2_se[:, 2] = pop2_se[:, 1]
 
+    pop1_z = pop1_beta / pop1_se
+    pop2_z = pop2_beta / pop2_se
     ## meta-analysis
     meta_beta = np.zeros((nsnp,))
     meta_se = np.zeros((nsnp,))

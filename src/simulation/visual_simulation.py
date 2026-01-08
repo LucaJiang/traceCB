@@ -55,8 +55,8 @@ result_param_names = [
     "omega",
 ]
 
-methods_power = ["sumstat", "cross", "tissue", "meta"]
-# methods_power = ["sumstat", "cross", "tissue", "meta", "metatissue"]
+# methods_power = ["sumstat", "cross", "tissue"]
+methods_power = ["sumstat", "cross", "tissue", "meta", "metatissue"]
 methods_alpha = ["sumstat", "cross", "tissue", "meta", "metatissue"]
 
 
@@ -163,7 +163,7 @@ legend_mapping = {
 
 
 def plot_power_analysis(
-    result_df, row="h1sq", col="h2sq", x="propt", ymax=0.48, save_name="./"
+    result_df, row="h1sq", col="h2sq", x="propt", ymin=0.0, ymax=0.48, save_name="./"
 ):
     # convert to pivot table
     melted_df = pd.melt(
@@ -241,7 +241,7 @@ def plot_power_analysis(
     )
 
     for ax in g.axes.flatten():
-        ax.set_ylim(0, ymax)
+        ax.set_ylim(ymin, ymax)
         # ax.set_yticks([0, 0.2, 0.4])
         # ax.set_yticklabels(["0", "0.2", "0.4"])
         ax.grid(True, alpha=0.8)
@@ -263,7 +263,7 @@ def plot_power_analysis(
 
 
 def plot_alpha_analysis(
-    result_df, row="pcau", col="h22sq", x="pi", ymax=0.3, save_name="./"
+    result_df, row="pcau", col="h22sq", x="pi", ymin=0.0, ymax=0.3, save_name="./"
 ):
     # convert to pivot table
     melted_df = pd.melt(
@@ -314,9 +314,9 @@ def plot_alpha_analysis(
     )
 
     for ax in g.axes.flatten():
-        ax.set_ylim(0, ymax)
-        ax.set_yticks([0, 0.05, 0.10, 0.2])
-        ax.set_yticklabels(["0", "0.05", "0.1", "0.2"])
+        ax.set_ylim(ymin, ymax)
+        ax.set_yticks([0, 0.05, 0.10, 0.20, 0.30, 0.40])
+        ax.set_yticklabels(["0", "0.05", "0.10", "0.20", "0.30", "0.40"])
         ax.set_ylabel("Type I error")
         ax.grid(True, alpha=0.8)
         ax.axhline(0.05, color="#e63946", linestyle="--", linewidth=2)
@@ -367,7 +367,7 @@ def add_parser(parser):
         "--base_path",
         "-b",
         type=str,
-        default="/home/wjiang49/traceCB/bench/result/",
+        default="./bench/result/",
         help="base path for the simulation results",
     )
     parser.add_argument(
@@ -397,6 +397,12 @@ def add_parser(parser):
         default=0.48,
         help="ymax for the plot",
     )
+    parser.add_argument(
+        "--ymin",
+        type=float,
+        default=0.0,
+        help="ymin for the plot",
+    )
     return parser
 
 
@@ -409,6 +415,7 @@ if __name__ == "__main__":
     target = args.target
     runname = args.runname
     ymax = args.ymax
+    ymin = args.ymin
 
     result_path = os.path.join(base_path, runname)
     result_df = get_result_table(result_path, metric, target)
@@ -427,6 +434,7 @@ if __name__ == "__main__":
         row=tmp[-3],
         col=tmp[-2],
         x=tmp[-1],
+        ymin=ymin,
         ymax=ymax,
         save_name=os.path.join(base_path, "img", runname),
     )
