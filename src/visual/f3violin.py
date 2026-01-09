@@ -164,7 +164,7 @@ if __name__ == "__main__":
     agg_df = (
         summary_sign_df.loc[:, ["NAME", "celltype", "TAR_CNEFF", "TAR_TNEFF"]]
         .groupby("NAME")
-        .agg(TraceC=("TAR_CNEFF", "median"), TraceCB=("TAR_TNEFF", "median"))
+        .agg(TraceC=("TAR_CNEFF", "mean"), TraceCB=("TAR_TNEFF", "mean"))
     )
     print(agg_df.round(2))
     summary_sign_df = remove_outliers(summary_sign_df)

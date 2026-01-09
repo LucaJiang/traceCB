@@ -38,7 +38,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
         summary_sign_df.groupby("QTDid")
         .agg(
             SAMPLE_SIZE=("SAMPLE_SIZE", "mean"),
-            TAR_CNEFF_SNEFF_RATIO=("TAR_CNEFF_SNEFF_RATIO", "median"),
+            TAR_CNEFF_SNEFF_RATIO=("TAR_CNEFF_SNEFF_RATIO", "mean"),
         )
         .reset_index()
         .copy()
@@ -140,7 +140,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
     )
     ax.set_xlabel("Sample Size of Study")
     ax.set_ylabel(
-        f"{meta_data['method_name'][1]} / {meta_data['method_name'][0]} (mean)"
+        f"Mean Effective Sample Size ({meta_data['method_name'][1]} / {meta_data['method_name'][0]})"
     )
 
     handles, labels = ax.get_legend_handles_labels()
@@ -270,7 +270,7 @@ def f3neff_ratio_celltype_proportion(summary_sign_df):
     )
     ax.set_xlabel("Cell Type Proportion (Mean)")
     ax.set_ylabel(
-        f"{meta_data['method_name'][2]} / {meta_data['method_name'][1]} (median)"
+        f"Mean Effective Sample Size ({meta_data['method_name'][2]} / {meta_data['method_name'][1]})"
     )
 
     handles, labels = ax.get_legend_handles_labels()

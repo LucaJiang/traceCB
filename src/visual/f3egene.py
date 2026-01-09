@@ -188,7 +188,7 @@ def f3egene(plot_df):
         handles=ordered_handles,
         labels=ordered_labels,
         loc="upper right",
-        bbox_to_anchor=(1.0, 0.93),
+        bbox_to_anchor=(1.0, 0.94),
         title="Method",
     )
 

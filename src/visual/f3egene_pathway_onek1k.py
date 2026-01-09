@@ -3,11 +3,11 @@ from utils import *
 from matplotlib.patches import Rectangle
 
 # change the data path and title correspondingly
-save_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
-# egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Membrane_egene.csv"
-# title = "Newly discovered eGenes in\nSurface or Membrane"
-egene_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/Nuclear_egene.csv"
-title = "Newly discovered eGenes in\nNuclear, Cytoplasm or ER"
+save_path += "/pathway"
+# egene_path = f"{save_path}/Membrane_egene.csv"
+# title = "eGenes of Surface or Membrane"
+egene_path = f"{save_path}/Nuclear_egene.csv"
+title = "eGenes of Nuclear, Cytoplasm or ER"
 
 
 # find newly discovered eGenes
@@ -71,8 +71,8 @@ for gene in new_egene:
 gene_qtd_df.columns = meta_data["Names"]
 onek1k_replicate_df.columns = meta_data["Names"]
 
-colors_list = ["#edede9", "#78F38C", "#ffbf75", "#6c89f9"]
-# colors_list = ["#edede9"].append(meta_data["Colors"])
+# colors_list = ["#edede9", "#78F38C", "#ffbf75", "#6c89f9"]
+colors_list = ["#edede9"] + list(meta_data["Colors"].values())
 celltype_colors = meta_data["celltype_colors"]
 import matplotlib.colors as mcolors
 
@@ -261,7 +261,8 @@ ax.set_xticklabels(
 )
 ax.tick_params(axis="y")
 plt.tight_layout()
-plt.savefig(f"{save_path}/{title}.png", dpi=300, bbox_inches="tight")
+plt.savefig(f"{save_path}/{title}_onek1k.pdf", dpi=300, bbox_inches="tight")
+print(f"img save to {save_path}/{title}_onek1k.pdf")
 # plt.show()
 
 # %%

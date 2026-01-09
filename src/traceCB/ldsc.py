@@ -3,7 +3,7 @@
 ## returns: Omega, Omega_se which are 2x2 matrices for per-snp heritability or covariance
 ## !Attention: outputs have been clipped
 import numpy as np
-from traceCB.utils import MIN_HERITABILITY, MAX_CORR, MIN_FLOAT
+from traceCB.utils import MIN_HERITABILITY, MIN_FLOAT
 
 # Set Threshold
 MIN_WEIGHT = 1e-12  # Minimum weight for IRWLS
@@ -621,9 +621,9 @@ def Run_cross_LDSC(
     # Omega = np.maximum(Omega, MIN_HERITABILITY)
     Omega[0, 0] = max(Omega[0, 0], MIN_HERITABILITY)
     Omega[1, 1] = max(Omega[1, 1], MIN_HERITABILITY)
-    thred = np.sqrt(Omega[0, 0] * Omega[1, 1] + MIN_FLOAT) * MAX_CORR
-    Omega[0, 1] = np.minimum(np.maximum(Omega[0, 1], -thred), thred)
-    Omega[1, 0] = Omega[0, 1]
+    # thred = np.sqrt(Omega[0, 0] * Omega[1, 1] + MIN_FLOAT) * MAX_CORR
+    # Omega[0, 1] = np.minimum(np.maximum(Omega[0, 1], -thred), thred)
+    # Omega[1, 0] = Omega[0, 1]
     return Omega, Omega_se
 
 

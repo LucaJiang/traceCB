@@ -94,14 +94,19 @@ def get_venn3_count_plot(ct_df, ct_qid, harmonized=True):
         )
         ax[i].set_title(f"{meta_data['method_name'][i]}")
     plt.suptitle(
-        f"eGene Replicate between {label_name_shorten[meta_data['id2celltype'][ct_qid[0]]]}",
-        fontsize=16,
+        f"eGene Replicate between {cell_label_name[meta_data['id2celltype'][ct_qid[0]]]}",
+        fontsize=15,
     )
     plt.tight_layout()
+    harmonized_suffix = "_harmonized" if harmonized else ""
     plt.savefig(
         os.path.join(
-            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.pdf"
+            save_path,
+            f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}{harmonized_suffix}.pdf",
         ),
+    )
+    print(
+        f"Saved: {save_path}/f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}{harmonized_suffix}.pdf"
     )
 
 
@@ -138,14 +143,19 @@ def get_venn2_count_plot(ct_df, ct_qid, harmonized=True):
         )
         ax[i].set_title(f"{meta_data['method_name'][i]}", pad=-20)
     plt.suptitle(
-        f"eGene Replicate between {label_name_shorten[meta_data['id2celltype'][ct_qid[0]]]}",
-        fontsize=16,
+        f"eGene Replicate between {cell_label_name[meta_data['id2celltype'][ct_qid[0]]]}",
+        fontsize=15,
     )
     plt.tight_layout()
+    harmonized_suffix = "_harmonized" if harmonized else ""
     plt.savefig(
         os.path.join(
-            save_path, f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}.pdf"
+            save_path,
+            f"f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}{harmonized_suffix}.pdf",
         ),
+    )
+    print(
+        f"Saved: {save_path}/f3egene_replicate_{meta_data['id2celltype'][ct_qid[0]]}{harmonized_suffix}.pdf"
     )
 
 

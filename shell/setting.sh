@@ -15,7 +15,7 @@ BBJ_path="${load_path_main}/BBJ_eQTL/by_celltype_chr"
 AFR_path="${load_path_main}/popcell/AFB_NS"
 LDSC_path="${load_path_main}/1000G"
 aux_LDSC_path="${LDSC_path}/1000G_EAS_EUR/EUR"
-coloc_data_path="/home/group1/wjiang49/data/xpmm/coloc"
+coloc_data_path="/home/group1/wjiang49/data/traceCB/coloc"
 save_path_main="/home/group1/wjiang49/data/traceCB" # add suffix later based on tissue and population used
 
 ## Code Paths

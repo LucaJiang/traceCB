@@ -3,16 +3,16 @@ from utils import *
 import matplotlib.ticker as ticker
 
 oridata = pd.read_csv(
-    "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/coloc/coloc_statistics_summary.csv"
+    "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc/coloc_statistics_summary.csv"
 )
 trait = "coloc_improved"
 trait_name = "Other Significant Colocalization Results"
-save_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/"
-# filename,total_genes,p_single_gt0.7,p_gmm_cross_gt0.7,p_gmm_tissue_gt0.7,pp_h3_single_gt0.7,pp_h3_gmm_cross_gt0.7,pp_h3_gmm_cross_tissue_gt0.7
-# filter p_gmm_tissue_gt0 or p_gmm_cross_gt0.7 - p_single_gt0.7 >= 2
+save_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc/"
+# filename,total_genes,p_original_gt0.7,p_traceC_gt0.7,p_traceCB_gt0.7,pp_h3_single_gt0.7,pp_h3_gmm_cross_gt0.7,pp_h3_gmm_cross_tissue_gt0.7
+# filter p_gmm_tissue_gt0 or p_traceC_gt0.7 - p_original_gt0.7 >= 2
 oridata.loc[:, "improve"] = oridata.apply(
-    lambda x: np.max([x["p_gmm_tissue_gt0.7"], x["p_gmm_cross_gt0.7"]])
-    - x["p_single_gt0.7"],
+    lambda x: np.max([x["p_traceCB_gt0.7"], x["p_traceC_gt0.7"]])
+    - x["p_original_gt0.7"],
     axis=1,
 )
 improved_data = oridata[oridata["improve"] >= 3]
@@ -34,15 +34,15 @@ df_trait = bcx_data.loc[
     :,
     [
         "filename",
-        "p_single_gt0.7",
-        "p_gmm_cross_gt0.7",
-        "p_gmm_tissue_gt0.7",
+        "p_original_gt0.7",
+        "p_traceC_gt0.7",
+        "p_traceCB_gt0.7",
     ],
 ].rename(
     columns={
-        "p_single_gt0.7": meta_data["method_name"][0],
-        "p_gmm_cross_gt0.7": meta_data["method_name"][1],
-        "p_gmm_tissue_gt0.7": meta_data["method_name"][2],
+        "p_original_gt0.7": meta_data["method_name"][0],
+        "p_traceC_gt0.7": meta_data["method_name"][1],
+        "p_traceCB_gt0.7": meta_data["method_name"][2],
     }
 )
 bcx_study_name_dict = {

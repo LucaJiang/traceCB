@@ -148,6 +148,7 @@ def main(args, chr):
             "H1SQSE",
             "H2SQ",
             "H2SQSE",
+            "COR_X_ORI",  # Original genetic correlation between target and auxiliary cell types
             "COV_PVAL",  # Genetic covariance between target and auxiliary cell types
             "COR_X",  # Genetic correlation between target and auxiliary cell types
             "SIGMAO",  # Genetic correlation between target cell type in aux pop and non-target cell type in aux tissue
@@ -227,6 +228,14 @@ def main(args, chr):
             gene_df.LD_x.to_numpy(),
             np.array([1.0, 1.0, 0.0]),
         )
+        cor_original = Omega[0, 1] / (
+            Omega[0, 0] ** 0.5 * Omega[1, 1] ** 0.5 + MIN_FLOAT
+        )
+        summary_df.loc[gene, "COR_X_ORI"] = cor_original
+        Omega[0, 1], cor_clipped = clip_correlation(
+            Omega[0, 0], Omega[1, 1], Omega[0, 1]
+        )
+        Omega[1, 0] = Omega[0, 1]
         Omega_p = z2p(Omega / Omega_se)
         summary_df.loc[gene, "H1SQ"] = Omega[0, 0]
         summary_df.loc[gene, "H1SQSE"] = Omega_se[0, 0]
@@ -255,7 +264,7 @@ def main(args, chr):
             gene_df.PVAL_tissue.to_numpy()
         )
         # ### threshold Omega
-        if np.any(Omega_p >= P_VAL_THRED):
+        if np.any(Omega_p >= 0.1):
             summary_df.loc[gene, "RUN_GMM"] = False
             continue  # skip genes with unsignificant tar heritability
         cor_x = Omega[0, 1] / np.sqrt(Omega[0, 0] * Omega[1, 1] + MIN_FLOAT)
@@ -276,20 +285,27 @@ def main(args, chr):
             gene_df.LD_aux.to_numpy(),
             np.array([1.0, 1.0, 0.0]),
         )
+        # clip omega_co
+        aux_Omega_matrix[0, 1], _ = clip_correlation(
+            aux_Omega_matrix[0, 0], aux_Omega_matrix[1, 1], aux_Omega_matrix[0, 1]
+        )
+        aux_Omega_matrix[1, 0] = aux_Omega_matrix[0, 1]
+        # check significance of omega_co
         if np.all(
-            z2p(aux_Omega_matrix / aux_Omega_matrix_se) < P_VAL_THRED
+            z2p(aux_Omega_matrix / aux_Omega_matrix_se) < 0.10
         ):  # constain cor_x>0?
             # \text{LDSC}(z_t, z_t) - \pi_c^2 \omega_2 - (2\pi_c + \frac{\sum_{i \neq j} \pi_i \pi_j}{1-\pi_c}) (\text{LDSC}(z_2, z_t)-\pi_c \omega_2)
             pi2_omega_sum = (
                 aux_Omega_matrix[1, 1]
                 - celltype_proportion**2 * Omega[1, 1]
                 - pi2_omega_sum_const
-                * np.maximum(aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1], 0)
+                * np.maximum(
+                    aux_Omega_matrix[0, 1] - celltype_proportion * Omega[1, 1], 0
+                )
             )
-            pi2_omega_sum = np.maximum(
-                pi2_omega_sum, MIN_HERITABILITY
-            )  # if<0, dont run tissue?
             summary_df.loc[gene, "SIGMAO"] = pi2_omega_sum
+            if pi2_omega_sum < 0:
+                run_gmm_tissue = False
         else:
             run_gmm_tissue = False
 

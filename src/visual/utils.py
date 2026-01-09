@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+import re
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -20,6 +21,9 @@ study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
 save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
 onek1k_path = "/home/wjiang49/group/wjiang49/data/traceCB/onek1k_supp/onek1k_esnp.csv"
 gtex_lookup_table_path = "/home/wjiang49/group/wjiang49/data/GTEx/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz"
+gtex_gene_anotation_path = (
+    "/home/wjiang49/group/wjiang49/data/GTEx/gencode.v26.GRCh38.genes.gtf"
+)
 
 ## convert p-value to z-score and vice versa
 p2z = lambda p: np.abs(norm.ppf(p / 2))
@@ -27,8 +31,8 @@ z2p = lambda z: 2 * norm.sf(abs(z))
 
 label_name_shorten = {
     "Monocytes": "Monocyte",
-    "CD4+T_cells": "CD4T",
-    "CD8+T_cells": "CD8T",
+    "CD4+T_cells": r"CD4$^+$T",
+    "CD8+T_cells": r"CD8$^+$T",
     "B_cells": "B",
     "NK_cells": "NK",
 }
@@ -73,7 +77,7 @@ def _load_summary(study_dir):
     returns summary_df: all results DataFrame
     """
     #     <save_path_main>/QTD@/GMM/chr@/summary.csv
-    # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV_PVAL,COR_1C,COR_1O,COR_CO,RUN_GMM,RUN_GMM_TISSUE,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+    # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV_PVAL,COR_X,SIGMAO,RUN_GMM,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
     # summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr1", "summary.csv"))
     summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr*", "summary.csv"))
     summary_df = pd.DataFrame()
@@ -87,17 +91,13 @@ def _load_summary(study_dir):
         )
     summary_df.loc[:, "COR"] = summary_df.loc[:, "COR_X"]
     # define RUN_GMM == True and RUN_GMM_TISSUE == True as significant
-    summary_sign_df = summary_df.loc[
-        (summary_df.RUN_GMM == True)
-        # & (summary_df.COR_CO > 0.0)
-        # & (summary_df.COR_1O > 0.0)
-    ]
+    summary_sign_df = summary_df.loc[(summary_df.RUN_GMM == True)]
     # summary_sign_df = summary_df.loc[summary_df.COV_PVAL < 0.05]
 
     # fill NA values for summary_sign_df
-    # na_raw = summary_sign_df.TAR_CNEFF.isna()
-    # summary_sign_df.loc[na_raw, "TAR_CNEFF"] = summary_sign_df.loc[na_raw, "TAR_SNEFF"]
-    # summary_sign_df.loc[na_raw, "TAR_CeSNP"] = summary_sign_df.loc[na_raw, "TAR_SeSNP"]
+    na_raw = summary_sign_df.TAR_CNEFF.isna()
+    summary_sign_df.loc[na_raw, "TAR_CNEFF"] = summary_sign_df.loc[na_raw, "TAR_SNEFF"]
+    summary_sign_df.loc[na_raw, "TAR_CeSNP"] = summary_sign_df.loc[na_raw, "TAR_SeSNP"]
     na_raw = summary_sign_df.TAR_TNEFF.isna()
     summary_sign_df.loc[na_raw, "TAR_TNEFF"] = summary_sign_df.loc[na_raw, "TAR_CNEFF"]
     summary_sign_df.loc[na_raw, "TAR_TeSNP"] = summary_sign_df.loc[na_raw, "TAR_CeSNP"]
@@ -167,17 +167,38 @@ def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
     return oasis_egenes_by_celltype
 
 
-class onek1k_geneid2name(object):
+class geneid2name(object):
 
     def __init__(self):
-        # Cell_type	Gene_ID	Gene_Ensembl_ID	SNP	Chromosome
-        self.onek1k_df = pd.read_csv(
-            onek1k_path, usecols=["Gene_ID", "Gene_Ensembl_ID"]
-        )
-        self.onek1k_df = self.onek1k_df.drop_duplicates(subset=["Gene_ID"])
-        self.onek1k_df.rename(
-            columns={"Gene_ID": "GENE_NAME", "Gene_Ensembl_ID": "GENE_ID"}, inplace=True
-        )
+        # Parse GTEx GTF file instead of OneK1K
+        # gtex_gene_anotation_path is defined globally
+        data = []
+        with open(gtex_gene_anotation_path, "r") as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                parts = line.strip().split("\t")
+                if len(parts) < 9 or parts[2] != "gene":
+                    continue
+
+                # Extract attributes
+                attributes = parts[8]
+                gene_id_match = re.search(r'gene_id "([^"]+)"', attributes)
+                gene_name_match = re.search(r'gene_name "([^"]+)"', attributes)
+
+                if gene_id_match and gene_name_match:
+                    # Remove version from gene_id for compatibility (e.g. ENSG...1 -> ENSG...)
+                    gene_id = gene_id_match.group(1).split(".")[0]
+                    gene_name = gene_name_match.group(1)
+                    data.append({"GENE_ID": gene_id, "GENE_NAME": gene_name})
+
+        self.gtex_df = pd.DataFrame(data)
+        # Drop duplicates to ensure safe lookup
+        # Prioritize keeping unique gene IDs
+        self.gtex_df.drop_duplicates(subset=["GENE_ID"], inplace=True)
+        # For name lookup, we might want unique names too, but one name -> multiple IDs is possible.
+        # The previous code dropped duplicates on Name (Gene_ID column). Let's stick to that for get_gene_id consistency.
+        self.gtex_df.drop_duplicates(subset=["GENE_NAME"], inplace=True)
 
     def get_gene_name(self, gene_id):
         """
@@ -187,9 +208,12 @@ class onek1k_geneid2name(object):
         """
         if isinstance(gene_id, str):
             gene_id = gene_id.strip()
+            # Try to handle versioned input by stripping version
+            if "." in gene_id:
+                gene_id = gene_id.split(".")[0]
         if not isinstance(gene_id, str):
             return None
-        gene_name = self.onek1k_df.loc[self.onek1k_df.GENE_ID == gene_id, "GENE_NAME"]
+        gene_name = self.gtex_df.loc[self.gtex_df.GENE_ID == gene_id, "GENE_NAME"]
         return gene_name.iloc[0] if not gene_name.empty else None
 
     def get_gene_id(self, gene_name):
@@ -202,7 +226,7 @@ class onek1k_geneid2name(object):
             gene_name = gene_name.strip()
         if not isinstance(gene_name, str):
             return None
-        gene_id = self.onek1k_df.loc[self.onek1k_df.GENE_NAME == gene_name, "GENE_ID"]
+        gene_id = self.gtex_df.loc[self.gtex_df.GENE_NAME == gene_name, "GENE_ID"]
         return gene_id.iloc[0] if not gene_id.empty else None
 
 
