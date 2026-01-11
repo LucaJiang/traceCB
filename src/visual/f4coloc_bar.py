@@ -7,7 +7,7 @@ oridata = pd.read_csv(
 )
 trait = "coloc_improved"
 trait_name = "Other Significant Colocalization Results"
-save_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc/"
+save_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/coloc"
 # filename,total_genes,p_original_gt0.7,p_traceC_gt0.7,p_traceCB_gt0.7,pp_h3_single_gt0.7,pp_h3_gmm_cross_gt0.7,pp_h3_gmm_cross_tissue_gt0.7
 # filter p_gmm_tissue_gt0 or p_traceC_gt0.7 - p_original_gt0.7 >= 2
 oridata.loc[:, "improve"] = oridata.apply(
@@ -68,7 +68,7 @@ bcx_study_name_dict = {
 df_trait.loc[:, "study"] = (
     df_trait["filename"].str.split("_").str[1].map(bcx_study_name_dict)
 )
-df_trait.loc[:, "qtdid"] = df_trait["filename"].str.split("_").str[2]
+df_trait.loc[:, "qtdid"] = df_trait["filename"].str.split("_").str[3]
 df_trait.loc[:, "qtd_name"] = df_trait.qtdid.map(meta_data["id2name"])
 df_trait.loc[:, "celltype"] = df_trait.qtdid.map(meta_data["id2celltype"])
 df_trait.loc[:, "coloc_name"] = df_trait.apply(
@@ -116,11 +116,12 @@ ax.legend(title="Method", loc="upper right")
 
 plt.tight_layout()
 plt.savefig(
-    os.path.join(save_path, f"f5coloc_improved_bar.png"),
+    os.path.join(save_path, f"f4coloc_improved_bar.pdf"),
     dpi=300,
     bbox_inches="tight",
 )
 plt.show()
 plt.close()
+print(f"Saved: {save_path}f4coloc_improved_bar.pdf")
 
 # %%

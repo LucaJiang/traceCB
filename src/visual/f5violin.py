@@ -2,16 +2,21 @@
 from utils import *
 from f3violin import remove_outliers
 from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
+import os
+import warnings
 
-study_path_main = "/gpfs1/scratch/wjiang49/xpmm/AFR_GTEx"
-save_path = "/gpfs1/scratch/wjiang49/xpmm/AFR_GTEx/results"
+warnings.filterwarnings("ignore")
+
+study_path_main = "/home/group1/wjiang49/data/traceCB/AFR_eQTLGen"
+save_path = "/home/group1/wjiang49/data/traceCB/AFR_eQTLGen/results"
 
 TAR_SAMPLE_SIZE = 80
 
 
-def f6violin(summary_sign_df):
+def f5violin(summary_sign_df):
     """
-    Plot Fig. 6 violin plot to visualize the effective sample size for AFR+GTEx
+    Plot Fig. 5 violin plot to visualize the effective sample size for AFR+GTEx
     """
     # prepare data for plotting
     melt_df = (
@@ -43,8 +48,8 @@ def f6violin(summary_sign_df):
         y="Effective Sample Size",
         hue="Method",
         data=melt_df,
-        width=0.7,  # Increased width to reduce gaps
-        dodge=True,  # Explicitly set dodge to True (default value)
+        width=0.7,
+        dodge=True,
         showfliers=False,
         palette=[
             meta_data["Colors"][meta_data["method_name"][1]],
@@ -58,10 +63,16 @@ def f6violin(summary_sign_df):
     handles, labels = ax.get_legend_handles_labels()
     handles.append(Line2D([0], [0], color="red", linestyle="--", label="AFR (80)"))
     labels.append("AFR (80)")
-    plt.legend(handles=handles, labels=labels, title="Method", loc="upper right")
+    plt.legend(
+        handles=handles,
+        labels=labels,
+        title="Method",
+        bbox_to_anchor=(0.65, 1),
+        loc="upper left",
+    )
 
     y_limits = plt.ylim()
-    plt.ylim(0, y_limits[1])  # set y-limits lower bound to 0
+    plt.ylim(0, y_limits[1])
     plt.xticks(rotation=30, ha="right")
     plt.xlabel("Study")
     plt.ylabel("Effective Sample Size")
@@ -117,11 +128,13 @@ def f6violin(summary_sign_df):
             clip_on=False,
         )
     plt.tight_layout()
-    plt.savefig(os.path.join(save_path, "f6violin.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(save_path, "f5violin.pdf"), dpi=300, bbox_inches="tight")
+    plt.close()  # 添加close以释放内存
+    print(f"Violin plot saved to {os.path.join(save_path, 'f5violin.pdf')}")
 
 
 if __name__ == "__main__":
     summary_sign_df, _ = load_all_summary(study_path_main)
     summary_sign_df = remove_outliers(summary_sign_df)
     summary_sign_df.loc[:, "NAME"] = summary_sign_df.QTDid.map(meta_data["id2name"])
-    f6violin(summary_sign_df)
+    f5violin(summary_sign_df)

@@ -444,7 +444,7 @@ if __name__ == "__main__":
             & (summary_df.H2SQ > 1e-12)
         )
         summary_df = summary_df.loc[both_sign_index, :]
-        plot_cor_density(summary_df, summary_sign_df, target_qtdid)
+        # plot_cor_density(summary_df, summary_sign_df, target_qtdid)
         ## scatter plot
         plot_neff_scatter(summary_df, target_qtdid)
         plot_neff_scatter(summary_df, target_qtdid, text_annot=False)

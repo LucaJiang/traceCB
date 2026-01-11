@@ -3,14 +3,14 @@ from utils import *
 
 COLOC_THRESHOLD = 0.7
 # get annotation of gene id 2 name
-cloest_protein_path = "/Users/lucajiang/learn/CityU/XeQTL/data/coloc/bcx_mon/bcx_mon.closest.protein_coding.bed"
+cloest_protein_path = "/home/wjiang49/group/wjiang49/data/traceCB/coloc/bcx_mon.closest.protein_coding.bed"
 # chr1	2980277	2980277	rs2072732	0	chr1	2985732	3355185	PRDM16_ENSG00000142611	5455
 # chr1	9166344	9166344	rs6693258	0	chr1	9160364	9189161	GPR157_ENSG00000180758	0
-coloc_results_path_base = "/Users/lucajiang/learn/CityU/xpmm/coloc/data/"  # bcx_mon_QTD000021_Monocytes_coloc.csv
-# chr, gene, start, end, nsnp_eqtl, nsnp_gwas, n_snp_coloc, p_single, p_gmm_cross, p_gmm_cross_tissue
+coloc_results_path_base = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc/"  # bcx_mon_QTD000021_Monocytes_coloc.csv
+# chr, gene, start, end, nsnp_eqtl, nsnp_gwas, n_snp_coloc, p_original, p_traceC, p_traceCB
 # 1, ENSG00000000460, 169648341, 170163703, 2548, 4992, 550, 0.0950362338748985, 0.0950362338748985, 0.0950362338748985
-replicate_path = coloc_results_path_base + "bcx_mon_replicate_tissue_coloc.csv"
-save_path = "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
+replicate_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc/replicate/bcx_mon_replicate_tissue_coloc.csv"
+save_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/coloc"
 # get gene annotation
 annot_df = pd.read_csv(cloest_protein_path, sep="\t", header=None)
 annot_df.columns = [
@@ -34,19 +34,17 @@ combined_df = pd.DataFrame()
 for i, qtdid in enumerate(meta_data["QTDids"]):
     celltype = meta_data["Celltypes"][i]
     coloc_results_path = (
-        coloc_results_path_base + f"bcx_mon_{qtdid}_{celltype}_coloc.csv"
+        coloc_results_path_base + f"bcx_mon_eQTLGen_{qtdid}_{celltype}_coloc.csv"
     )
     coloc_df = pd.read_csv(coloc_results_path, sep=",")
 
-    for target in ["single", "gmm_cross", "gmm_cross_tissue"]:
+    for target in ["original", "traceC", "traceCB"]:
         coloc_df[f"{target}"] = coloc_df[f"p_{target}"].apply(
             lambda x: 1 if x > COLOC_THRESHOLD else 0
         )
-    coloced_df = coloc_df[
-        coloc_df[["single", "gmm_cross", "gmm_cross_tissue"]].sum(axis=1) > 0
-    ]
+    coloced_df = coloc_df[coloc_df[["original", "traceC", "traceCB"]].sum(axis=1) > 0]
     annoted_coloced_df = coloced_df[
-        ["chr", "gene", "start", "end", "single", "gmm_cross", "gmm_cross_tissue"]
+        ["chr", "gene", "start", "end", "original", "traceC", "traceCB"]
     ].merge(
         annot_df,
         left_on="gene",
@@ -86,22 +84,22 @@ replicate_coloced_annot = replicate_coloced[["gene"]].merge(
 
 # %% Define plot setting
 # define 3 type of coloc
-# 1: single & gmm_cross & gmm_cross_tissue
-# 2: gmm_cross & gmm_cross_tissue & !single
-# 3: gmm_cross_tissue & !gmm_cross & !single
+# 1: original & traceC & traceCB
+# 2: traceC & traceCB & !original
+# 3: traceCB & !traceC & !original
 # 对coloc类型进行编码
 def get_coloc_type(row):
     """确定每个基因的coloc类型
-    1: single & gmm_cross & gmm_cross_tissue
-    2: gmm_cross & gmm_cross_tissue & !single
-    3: gmm_cross_tissue & !gmm_cross & !single
+    1: original & traceC & traceCB
+    2: traceC & traceCB & !original
+    3: traceCB & !traceC & !original
     0: 其他情况或不存在
     """
-    if row["single"] == 1:
+    if row["original"] == 1:
         return 1
-    elif row["gmm_cross"] == 1 and row["gmm_cross_tissue"] == 1:
+    elif row["traceC"] == 1 and row["traceCB"] == 1:
         return 2
-    elif row["gmm_cross"] == 0 and row["gmm_cross_tissue"] == 1:
+    elif row["traceC"] == 0 and row["traceCB"] == 1:
         return 3
     else:
         return 0
@@ -332,7 +330,7 @@ legend_elements = [
 # 调整标签
 plt.xlabel("Study", fontsize=12)
 plt.ylabel("Gene", fontsize=12)
-plt.title("Colocalization with\nBCX Monocyte Counts", fontsize=16, y=1.06)
+plt.title("Colocalization with BCX Monocyte Counts", fontsize=16, y=1.03, x=0.4)
 plt.legend(
     handles=legend_elements,
     handler_map={Patch: SquareSymbolHandler()},  # 对Patch类使用自定义处理器
@@ -357,5 +355,6 @@ ax.tick_params(axis="y", pad=13)
 # Make y tick labels italic
 ax.set_yticklabels(ax.get_yticklabels(), fontstyle="italic")
 plt.tight_layout()
-plt.savefig(f"{save_path}/f4coloc_bcx_mon_heatmap.png", dpi=300, bbox_inches="tight")
+plt.savefig(f"{save_path}/f4coloc_bcx_mon_heatmap.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {save_path}/f4coloc_bcx_mon_heatmap.pdf")
 # %%
