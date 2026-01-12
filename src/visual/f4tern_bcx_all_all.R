@@ -12,11 +12,11 @@ label_gene <- ""
 label_gene_name <- ""
 
 result_parh <-
-  "/Users/lucajiang/learn/CityU/xpmm/coloc/data"
+  "/Users/lucajiang/learn/CityU/traceCB/data/coloc"
 meta_data <-
-  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/xpmm/data/metadata.json")
+  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/traceCB/src/visual/metadata.json")
 save_path <-
-  "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
+  "/Users/lucajiang/learn/CityU/traceCB/data/img/eas_eqtlgen"
 
 all_files <-
   list.files(result_parh, pattern = "coloc.csv", full.names = TRUE)
@@ -34,7 +34,7 @@ for (file in all_files) {
       paste0(
         "^",
         target_trait,
-        "_(\\w*)_(QTD\\d+)_",
+        "_(\\w+)_eQTLGen_(QTD\\d+)_",
         target_celltype,
         "_coloc\\.csv$"
       ),
@@ -42,16 +42,16 @@ for (file in all_files) {
     )
   } else {
     match_result <- regexec(
-      paste0("^", target_trait, "_(\\w*)_(QTD\\d+)\\S*_coloc\\.csv$"),
+      paste0("^", target_trait, "_(\\w+)_eQTLGen_(QTD\\d+)\\S*_coloc\\.csv$"),
       filename
     )
   }
-  
+
   if (match_result[[1]][1] != -1) {
     # split the filename by _
     filename_parts <- strsplit(filename, "_")[[1]]
     current_data$trait <- filename_parts[2]
-    current_data$qtdid <- filename_parts[3]
+    current_data$qtdid <- filename_parts[4]
     if (length(all_results) == 0) {
       all_results <- current_data
     } else {
@@ -68,14 +68,14 @@ head(all_results)
 # [21] "pp_h2_gmm_cross_tissue" "pp_h3_gmm_cross_tissue" "qtdid"
 
 all_results$h4_improve <-
-  all_results$p_gmm_cross - all_results$p_single
+  all_results$p_traceC - all_results$p_original
 all_results$h4_tissue_improve <-
-  all_results$p_gmm_cross_tissue - all_results$p_gmm_cross
+  all_results$p_traceCB - all_results$p_traceC
 
 all_results$h3_improve <-
-  all_results$pp_h3_gmm_cross - all_results$pp_h3_single
+  all_results$pp_h3_traceC - all_results$pp_h3_original
 all_results$h3_improve_tissue <-
-  all_results$pp_h3_gmm_cross_tissue - all_results$pp_h3_gmm_cross
+  all_results$pp_h3_traceCB - all_results$pp_h3_traceC
 
 all_results$qtdname <- meta_data$id2name[all_results$qtdid]
 all_results$qtdname <- as.factor(unlist(all_results$qtdname))
@@ -87,10 +87,9 @@ all_celltypes <- unique(all_results$celltype)
 
 # 找到细胞类型特异性改善的位点，比较最大和第二大改善
 find_celltype_specific_improvement <- function(data, min_difference = 0.05) {
-  
   # 为每个基因计算细胞类型特异性改善
   genes <- unique(data$gene)
-  
+
   result_df <- data.frame(
     gene = character(),
     trait = character(),
@@ -103,34 +102,35 @@ find_celltype_specific_improvement <- function(data, min_difference = 0.05) {
     qtdname_b = character(),
     stringsAsFactors = FALSE
   )
-  
+
   for (current_gene in genes) {
     # 获取当前基因在所有细胞类型中的数据
     gene_data <- data[data$gene == current_gene, ]
-    
-    if (length(unique(gene_data$celltype)) > 1) {  # 确保在多个细胞类型中都有数据
-      
+
+    if (length(unique(gene_data$celltype)) > 1) { # 确保在多个细胞类型中都有数据
+
       # 计算每个细胞类型的平均h4_improve
-      celltype_improvements <- aggregate(h4_improve ~ celltype + qtdname, 
-                                       data = gene_data, 
-                                       FUN = mean)
-      
+      celltype_improvements <- aggregate(h4_improve ~ celltype + qtdname,
+        data = gene_data,
+        FUN = mean
+      )
+
       # 按改善程度排序
       celltype_improvements <- celltype_improvements[order(celltype_improvements$h4_improve, decreasing = TRUE), ]
-      
+
       if (nrow(celltype_improvements) >= 2) {
         # 获取最大和第二大改善
         max_celltype <- celltype_improvements$celltype[1]
         max_improvement <- celltype_improvements$h4_improve[1]
         max_qtdname <- celltype_improvements$qtdname[1]
         max_trait <- celltype_improvements$trait[1]
-        
+
         second_celltype <- celltype_improvements$celltype[2]
         second_improvement <- celltype_improvements$h4_improve[2]
         second_qtdname <- celltype_improvements$qtdname[2]
-        
+
         improvement_difference <- max_improvement - abs(second_improvement)
-        
+
         # 检查是否满足最小差异条件
         if (improvement_difference > min_difference) {
           result_df <- rbind(result_df, data.frame(
@@ -148,10 +148,10 @@ find_celltype_specific_improvement <- function(data, min_difference = 0.05) {
       }
     }
   }
-  
+
   # 按差异排序
   result_df <- result_df[order(result_df$difference, decreasing = TRUE), ]
-  
+
   return(result_df)
 }
 
@@ -163,7 +163,7 @@ cat("发现", nrow(celltype_specific_results), "个细胞类型特异性改善�
 
 if (nrow(celltype_specific_results) > 0) {
   print(celltype_specific_results)
-  
+
   # 显示前几个结果的详细信息
   cat("\n前20个差异最大的结果:\n")
   for (i in 1:min(20, nrow(celltype_specific_results))) {
@@ -174,46 +174,8 @@ if (nrow(celltype_specific_results) > 0) {
     cat("  差异:", round(row$difference, 4), "\n\n")
   }
 }
-all_results[all_results$gene == "ENSG00000100298", ]
-all_results[all_results$gene == "ENSG00000162104", ]
-all_results[all_results$gene == "ENSG00000168575", ]
-all_results[all_results$gene == "ENSG00000178878", ]
-all_results[all_results$gene == "ENSG00000090621", ]
-all_results[all_results$gene == "ENSG00000115919", ]
-
-# 前20个差异最大的结果:
-# 基因: ENSG00000100298 APOBEC3H, mon, 7
-#   最大改善细胞类型: CD4+T_cells ( CEDAR(290) ) - 改善: 0.9909 
-#   第二大改善细胞类型: CD8+T_cells ( CEDAR(277) ) - 改善: 0.1689 
-#   差异: 0.822 
-
-# 基因: ENSG00000162104 ADCY9, mon, 4
-#   最大改善细胞类型: Monocytes ( Fairfax_2014(420) ) - 改善: 0.7826 
-#   第二大改善细胞类型: NK_cells ( Gilchrist_2021(247) ) - 改善: 0 
-#   差异: 0.7826 
-
-# 基因: ENSG00000168575 SLC20A2, mcv, 3
-#   最大改善细胞类型: NK_cells ( Gilchrist_2021(247) ) - 改善: 0.7564 
-#   第二大改善细胞类型: CD8+T_cells ( Kasela_2017(269) ) - 改善: 0.109 
-#   差异: 0.6474 
-
-# 基因: ENSG00000178878 APOLD1, mon&wbc, 10
-#   最大改善细胞类型: Monocytes ( BLUEPRINT(191) ) - 改善: 0.7241 
-#   第二大改善细胞类型: CD8+T_cells ( CEDAR(277) ) - 改善: 0.084 
-#   差异: 0.6401
-
-# 基因: ENSG00000090621 PABPC4, mch&mcv, 6 
-#   最大改善细胞类型: CD8+T_cells ( CEDAR(277) ) - 改善: 0.6822 
-#   第二大改善细胞类型: Monocytes ( CEDAR(286) ) - 改善: 0.1273  #improve in tissue
-#   差异: 0.5549 
-
-# 基因: ENSG00000115919 KYNU, mon, 4 unmatched
-#   最大改善细胞类型: Monocytes ( Fairfax_2014(420) ) - 改善: 0.6984 
-#   第二大改善细胞类型: Monocytes ( CEDAR(286) ) - 改善: 0.161 
-#   差异: 0.5375 
 
 apply_tern_settings <- function(p, title, x_col, y_col) {
-  
   result <- p + # can not avoid warning
     stat_density_tern(
       aes(alpha = after_stat(level)),
@@ -223,57 +185,66 @@ apply_tern_settings <- function(p, title, x_col, y_col) {
       expand = c(2, 2),
       color = "#456aff",
     ) +
-    geom_point(size = 1) +
+    geom_point(size = 0.3) +
     theme_light() +
     theme_nomask() +
     Tlab("", "Coloc") +
     Llab("", "Independent") +
     Rlab("", "Undetermined") +
     theme_showarrows() +
-    labs(title = title,
-         x = "",
-         y = "",
-         z = "") +
-    theme(plot.title = element_text(size = 11),
-          plot.margin = margin(0, 0, 0, 0, unit = "pt"))
-    
+    labs(
+      title = title,
+      x = "",
+      y = "",
+      z = ""
+    ) +
+    theme(
+      plot.title = element_text(size = 11),
+      plot.margin = margin(-10, -10, -10, -10, unit = "pt"),
+      tern.panel.background = element_rect(fill = NA)
+    )
+
   return(result)
 }
 
-all_results <- all_results[all_results$gene == "ENSG00000162104", ]
+# all_results <- all_results[all_results$gene == "ENSG00000162104", ]
 
-p1 <- ggtern(data = all_results,
-             aes(
-               x = pp_h3_single,
-               y = p_single,
-               z = 1 - pp_h3_single - p_single,
-               color = celltype
-             )) %>%
-  apply_tern_settings("Original", "pp_h3_single", "p_single") +
+p1 <- ggtern(
+  data = all_results,
+  aes(
+    x = pp_h3_original,
+    y = p_original,
+    z = 1 - pp_h3_original - p_original,
+    color = celltype
+  )
+) %>%
+  apply_tern_settings("Original", "pp_h3_original", "p_original") +
   theme(legend.position = "none")
 p2 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross,
-    y = p_gmm_cross,
-    z = 1 - pp_h3_gmm_cross - p_gmm_cross,
+    x = pp_h3_traceC,
+    y = p_traceC,
+    z = 1 - pp_h3_traceC - p_traceC,
     color = celltype
   )
 ) %>%
-  apply_tern_settings("traceC", "pp_h3_gmm_cross", "p_gmm_cross") +
+  apply_tern_settings("traceC", "pp_h3_traceC", "p_traceC") +
   theme(legend.position = "none")
 p3 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross_tissue,
-    y = p_gmm_cross_tissue,
-    z = 1 - pp_h3_gmm_cross_tissue - p_gmm_cross_tissue,
+    x = pp_h3_traceCB,
+    y = p_traceCB,
+    z = 1 - pp_h3_traceCB - p_traceCB,
     color = celltype
   )
 ) %>%
-  apply_tern_settings("traceCB",
-                      "pp_h3_gmm_cross_tissue",
-                      "p_gmm_cross_tissue") +
+  apply_tern_settings(
+    "traceCB",
+    "pp_h3_traceCB",
+    "p_traceCB"
+  ) +
   theme(legend.position = "none")
 
 print(p1)
@@ -287,14 +258,36 @@ plots_row <- plot_grid(
   p3,
   ncol = 3,
   align = "hv",
-  rel_widths = c(1, 1, 1)
+  rel_widths = c(1, 1, 1),
+  axis = "tb",
+  hjust = 0,
+  vjust = 0
 )
 
 # 创建研究图例
+# 添加标签名称映射
+label_name_shorten <- list(
+  "Monocytes" = "Monocytes",
+  "CD4+T_cells" = "CD4^'+'~T~cells",
+  "CD8+T_cells" = "CD8^'+'~T~cells",
+  "B_cells" = "B~cells",
+  "NK_cells" = "NK~cells"
+)
+
+# 创建颜色映射
+library(colorspace)
+celltype_colors <- meta_data$celltype_colors
+for (i in seq_along(celltype_colors)) {
+  celltype_colors[[i]] <- darken(celltype_colors[[i]], amount = 0.3)
+}
+
 standalone_legend <-
   ggplot(all_results, aes(x = 1, y = 1, color = celltype)) +
   geom_point() +
-  scale_color_discrete(name = "Study") +
+  scale_color_manual(
+    values = celltype_colors,
+    labels = parse(text = unname(unlist(label_name_shorten)))
+  ) +
   guides(color = guide_legend(
     title = "Cell Type",
     nrow = 1,
@@ -339,22 +332,18 @@ final_plot <- plot_grid(
   ncol = 1,
   # 垂直排列
   greedy = TRUE,
-  rel_heights = c(0.04, 0.06, 0.40)  # 调整高度比例
+  rel_heights = c(0.04, 0.06, 0.40) # 调整高度比例
 )
 print(final_plot)
 ggsave(
   filename = paste0(
     save_path,
-    "/",
-    target_celltype,
-    "_",
-    target_trait,
-    "_coloc_ternary_all.png"
+    "/bcx_coloc_ternary.pdf"
   ),
   plot = final_plot,
   width = 10,
   height = 4,
   dpi = 300,
-  units = "in"
+  units = "in",
+  device = "pdf"
 )
-

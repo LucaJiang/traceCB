@@ -1,5 +1,5 @@
 # %% visual improved coloc results
-from utils import *
+from visual.utils import *
 import matplotlib.ticker as ticker
 
 oridata = pd.read_csv(

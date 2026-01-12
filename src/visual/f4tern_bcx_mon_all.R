@@ -13,11 +13,11 @@ label_gene <- ""
 label_gene_name <- ""
 
 result_parh <-
-  "/Users/lucajiang/learn/CityU/xpmm/coloc/data"
+  "/Users/lucajiang/learn/CityU/traceCB/data/coloc"
 meta_data <-
-  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/xpmm/data/metadata.json")
+  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/traceCB/src/visual/metadata.json")
 save_path <-
-  "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
+  "/Users/lucajiang/learn/CityU/traceCB/data/img/eas_eqtlgen"
 
 all_files <-
   list.files(result_parh, pattern = "coloc.csv", full.names = TRUE)
@@ -35,7 +35,7 @@ for (file in all_files) {
       paste0(
         "^",
         target_trait,
-        "_(QTD\\d+)_",
+        "_eQTLGen_(QTD\\d+)_",
         target_celltype,
         "_coloc\\.csv$"
       ),
@@ -43,15 +43,15 @@ for (file in all_files) {
     )
   } else {
     match_result <- regexec(
-      paste0("^", target_trait, "_(QTD\\d+)\\S*_coloc\\.csv$"),
+      paste0("^", target_trait, "_eQTLGen_(QTD\\d+)\\S*_coloc\\.csv$"),
       filename
     )
   }
-  
+
   if (match_result[[1]][1] != -1) {
     # split the filename by _
     filename_parts <- strsplit(filename, "_")[[1]]
-    qtdid <- filename_parts[3]
+    qtdid <- filename_parts[4]
     current_data$qtdid <- qtdid
     if (length(all_results) == 0) {
       all_results <- current_data
@@ -69,14 +69,14 @@ head(all_results)
 # [21] "pp_h2_gmm_cross_tissue" "pp_h3_gmm_cross_tissue" "qtdid"
 
 all_results$h4_improve <-
-  all_results$p_gmm_cross - all_results$p_single
+  all_results$p_traceC - all_results$p_original
 all_results$h4_tissue_improve <-
-  all_results$p_gmm_cross_tissue - all_results$p_gmm_cross
+  all_results$p_traceCB - all_results$p_traceC
 
 all_results$h3_improve <-
-  all_results$pp_h3_gmm_cross - all_results$pp_h3_single
+  all_results$pp_h3_traceC - all_results$pp_h3_original
 all_results$h3_improve_tissue <-
-  all_results$pp_h3_gmm_cross_tissue - all_results$pp_h3_gmm_cross
+  all_results$pp_h3_traceCB - all_results$pp_h3_traceC
 
 all_results$qtdname <- meta_data$id2name[all_results$qtdid]
 all_results$qtdname <- as.factor(unlist(all_results$qtdname))
@@ -99,11 +99,11 @@ all_results$celltype <- as.factor(unlist(all_results$celltype))
 
 # 添加标签名称映射
 label_name_shorten <- list(
-  "Monocytes" = "Monocyte",
-  "CD4+T_cells" = "CD4T",
-  "CD8+T_cells" = "CD8T",
-  "B_cells" = "B",
-  "NK_cells" = "NK"
+  "Monocytes" = "Monocytes",
+  "CD4+T_cells" = "CD4^'+'~T~cells",
+  "CD8+T_cells" = "CD8^'+'~T~cells",
+  "B_cells" = "B~cells",
+  "NK_cells" = "NK~cells"
 )
 
 # 创建缩短的标签列
@@ -113,11 +113,10 @@ all_results$celltype_short <- factor(
 )
 
 celltype_colors <- meta_data$celltype_colors
-for(i in seq_along(celltype_colors)) {
+for (i in seq_along(celltype_colors)) {
   celltype_colors[[i]] <- darken(celltype_colors[[i]], amount = 0.3)
 }
 apply_tern_settings <- function(p, title, x_col, y_col) {
-  
   result <- p + # can not avoid warning
     stat_density_tern(
       aes(alpha = after_stat(level)),
@@ -135,49 +134,58 @@ apply_tern_settings <- function(p, title, x_col, y_col) {
     Llab("", "Independent") +
     Rlab("", "Undetermined") +
     theme_showarrows() +
-    labs(title = title,
-         x = "",
-         y = "",
-         z = "") +
-    theme(plot.title = element_text(size = 11),
-          plot.margin = margin(0, 0, 0, 0, unit = "pt"))
-    
+    labs(
+      title = title,
+      x = "",
+      y = "",
+      z = ""
+    ) +
+    theme(
+      plot.title = element_text(size = 11),
+      plot.margin = margin(-10, -10, -10, -10, unit = "pt"),
+      tern.panel.background = element_rect(fill = NA, colour = NA)
+    )
+
   return(result)
 }
 
 
-p1 <- ggtern(data = all_results,
-             aes(
-               x = pp_h3_single,
-               y = p_single,
-               z = 1 - pp_h3_single - p_single,
-               color = celltype
-             )) %>%
-  apply_tern_settings("Original", "pp_h3_single", "p_single") +
+p1 <- ggtern(
+  data = all_results,
+  aes(
+    x = pp_h3_original,
+    y = p_original,
+    z = 1 - pp_h3_original - p_original,
+    color = celltype
+  )
+) %>%
+  apply_tern_settings("Original", "pp_h3_original", "p_original") +
   theme(legend.position = "none")
 p2 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross,
-    y = p_gmm_cross,
-    z = 1 - pp_h3_gmm_cross - p_gmm_cross,
+    x = pp_h3_traceC,
+    y = p_traceC,
+    z = 1 - pp_h3_traceC - p_traceC,
     color = celltype
   )
 ) %>%
-  apply_tern_settings("traceC", "pp_h3_gmm_cross", "p_gmm_cross") +
+  apply_tern_settings("traceC", "pp_h3_traceC", "p_traceC") +
   theme(legend.position = "none")
 p3 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross_tissue,
-    y = p_gmm_cross_tissue,
-    z = 1 - pp_h3_gmm_cross_tissue - p_gmm_cross_tissue,
+    x = pp_h3_traceCB,
+    y = p_traceCB,
+    z = 1 - pp_h3_traceCB - p_traceCB,
     color = celltype
   )
 ) %>%
-  apply_tern_settings("traceCB",
-                      "pp_h3_gmm_cross_tissue",
-                      "p_gmm_cross_tissue") +
+  apply_tern_settings(
+    "traceCB",
+    "pp_h3_traceCB",
+    "p_traceCB"
+  ) +
   theme(legend.position = "none")
 
 print(p1)
@@ -191,7 +199,10 @@ plots_row <- plot_grid(
   p3,
   ncol = 3,
   align = "hv",
-  rel_widths = c(1, 1, 1)
+  rel_widths = c(1, 1, 1),
+  axis = "tb",
+  hjust = 0,
+  vjust = 0
 )
 
 # 创建研究图例
@@ -200,7 +211,7 @@ standalone_legend <-
   geom_point() +
   scale_color_manual(
     values = celltype_colors,
-    labels = label_name_shorten
+    labels = parse(text = unname(unlist(label_name_shorten)))
   ) +
   guides(color = guide_legend(
     title = "Cell Type",
@@ -246,22 +257,19 @@ final_plot <- plot_grid(
   ncol = 1,
   # 垂直排列
   greedy = TRUE,
-  rel_heights = c(0.04, 0.06, 0.40)  # 调整高度比例
+  rel_heights = c(0.04, 0.06, 0.40) # 调整高度比例
 )
 print(final_plot)
 ggsave(
   filename = paste0(
     save_path,
-    "/",
-    target_celltype,
-    "_",
-    target_trait,
-    "_coloc_ternary.png"
+    "/bcx_moncount_coloc_ternary.pdf"
   ),
   plot = final_plot,
   width = 10,
   height = 4,
   dpi = 300,
-  units = "in"
+  units = "in",
+  device = "pdf"
 )
 

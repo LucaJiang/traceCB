@@ -13,11 +13,11 @@ label_gene <- "ENSG00000172543"
 label_gene_name <- "CTSW"
 
 result_parh <-
-  "/Users/lucajiang/learn/CityU/xpmm/coloc/data"
+  "/Users/lucajiang/learn/CityU/traceCB/data/coloc"
 meta_data <-
-  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/xpmm/data/metadata.json")
+  jsonlite::fromJSON("/Users/lucajiang/learn/CityU/traceCB/src/visual/metadata.json")
 save_path <-
-  "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other"
+  "/Users/lucajiang/learn/CityU/traceCB/data/img/eas_eqtlgen"
 
 all_files <-
   list.files(result_parh, pattern = "coloc.csv", full.names = TRUE)
@@ -34,17 +34,19 @@ for (file in all_files) {
     paste0(
       "^",
       target_trait,
-      "_(QTD\\d+)_",
+      "_eQTLGen_(QTD\\d+)_",
       target_celltype,
       "_coloc\\.csv$"
     ),
     filename
   )
-  
+
   if (match_result[[1]][1] != -1) {
     # split the filename by _
+    # bcx_mon_eQTLGen_QTD000115_Monocytes_coloc.csv
+    # 索引: 1    2    3        4         5         6
     filename_parts <- strsplit(filename, "_")[[1]]
-    qtdid <- filename_parts[3]
+    qtdid <- filename_parts[4] # 修改为索引4
     current_data$qtdid <- qtdid
     if (length(all_results) == 0) {
       all_results <- current_data
@@ -62,14 +64,14 @@ head(all_results)
 # [21] "pp_h2_gmm_cross_tissue" "pp_h3_gmm_cross_tissue" "qtdid"
 
 all_results$h4_improve <-
-  all_results$p_gmm_cross - all_results$p_single
+  all_results$p_traceC - all_results$p_original
 all_results$h4_tissue_improve <-
-  all_results$p_gmm_cross_tissue - all_results$p_gmm_cross
+  all_results$p_traceCB - all_results$p_traceC
 
 all_results$h3_improve <-
-  all_results$pp_h3_gmm_cross - all_results$pp_h3_single
+  all_results$pp_h3_traceC - all_results$pp_h3_original
 all_results$h3_improve_tissue <-
-  all_results$pp_h3_gmm_cross_tissue - all_results$pp_h3_gmm_cross
+  all_results$pp_h3_traceCB - all_results$pp_h3_traceC
 
 # find h3 and h4 improve less than MIN_IMPROVE_THRESHOLD
 MIN_IMPROVE_THRESHOLD <- 0.01
@@ -86,7 +88,7 @@ all_results$qtdname <- as.factor(unlist(all_results$qtdname))
 gene_name_mapping <- setNames(label_gene_name, label_gene)
 
 # 筛选出要标记的基因
-label_data <- all_results[all_results$gene == label_gene,]
+label_data <- all_results[all_results$gene == label_gene, ]
 label_data$gene_name <- gene_name_mapping[label_data$gene]
 
 # 添加标签名称映射
@@ -105,7 +107,7 @@ apply_tern_settings <- function(p, title, x_col, y_col) {
   temp_label_data$plot_y <- temp_label_data[[y_col]]
   temp_label_data$plot_z <-
     1 - temp_label_data$plot_x - temp_label_data$plot_y
-  
+
   result <- p + # can not avoid warning
     stat_density_tern(
       aes(alpha = after_stat(level)),
@@ -133,49 +135,58 @@ apply_tern_settings <- function(p, title, x_col, y_col) {
     Llab("", "Independent") +
     Rlab("", "Undetermined") +
     theme_showarrows() +
-    labs(title = title,
-         x = "",
-         y = "",
-         z = "") +
-    theme(plot.title = element_text(size = 11),
-          plot.margin = margin(0, 0, 0, 0, unit = "pt"))
-    
+    labs(
+      title = title,
+      x = "",
+      y = "",
+      z = ""
+    ) +
+    theme(
+      plot.title = element_text(size = 11),
+      plot.margin = margin(-10, -10, -10, -10, unit = "pt"),
+      tern.panel.background = element_rect(fill = NA, colour = NA)
+    )
+
   return(result)
 }
 
 
-p1 <- ggtern(data = all_results,
-             aes(
-               x = pp_h3_single,
-               y = p_single,
-               z = 1 - pp_h3_single - p_single,
-               color = qtdname
-             )) %>%
-  apply_tern_settings("Original", "pp_h3_single", "p_single") +
+p1 <- ggtern(
+  data = all_results,
+  aes(
+    x = pp_h3_original,
+    y = p_original,
+    z = 1 - pp_h3_original - p_original,
+    color = qtdname
+  )
+) %>%
+  apply_tern_settings("Original", "pp_h3_original", "p_original") +
   theme(legend.position = "none")
 p2 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross,
-    y = p_gmm_cross,
-    z = 1 - pp_h3_gmm_cross - p_gmm_cross,
+    x = pp_h3_traceC,
+    y = p_traceC,
+    z = 1 - pp_h3_traceC - p_traceC,
     color = qtdname
   )
 ) %>%
-  apply_tern_settings("traceC", "pp_h3_gmm_cross", "p_gmm_cross") +
+  apply_tern_settings("traceC", "pp_h3_traceC", "p_traceC") +
   theme(legend.position = "none")
 p3 <- ggtern(
   data = all_results,
   aes(
-    x = pp_h3_gmm_cross_tissue,
-    y = p_gmm_cross_tissue,
-    z = 1 - pp_h3_gmm_cross_tissue - p_gmm_cross_tissue,
+    x = pp_h3_traceCB,
+    y = p_traceCB,
+    z = 1 - pp_h3_traceCB - p_traceCB,
     color = qtdname
   )
 ) %>%
-  apply_tern_settings("traceCB",
-                      "pp_h3_gmm_cross_tissue",
-                      "p_gmm_cross_tissue") +
+  apply_tern_settings(
+    "traceCB",
+    "pp_h3_traceCB",
+    "p_traceCB"
+  ) +
   theme(legend.position = "none")
 
 print(p1)
@@ -189,7 +200,10 @@ plots_row <- plot_grid(
   p3,
   ncol = 3,
   align = "hv",
-  rel_widths = c(1, 1, 1)
+  rel_widths = c(1, 1, 1),
+  axis = "tb",
+  hjust = 0,
+  vjust = 0
 )
 
 # 创建研究图例
@@ -215,11 +229,15 @@ standalone_legend <-
   )
 
 # 创建基因标记图例
-gene_legend_plot <- ggplot(data.frame(gene = label_gene_name, x = 1, y = 1), 
-                          aes(x = x, y = y, color = gene)) +
+gene_legend_plot <- ggplot(
+  data.frame(gene = label_gene_name, x = 1, y = 1),
+  aes(x = x, y = y, color = gene)
+) +
   geom_point(size = 3, shape = 21, stroke = 1.5, fill = NA) +
-  scale_color_manual(values = setNames("red", label_gene_name), 
-                    name = "Labeled Gene") +
+  scale_color_manual(
+    values = setNames("red", label_gene_name),
+    name = "Labeled Gene"
+  ) +
   guides(color = guide_legend(
     title = "Gene",
     nrow = 1,
@@ -244,12 +262,12 @@ gene_legend <- ggpubr::get_legend(gene_legend_plot)
 
 # 合并图例
 combined_legend <- plot_grid(
-  study_legend, 
-  gene_legend, 
-  ncol = 2, 
-  rel_widths = c(0.7, 0.3),  # 调整宽度比例
-  align = "h",               # 水平对齐
-  axis = "tb"              # 顶部和底部对齐
+  study_legend,
+  gene_legend,
+  ncol = 2,
+  rel_widths = c(0.7, 0.3), # 调整宽度比例
+  align = "h", # 水平对齐
+  axis = "tb" # 顶部和底部对齐
 )
 
 # 主标题设置
@@ -277,7 +295,7 @@ final_plot <- plot_grid(
   ncol = 1,
   # 垂直排列
   greedy = TRUE,
-  rel_heights = c(0.04, 0.06, 0.40)  # 调整高度比例
+  rel_heights = c(0.04, 0.06, 0.40) # 调整高度比例
 )
 print(final_plot)
 ggsave(
@@ -287,12 +305,12 @@ ggsave(
     target_celltype,
     "_",
     target_trait,
-    "_coloc_ternary.png"
+    "_coloc_ternary.pdf"
   ),
   plot = final_plot,
   width = 10,
   height = 4,
   dpi = 300,
-  units = "in"
+  units = "in",
+  device = "pdf"
 )
-

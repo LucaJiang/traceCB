@@ -11,32 +11,34 @@ plot_data <- data.frame(
   ))
 )
 dfLabels <- plyr::ddply(plot_data, "Label", function(df) {
-    if(df$Label[1] == "T") {
-      label <- "Independent"
-    } else if(df$Label[1] == "R") {
-        label <- "COLOC"
-    } else if(df$Label[1] == "L") {
-        label <- "Undetermined"
-    } else {
-        label <- "Unknown"
-    }
+  if (df$Label[1] == "T") {
+    label <- "Independent"
+  } else if (df$Label[1] == "R") {
+    label <- "COLOC"
+  } else if (df$Label[1] == "L") {
+    label <- "Undetermined"
+  } else {
+    label <- "Unknown"
+  }
   means <- colMeans(df[setdiff(colnames(df), "Label")])
   result <- data.frame(
     T = means["T"],
-    R = means["R"], 
+    R = means["R"],
     L = means["L"],
     Label = label
   )
   return(result)
 })
 plot_ternary <- function(data) {
-  result <- ggtern(data = data,
-                   aes(
-                     x = T,
-                     y = R,
-                     z = L,
-                     color = Label
-                   )) +
+  result <- ggtern(
+    data = data,
+    aes(
+      x = T,
+      y = R,
+      z = L,
+      color = Label
+    )
+  ) +
     geom_polygon(
       mapping = aes(fill = Label),
       alpha = 0.75,
@@ -44,13 +46,13 @@ plot_ternary <- function(data) {
       color = "black"
     ) +
     geom_label(
-          data = dfLabels,
-          mapping = aes(label = Label),
-          size = 2.6,
-          color = "black",
-          fill = "white",
-          alpha = 1
-        ) +
+      data = dfLabels,
+      mapping = aes(label = Label),
+      size = 2.6,
+      color = "black",
+      fill = "white",
+      alpha = 1
+    ) +
     theme_showgrid_minor() +
     theme_showarrows() +
     guides(color = "none", fill = "none") +
@@ -62,13 +64,12 @@ plot_ternary <- function(data) {
       panel.background = element_rect(fill = "transparent", color = NA),
       plot.background = element_rect(fill = "transparent", color = NA)
     )
-  
+
   return(result)
 }
 ggsave(
-    "/Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/other/ternary_illu.png",
-    plot = plot_ternary(plot_data),
-    width = 3,
-    height = 3,
-    dpi = 300
-    )
+  "/Users/lucajiang/learn/CityU/traceCB/data/img/ternary_illu.pdf",
+  plot = plot_ternary(plot_data),
+  width = 3,
+  height = 3
+)
