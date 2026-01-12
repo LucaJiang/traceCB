@@ -11,13 +11,13 @@ library(readr)
 library(data.table)
 
 # Configuration (adapt from your Python utils)
-study_path_main <- "/home/group1/wjiang49/data/xpmm/EAS_GTEx"  # Update this path
-save_path <- "/home/group1/wjiang49/data/xpmm/EAS_GTEx/results"        # Update this path
+study_path_main <- "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen"  # Update this path
+save_path <- "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/manhattan"        # Update this path
 # Configuration
 MIN_PVAL <- 1e-40
 MAX_RANGE <- 200000
-gwas_path <- "/home/group1/wjiang49/data/xpmm/coloc/bcx/bcx_mon_GWAS.csv"
-meta_data <- jsonlite::fromJSON("/home/group1/wjiang49/xpmm/data/metadata.json")
+gwas_path <- "/home/wjiang49/group/wjiang49/data/traceCB/coloc/bcx/bcx_mon_GWAS.csv"
+meta_data <- jsonlite::fromJSON("/home/wjiang49/traceCB/src/visual/metadata.json")
 
 # LD token for LDlink API
 token <- "72edb9cc22c9"
@@ -109,24 +109,27 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name) {
       ) %>%
       as.data.table()
     
+    # Initialize p as NULL
+    p <- NULL
+    
     # Create locus object
     tryCatch({
       # Try to get LD data from LDlink
-      loc <- locus(
+      loc <- locuszoomr::locus(
         data = plot_data,
-        chrom = chromosome,
-        start = min(plot_data$pos),
-        end = max(plot_data$pos),
-        index_snp = index_snp
+        gene = gene_name,
+        flank = 50000,
+        LD = index_snp,
+        ens_db = "EnsDb.Hsapiens.v75"
       )
       
       # Link LD data using your token
-      loc <- link_LD(loc$data$SNP, token = token, pop = "EAS")  # Using East Asian population
+      loc <- locuszoomr::link_LD(loc, token = token, pop = "EAS")
       
       # Create the plot with LD coloring
-      p <- locus_plot(loc, 
-                     labels = index_snp,  # Label the index SNP
-                     LD = "r2") +
+      p <- locuszoomr::locus_plot(loc, 
+                     labels = index_snp,
+                     LD_scheme = c("blue", "skyblue", "green", "orange", "red")) +
         labs(
           title = label,
           y = "-log10(P)",
@@ -137,29 +140,24 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name) {
           plot.title = element_text(size = 10, face = "bold"),
           axis.title.x = if (i != length(target_methods)) element_blank() else element_text(),
           axis.text.x = if (i != length(target_methods)) element_blank() else element_text(),
-          legend.position = if (i == 1) "right" else "none",  # Show legend only for first plot
-          panel.grid.major.y = element_line(color = "gray90", size = 0.3),
+          legend.position = if (i == 1) "right" else "none",
+          panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3),
           axis.line.x = element_line(color = "black"),
           axis.line.y = element_line(color = "black")
-        ) +
-        # Convert position to Mb on x-axis
-        scale_x_continuous(
-          labels = function(x) sprintf("%.1f", x / 1e6),
-          breaks = scales::pretty_breaks(n = 6)
         )
       
     }, error = function(e) {
       cat(sprintf("Failed to get LD data for %s, using fallback method: %s\n", label, e$message))
       
       # Fallback: create plot without LD data
-      p <- ggplot(plot_data, aes(x = pos / 1e6, y = logp)) +
+      p <<- ggplot(plot_data, aes(x = pos / 1e6, y = logp)) +
         geom_point(size = 0.8, alpha = 0.7, color = "steelblue") +
         # Highlight index SNP
         geom_point(data = plot_data[plot_data$rsid == index_snp, ], 
                   aes(x = pos / 1e6, y = logp), 
                   color = "red", size = 2, shape = 18) +
-        geom_hline(yintercept = 5, linetype = "dashed", color = "blue", alpha = 0.5, size = 0.5) +
-        geom_hline(yintercept = 8, linetype = "dashed", color = "red", alpha = 0.5, size = 0.5) +
+        geom_hline(yintercept = 5, linetype = "dashed", color = "blue", alpha = 0.5, linewidth = 0.5) +
+        geom_hline(yintercept = 8, linetype = "dashed", color = "red", alpha = 0.5, linewidth = 0.5) +
         labs(
           title = label,
           y = "-log10(P)",
@@ -170,7 +168,7 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name) {
           plot.title = element_text(size = 10, face = "bold"),
           axis.title.x = if (i != length(target_methods)) element_blank() else element_text(),
           axis.text.x = if (i != length(target_methods)) element_blank() else element_text(),
-          panel.grid.major.y = element_line(color = "gray90", size = 0.3),
+          panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3),
           axis.line.x = element_line(color = "black"),
           axis.line.y = element_line(color = "black")
         ) +
@@ -180,7 +178,19 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name) {
         )
     })
     
+    # Check if p was created successfully
+    if (is.null(p)) {
+      cat(sprintf("Warning: Plot creation failed for %s, skipping...\n", label))
+      next
+    }
+    
     plots[[i]] <- p
+  }
+  
+  # Check if we have any plots
+  if (length(plots) == 0) {
+    cat("Error: No plots were created successfully\n")
+    return(NULL)
   }
   
   # Combine plots using patchwork
@@ -195,7 +205,7 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name) {
     )
   
   # Save plot
-  save_name <- sprintf("%s/%s_%s_%s_manhattan_LD.png", 
+  save_name <- sprintf("%s/%s_%s_%s_manhattan_LD.pdf", 
                       save_path, qtdid, gene_id, gene_name)
   
   ggsave(
@@ -327,7 +337,7 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
       theme = theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
     )
   
-  save_name <- sprintf("%s/%s_%s_%s_manhattan_precomputed_LD.png", 
+  save_name <- sprintf("%s/%s_%s_%s_manhattan_precomputed_LD.pdf", 
                       save_path, qtdid, gene_id, gene_name)
   
   ggsave(
@@ -355,11 +365,16 @@ for (gene_info in plot_gene_info) {
   chromosome <- as.numeric(gene_info[3])
   gene_name <- gene_info[4]
   
-  # Try locuszoomr with LD data
+  # Try plotting with error handling
   tryCatch({
     save_name <- plot_manhattan_locuszoom(gene_id, qtdid, chromosome, gene_name)
+    if (!is.null(save_name)) {
+      cat(sprintf("Successfully created plot: %s\n", save_name))
+    }
   }, error = function(e) {
-    cat(sprintf("locuszoomr with LD failed: %s\n", e$message))
-    cat("You may need to check your internet connection or LDlink token\n")
+    cat(sprintf("Failed to create plot for %s: %s\n", gene_name, e$message))
+    cat(sprintf("Traceback: %s\n", paste(sys.calls(), collapse = "\n")))
   })
 }
+
+cat("Manhattan plot generation completed\n")
