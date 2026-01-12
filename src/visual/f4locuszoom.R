@@ -27,7 +27,7 @@ color_mapping <- c(
 )
 
 
-plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_positions, track_maxrow=6) {
+plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_positions, track_maxrow = 6) {
   window_size <- 100000 # 100kb window size
   regions <-
     paste0(
@@ -238,34 +238,4 @@ gene_infos <- c(
 chrs <- c(10) # chromosomes for the genes
 start_positions <- c(111756126) # start positions for the genes
 end_positions <- c(111895323) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
-
-# genes to plot
-gene_names <- c("KYNU")
-gene_infos <- c(
-  "ENSG00000115919, 2: 143,635,067-143,799,890"
-)
-chrs <- c(2) # chromosomes for the genes
-start_positions <- c(143635067) # start positions for the genes
-end_positions <- c(143799890) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
-
-# genes to plot
-gene_names <- c("USP35")
-gene_infos <- c(
-  "ENSG00000118369, 11:77,899,858-77,925,757"
-)
-chrs <- c(11) # chromosomes for the genes
-start_positions <- c(77899858) # start positions for the genes
-end_positions <- c(77925757) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
-
-# genes to plot
-gene_names <- c("WDR48")
-gene_infos <- c(
-  "ENSG00000114742, 3: 39,093,489-39,138,155"
-)
-chrs <- c(3) # chromosomes for the genes
-start_positions <- c(39093489) # start positions for the genes
-end_positions <- c(39138155) # end positions for the genes
 plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
