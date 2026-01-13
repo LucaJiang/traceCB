@@ -238,7 +238,7 @@ study_legend <- ggpubr::get_legend(standalone_legend)
 title <- ggdraw() +
   draw_label(
     paste0(
-      "Colocalization Result for BCX blood cell trait studies"
+      "Colocalization Result for BCX Blood Cell Trait Studies"
     ),
     size = 14,
     x = 0.5,

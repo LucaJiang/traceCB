@@ -210,32 +210,82 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
   }
 }
 
-# genes to plot
-gene_names <- c("CTSW")
-gene_infos <- c(
-  "ENSG00000172543, 11: 65,647,280-65,651,212"
-)
-chrs <- c(11) # chromosomes for the genes
-start_positions <- c(65647280) # start positions for the genes
-end_positions <- c(65651212) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 5)
+# # genes to plot
+# gene_names <- c("CTSW")
+# gene_infos <- c(
+#   "ENSG00000172543, 11: 65,647,280-65,651,212"
+# )
+# chrs <- c(11) # chromosomes for the genes
+# start_positions <- c(65647280) # start positions for the genes
+# end_positions <- c(65651212) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 5)
 
-# genes to plot
-gene_names <- c("RABGAP1")
-gene_infos <- c(
-  "ENSG00000011454, 9: 125,703,112-125,867,145"
-)
-chrs <- c(9) # chromosomes for the genes
-start_positions <- c(125703112) # start positions for the genes
-end_positions <- c(125867145) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
+# # genes to plot
+# gene_names <- c("MDFIC")
+# gene_infos <- c(
+#   "ENSG00000135272, 7: 114,562,209-114,659,256"
+# )
+# chrs <- c(7) # chromosomes for the genes
+# start_positions <- c(114562209) # start positions for the genes
+# end_positions <- c(114659256) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
 
-# genes to plot
-gene_names <- c("ADD3")
-gene_infos <- c(
-  "ENSG00000148700, 10: 111,756,126-111,895,323"
-)
-chrs <- c(10) # chromosomes for the genes
-start_positions <- c(111756126) # start positions for the genes
-end_positions <- c(111895323) # end positions for the genes
-plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions)
+# # gene to plot
+# gene_names <- c("PAG1")
+# gene_infos <- c(
+#   "ENSG00000076641, 8: 81,880,045-82,024,303"
+# )
+# chrs <- c(8) # chromosomes for the genes
+# start_positions <- c(81880045) # start positions for the genes
+# end_positions <- c(82024303) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
+
+# # gene to plot
+# gene_names <- c("KCNN4")
+# gene_infos <- c(
+#   "ENSG00000104783, 19: 44,270,685-44,285,409"
+# )
+# chrs <- c(19) # chromosomes for the genes
+# start_positions <- c(44270685) # start positions for the genes
+# end_positions <- c(44285409) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
+
+# # gene to plot
+# gene_names <- c("BCL6")
+# gene_infos <- c(
+#   "ENSG00000113916, 3: 187,439,165-187,463,515"
+# )
+# chrs <- c(3) # chromosomes for the genes
+# start_positions <- c(187439165) # start positions for the genes
+# end_positions <- c(187463515) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
+
+# # gene to plot
+# gene_names <- c("CD14")
+# gene_infos <- c(
+#   "ENSG00000170458, 5: 140,011,313-140,013,286"
+# )
+# chrs <- c(5) # chromosomes for the genes
+# start_positions <- c(140011313) # start positions for the genes
+# end_positions <- c(140013286) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
+
+# # gene to plot
+# gene_names <- c("ZYX")
+# gene_infos <- c(
+#   "ENSG00000159840, 7: 143,078,173-143,088,204"
+# )
+# chrs <- c(7) # chromosomes for the genes
+# start_positions <- c(143078173) # start positions for the genes
+# end_positions <- c(143088204) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 10)
+
+# # gene to plot
+# gene_names <- c("CTDP1")
+# gene_infos <- c(
+#   "ENSG00000060069, 18: 77,439,801-77,514,510"
+# )
+# chrs <- c(18) # chromosomes for the genes
+# start_positions <- c(77439801) # start positions for the genes
+# end_positions <- c(77514510) # end positions for the genes
+# plot_locuszoom(gene_names, gene_infos, chrs, start_positions, end_positions, 5)
