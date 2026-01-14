@@ -3,7 +3,7 @@
 # 2. plot by cor group
 # 3. plot cor density
 # 4. plot eGene upset
-from utils import *
+from visual.utils import *
 from adjustText import adjust_text
 from upsetplot import UpSet, plot
 import warnings
@@ -184,21 +184,29 @@ def plot_cor_box(summary_sign_df, target_qtdid):
     ## 1. num of egene by method, proportion of egene by method
     ## 2. ratio of effective sample size: GMM/Original, GMM+/Original
     ## define cor group
-    # cor_group_cut = [0.4, 0.6, 0.8]
-    # cor_group_labels = ["0.0-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
-    cor_group_cut = [-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8]
+    cor_group_cut = [-0.8, -0.5, 0.0, 0.5, 0.8]
     cor_group_labels = [
         "<-0.8",
-        "-0.8~-0.6",
-        "-0.6~-0.4",
-        "-0.4~-0.2",
-        "-0.2~0.0",
-        "0.0~0.2",
-        "0.2~0.4",
-        "0.4~0.6",
-        "0.6~0.8",
+        "-0.8~-0.5",
+        "-0.5~0.0",
+        "0.0~0.5",
+        "0.5~0.8",
         ">0.8",
     ]
+
+    # cor_group_cut = [-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8]
+    # cor_group_labels = [
+    #     "<-0.8",
+    #     "-0.8~-0.6",
+    #     "-0.6~-0.4",
+    #     "-0.4~-0.2",
+    #     "-0.2~0.0",
+    #     "0.0~0.2",
+    #     "0.2~0.4",
+    #     "0.4~0.6",
+    #     "0.6~0.8",
+    #     ">0.8",
+    # ]
     summary_sign_df.loc[:, "COR_GROUP"] = pd.cut(
         summary_sign_df.COR,
         bins=[-1.1] + cor_group_cut + [1.1],

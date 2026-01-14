@@ -13,10 +13,10 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 1000)
 plt.rcParams["font.family"] = "DejaVu Sans"
 
-# study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
-# save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
-study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_GTEx"
-save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
+study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen"
+save_path = "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results"
+# study_path_main = "/home/group1/wjiang49/data/traceCB/EAS_GTEx"
+# save_path = "/home/group1/wjiang49/data/traceCB/EAS_GTEx/results"
 # study_path_main = "/home/group1/wjiang49/data/traceCB/AFR_eQTLGen"
 # save_path = "/home/group1/wjiang49/data/traceCB/AFR_eQTLGen/results"
 onek1k_path = "/home/wjiang49/group/wjiang49/data/traceCB/onek1k_supp/onek1k_esnp.csv"

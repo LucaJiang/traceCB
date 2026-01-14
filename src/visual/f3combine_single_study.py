@@ -1,7 +1,7 @@
 # Combine f3 single study figures into one figure
 # Row 1: f3cor_qtdid + f3egene_upset_qtdid
 # Row 2: f3neff_scatter_qtdid_annot
-from utils import *
+from visual.utils import *
 import pypdfium2 as pdfium
 from PIL import Image
 import io
