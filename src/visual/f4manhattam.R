@@ -27,56 +27,55 @@ token <- "72edb9cc22c9" # LD token for LDlink API
 
 # Plot gene info
 plot_gene_info <- list(
-  # # CTSW (chromosome 11)
+  # CTSW (chromosome 11)
   # c("ENSG00000172543", "QTD000021", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000069", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000081", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000031", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000067", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000371", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000066", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000372", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000073", 11, "CTSW"),
-  # c("ENSG00000172543", "QTD000115", 11, "CTSW"),
-  # #
-  # # KCNN4 (chromosome 19)
-  # c("ENSG00000104783", "QTD000021", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000069", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000081", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000031", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000067", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000371", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000066", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000372", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000073", 19, "KCNN4"),
-  # c("ENSG00000104783", "QTD000115", 19, "KCNN4"),
-  # # MDFIC (chromosome 7)
-  # c("ENSG00000135272", "QTD000021", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000069", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000081", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000031", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000067", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000371", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000066", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000372", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000073", 7, "MDFIC"),
-  # c("ENSG00000135272", "QTD000115", 7, "MDFIC"),
+  c("ENSG00000172543", "QTD000069", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000081", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000031", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000067", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000371", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000066", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000372", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000073", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000115", 11, "CTSW"),
+  # KCNN4 (chromosome 19)
+  c("ENSG00000104783", "QTD000021", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000069", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000081", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000031", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000067", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000371", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000066", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000372", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000073", 19, "KCNN4"),
+  c("ENSG00000104783", "QTD000115", 19, "KCNN4"),
+  # MDFIC (chromosome 7)
+  c("ENSG00000135272", "QTD000021", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000069", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000081", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000031", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000067", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000371", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000066", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000372", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000073", 7, "MDFIC"),
+  c("ENSG00000135272", "QTD000115", 7, "MDFIC"),
   # CTDP1 (chromosome 18)
   c("ENSG00000060069", "QTD000081", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000031", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000067", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000371", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000066", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000372", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000073", 18, "CTDP1"),
-  # c("ENSG00000060069", "QTD000115", 18, "CTDP1")
+  c("ENSG00000060069", "QTD000031", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000067", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000371", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000066", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000372", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000073", 18, "CTDP1"),
+  c("ENSG00000060069", "QTD000115", 18, "CTDP1")
 )
 
 
 gene_max_range <- list(
   "CTSW" = 2e5,
   "KCNN4" = 2e5,
-  "MDFIC" = 2e5,
+  "MDFIC" = 5e5,
   "CTDP1" = 10e5
 )
 
@@ -150,8 +149,8 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name, max_
   }
   pdf(save_name, width = 8, height = 7)
 
-  # Set up layered plot with 5 layers (4 manhattan plots + 1 gene track)
-  oldpar <- set_layers(5)
+  # Set up layered plot with 4 layers (4 manhattan plots + 1 gene track)
+  oldpar <- set_layers(4)
 
   # Create plots for each method
   for (i in seq_along(target_methods)) {
@@ -199,16 +198,16 @@ plot_manhattan_locuszoom <- function(gene_id, qtdid, chromosome, gene_name, max_
   # Use the last locus object for gene track
   genetracks(loc,
     filter_gene_biotype = "protein_coding",
-    maxrows = 2, highlight = gene_name, italics = TRUE
+    maxrows = 5, highlight = gene_name, italics = TRUE
   )
 
-  mtext(
-    sprintf(
-      "Manhattan Plot of %s in GWAS and %s %s",
-      gene_name, meta_data$id2name[[qtdid]], cell_type
-    ),
-    side = 1, line = 5, cex = 1.2, font = 2
-  )
+  # mtext(
+  #   sprintf(
+  #     "Manhattan Plot of %s in GWAS and %s %s",
+  #     gene_name, meta_data$id2name[[qtdid]], cell_type
+  #   ),
+  #   side = 1, line = 5, cex = 1.2, font = 2
+  # )
   # Revert par() settings
   par(oldpar)
   dev.off()
@@ -258,7 +257,7 @@ plot_signal_plot <- function(chr, start_pos, end_pos, gene_name) {
     ) +
     xlab(paste0("Chromosome ", chr, " position (Mb)")) +
     ylab("H3K27ac Signal") +
-    ggtitle(paste0(gene_name, " - H3K27ac Signal")) +
+    # ggtitle(paste0(gene_name, " - H3K27ac Signal")) +
     theme_minimal() +
     theme(
       strip.background.y = element_blank(),
@@ -287,7 +286,7 @@ plot_signal_plot <- function(chr, start_pos, end_pos, gene_name) {
 # Alternative function using pre-computed LD data (if available)
 plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_name, ld_file = NULL) {
   cat(sprintf("Plotting manhattan with pre-computed LD for %s (%s) in %s, chr%d\n", gene_name, gene_id, qtdid, chromosome))
-  
+
   # Load eQTL data
   eqtl_path <- sprintf("%s/%s/GMM/chr%d/%s.csv", study_path_main, qtdid, chromosome, gene_id)
   if (!file.exists(eqtl_path)) {
@@ -295,14 +294,14 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
     return(NULL)
   }
   eqtl_df <- read_csv(eqtl_path, show_col_types = FALSE)
-  
+
   # Load GWAS data
   gwas_df <- read_csv(gwas_path, show_col_types = FALSE)
   gwas_df$PVAL <- z2p(gwas_df$Z)
-  
+
   # Merge data
-  merged_df <- inner_join(eqtl_df, gwas_df, by = c("RSID" => "SNP"))
-  
+  merged_df <- inner_join(eqtl_df, gwas_df, by = c("RSID" = "SNP"))
+
   # If LD file is provided, load it
   if (!is.null(ld_file) && file.exists(ld_file)) {
     ld_df <- read_csv(ld_file, show_col_types = FALSE)
@@ -311,7 +310,7 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
     # error handling if LD file is not found
     stop("LD file not found or not provided.")
   }
-  
+
   # Position clipping and sorting
   min_pos <- min(merged_df$POS)
   max_pos <- max(merged_df$POS)
@@ -319,31 +318,31 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
     mid_pos <- (min_pos + max_pos) / 2
     new_min_pos <- mid_pos - MAX_RANGE / 2
     new_max_pos <- mid_pos + MAX_RANGE / 2
-    merged_df <- merged_df %>% 
+    merged_df <- merged_df %>%
       filter(POS >= new_min_pos & POS <= new_max_pos)
   }
-  
+
   merged_df <- merged_df %>% arrange(POS)
-  
+
   # Define target methods and labels
   target_methods <- c("PVAL", "TAR_SPVAL", "TAR_CPVAL", "TAR_TPVAL")
   method_labels <- c("GWAS", meta_data$method_name[1], meta_data$method_name[2], meta_data$method_name[3])
-  
+
   # Clip p-values
   for (col in target_methods) {
     merged_df[[col]] <- pmax(merged_df[[col]], MIN_PVAL)
   }
-  
+
   # Create plots list
   plots <- list()
-  
+
   for (i in seq_along(target_methods)) {
     method <- target_methods[i]
     label <- method_labels[i]
-    
+
     # Find index SNP
     index_snp <- find_index_snp(merged_df, method)
-    
+
     # Prepare data
     plot_data <- merged_df %>%
       select(rsid = RSID, chrom = CHR, pos = POS, pval = all_of(method), r2) %>%
@@ -360,7 +359,7 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
         )
       ) %>%
       as.data.table()
-    
+
     # Use locuszoomr with LD
     loc <- locus(
       data = plot_data,
@@ -370,10 +369,11 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
       index_snp = index_snp,
       LD = "r2"
     )
-    
-    p <- locus_plot(loc, 
-                    labels = index_snp,
-                    LD = "r2") +
+
+    p <- locus_plot(loc,
+      labels = index_snp,
+      LD = "r2"
+    ) +
       labs(
         title = label,
         y = "-log10(P)",
@@ -387,22 +387,24 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
         legend.position = if (i == 1) "right" else "none",
         panel.grid.major.y = element_line(color = "gray90", size = 0.3)
       )
-    
+
     plots[[i]] <- p
   }
-  
+
   # Combine and save
   combined_plot <- wrap_plots(plots, ncol = 1, heights = rep(1, length(plots)))
-  final_plot <- combined_plot + 
+  final_plot <- combined_plot +
     plot_annotation(
-      title = sprintf("Manhattan Plot of %s in GWAS and %s (with LD)", 
-                      gene_name, meta_data$id2name[[qtdid]]),
+      # title = sprintf("Manhattan Plot of %s in GWAS and %s (with LD)",
+      #                 gene_name, meta_data$id2name[[qtdid]]),
       theme = theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
     )
-  
-  save_name <- sprintf("%s/%s_%s_%s_manhattan_precomputed_LD.png", 
-                       save_path, qtdid, gene_id, gene_name)
-  
+
+  save_name <- sprintf(
+    "%s/%s_%s_%s_manhattan_precomputed_LD.png",
+    save_path, qtdid, gene_id, gene_name
+  )
+
   ggsave(
     save_name,
     final_plot,
@@ -411,7 +413,7 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
     dpi = 300,
     bg = "white"
   )
-  
+
   cat(sprintf("Manhattan plot with pre-computed LD saved to: %s\n", save_name))
   return(save_name)
 }
@@ -436,7 +438,7 @@ for (gene_info in plot_gene_info) {
     cat(sprintf("Failed to plot for %s (%s) in %s\n", gene_name, gene_id, qtdid))
   } else {
     cat(sprintf("Plot saved: %s\n", ret[1]))
-    signal_save_name <- plot_signal_plot(chromosome, as.numeric(ret[2]), as.numeric(ret[3]), gene_name)
+    # signal_save_name <- plot_signal_plot(chromosome, as.numeric(ret[2]), as.numeric(ret[3]), gene_name)
     if (!is.null(signal_save_name)) {
       cat(sprintf("Signal plot saved: %s\n", signal_save_name))
     }
