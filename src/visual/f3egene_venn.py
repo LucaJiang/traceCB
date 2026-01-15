@@ -163,26 +163,22 @@ def f3egene_replicate():
     """
     Plot Fig. 3 eGene Replicate venn between QTDids
     """
-    summary_sign_df, _ = load_all_summary()  # ! use significant xpop cor genes
+    _, summary_df = load_all_summary()  # ! use significant xpop cor genes
     # QTDid,GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
     for m in ["S", "C", "T"]:
-        summary_sign_df.loc[:, f"is_{m}eGene"] = (
-            summary_sign_df.loc[:, f"TAR_{m}eSNP"] > 0
-        )
-    summary_sign_df.loc[:, "CellType"] = summary_sign_df.QTDid.map(
-        meta_data["id2celltype"]
-    )
+        summary_df.loc[:, f"is_{m}eGene"] = summary_df.loc[:, f"TAR_{m}eSNP"] > 0
+    summary_df.loc[:, "CellType"] = summary_df.QTDid.map(meta_data["id2celltype"])
     # perpare data for venn diagrams: get Abc, aBc, abC, ABc, AbC, aBC, ABC
     ## Monocytes: QTD000021, QTD000069, QTD000081
-    ct_df = summary_sign_df.loc[summary_sign_df.CellType == "Monocytes", :]
+    ct_df = summary_df.loc[summary_df.CellType == "Monocytes", :]
     ct_qid = sorted(ct_df.QTDid.unique().tolist())
     get_venn3_count_plot(ct_df, ct_qid, harmonized=harmonized)
     ## CD4+T_cells: QTD000031, QTD000067, QTD000371
-    cd4_df = summary_sign_df.loc[summary_sign_df.CellType == "CD4+T_cells", :]
+    cd4_df = summary_df.loc[summary_df.CellType == "CD4+T_cells", :]
     ct_qid = sorted(cd4_df.QTDid.unique().tolist())
     get_venn3_count_plot(cd4_df, ct_qid, harmonized=harmonized)
     ## CD8+T_cells: QTD000066, QTD000372
-    cd8_df = summary_sign_df.loc[summary_sign_df.CellType == "CD8+T_cells", :]
+    cd8_df = summary_df.loc[summary_df.CellType == "CD8+T_cells", :]
     ct_qid = sorted(cd8_df.QTDid.unique().tolist())
     get_venn2_count_plot(cd8_df, ct_qid, harmonized=harmonized)
     return
