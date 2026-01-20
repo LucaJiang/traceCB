@@ -7,9 +7,9 @@
 !!! info "Key Capabilities"
     traceCB enables researchers to:
     
-    * **Integrate** single-cell RNA-seq data with bulk GWAS summary statistics.
-    * **Estimate** cell-type-specific eQTL effects across different populations.
-    * **Perform** trans-ancestry analysis to improve resolution and power.
+    * **Integrate** single-cell and bulk eQTL data for trans-ancestry ct-eQTL mapping
+    * **Estimator** Method of Moments for efficient computation
+    * **Perform** powerful while maintaining type I error control
 
 ---
 
