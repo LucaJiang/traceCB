@@ -12,7 +12,7 @@ import os
 import numpy as np
 from numba import njit, prange
 
-from traceCB.ldsc import Run_cross_LDSC
+from traceCB.ldsc import Run_Cross_LDSC
 from traceCB.gmm import GMM, GMMtissue
 from traceCB.utils import z2p, MIN_HERITABILITY
 from traceCB.run_gmm import clip_correlation
@@ -408,7 +408,7 @@ def simulation(
         run_gmm = False  # default no gmm
         run_gmm_tissue = False  # default no gmm tissue
         pi2_omega_sum = 0.0  # for sigma_o of non-target cell types in tissue
-        Omega, Omega_se = Run_cross_LDSC(
+        Omega, Omega_se = Run_Cross_LDSC(
             b1_hat / se1_hat,
             n1,
             ld1,
@@ -423,7 +423,7 @@ def simulation(
         if np.all(Omega_p < p_thred):
             #! if np.all(Omega_p < P_VAL_THRED):
             run_gmm = True
-            aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
+            aux_Omega_matrix, aux_Omega_matrix_se = Run_Cross_LDSC(
                 b2_hat / se2_hat,
                 n2,
                 ld2,

@@ -7,7 +7,7 @@ import pandas as pd
 from numba import prange, njit
 
 from traceCB.gmm import GMM, GMMtissue
-from traceCB.ldsc import Run_cross_LDSC
+from traceCB.ldsc import Run_Cross_LDSC
 from traceCB.utils import (
     z2p,
     # make_pd_shrink,
@@ -218,7 +218,7 @@ def main(args, chr):
             continue
 
         ## run ldsc to get Omega
-        Omega, Omega_se = Run_cross_LDSC(
+        Omega, Omega_se = Run_Cross_LDSC(
             (gene_df.BETA_tar / gene_df.SE_tar).to_numpy(),
             gene_df.N_tar.to_numpy(),
             gene_df.LD_tar.to_numpy(),
@@ -275,7 +275,7 @@ def main(args, chr):
         pi2_omega_sum = 0.0
         run_gmm_tissue = True
         # ## get omega_co, omega_oo
-        aux_Omega_matrix, aux_Omega_matrix_se = Run_cross_LDSC(
+        aux_Omega_matrix, aux_Omega_matrix_se = Run_Cross_LDSC(
             (gene_df.BETA_aux / gene_df.SE_aux).to_numpy(),
             gene_df.N_aux.to_numpy(),
             gene_df.LD_aux.to_numpy(),

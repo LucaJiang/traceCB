@@ -3,7 +3,7 @@ traceCB: Trace Cell-type specific eQTL effects across populations using Method o
 """
 
 from .gmm import GMM, GMMtissue
-from .ldsc import Run_single_LDSC, Run_cross_LDSC
+from .ldsc import Run_Single_LDSC, Run_Cross_LDSC
 
 # Version info
 __version__ = "0.1.0"

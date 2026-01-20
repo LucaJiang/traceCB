@@ -1,7 +1,4 @@
-# Functions for running cross population LD score regression
-## Main function: Run_cross_LDSC
-## returns: Omega, Omega_se which are 2x2 matrices for per-snp heritability or covariance
-## !Attention: outputs have been clipped
+# Functions for running single and cross population LD score regression (LDSC)
 import numpy as np
 from traceCB.utils import MIN_HERITABILITY, MIN_FLOAT
 
@@ -86,11 +83,11 @@ def regression_jk(
     Least squares with optional fixed intercept and block jackknife SE
     replicating ldsc.R::regression().
 
-    x : (N, p) design matrix (first column should be the intercept column if present)
-    y : (N,) response
+    x: (N, p) design matrix (first column should be the intercept column if present)
+    y: (N,) response
     intercept : fixed intercept value; if NaN, intercept is estimated
     estimate_se : whether to compute SEs
-    jackknife : whether to use block jackknife (R parity)
+    jackknife : whether to use block jackknife
     nblocks : number of blocks for jackknife
     """
     y = y.reshape(-1)
@@ -100,7 +97,7 @@ def regression_jk(
     xtx = x.T @ x
     xty = x.T @ y
 
-    # coefficients (R parity)
+    # coefficients
     if not np.isnan(intercept):  # constrained intercept
         coefs = np.zeros(p)
         # solve for slopes using the submatrix (drop intercept column/row)
@@ -124,8 +121,7 @@ def regression_jk(
         cov_beta = sigsq * np.linalg.inv(xtx if np.isnan(intercept) else xtx)
         return coefs, np.sqrt(np.maximum(np.diag(cov_beta), 0.0))
 
-    # --- block jackknife (R parity) ---
-    # floor(seq(1, N, length.out = nblocks+1)) but 0-based in Python
+    # --- block jackknife ---
     edges = np.floor(np.linspace(0, n, num=nblocks + 1)).astype(int)
     # drop empty blocks (can happen when N < nblocks)
     blocks = [
@@ -135,7 +131,7 @@ def regression_jk(
     ]
     B = len(blocks)
     if B < 2:
-        # not enough blocks to jackknife — return NaNs (or OLS as fallback if you prefer)
+        # not enough blocks to jackknife — return NaNs (or OLS as fallback if prefer)
         return coefs, np.full(p, np.nan)
 
     coefs_jk = np.zeros((B, p))
@@ -156,13 +152,10 @@ def regression_jk(
             coef_b = np.linalg.solve(xtx_loo, xty_loo)
         coefs_jk[b, :] = coef_b
 
-    # R does: jk_cov <- cov(coefs_jk) * (nblocks - 1)
     # np.cov with rowvar=False, ddof=1 == sample covariance (divide by B-1)
     jk_cov = np.cov(coefs_jk, rowvar=False, ddof=1) * (B - 1)
     jk_se = np.sqrt(np.maximum(np.diag(jk_cov), 0.0))
 
-    # NOTE: in constrained-intercept mode, R fills only the slope columns in coefs_jk
-    # and leaves intercept column as 0, so the intercept SE is ~0. We replicate that.
     return coefs, jk_se
 
 
@@ -470,7 +463,7 @@ def ldscore_regression_gc(
 ###################################################
 #         LDSC Regression Main Function           #
 ###################################################
-def Run_single_LDSC(
+def Run_Single_LDSC(
     zscore: np.ndarray,
     n: np.ndarray,
     ldscore: np.ndarray,
@@ -546,7 +539,7 @@ def Run_single_LDSC(
     return h2, h2_se
 
 
-def Run_cross_LDSC(
+def Run_Cross_LDSC(
     zscore1: np.ndarray,
     n1: np.ndarray,
     ldscore1: np.ndarray,
@@ -557,6 +550,7 @@ def Run_cross_LDSC(
     intercept: np.ndarray = np.array([np.nan, np.nan, np.nan]),
 ) -> tuple[np.ndarray, np.ndarray]:
     """Run LDSC regression for genetic covariance between two populations.
+    Note: heritability have been clipped to >0, while genetic correlation maintains original estimates.
 
     Parameters
     ----------
@@ -617,7 +611,7 @@ def Run_cross_LDSC(
     Omega[1, 0] = cross[1]
     Omega_se[1, 0] = cross[3]
 
-    # Clip to suitable range
+    # Clip to suitable range, optional
     # Omega = np.maximum(Omega, MIN_HERITABILITY)
     Omega[0, 0] = max(Omega[0, 0], MIN_HERITABILITY)
     Omega[1, 1] = max(Omega[1, 1], MIN_HERITABILITY)
@@ -639,11 +633,20 @@ if __name__ == "__main__":
     crossld = np.array([0.15, 0.25, 0.35])
     intercept = np.array([np.nan, np.nan, np.nan])
 
-    h2, h2_se = Run_single_LDSC(zscore1, n1, ldscore1, np.nan)
+    h2, h2_se = Run_Single_LDSC(zscore1, n1, ldscore1, np.nan)
     print("Single-pop h2, h2_se:", h2, h2_se)
 
-    Omega, Omega_se = Run_cross_LDSC(
+    print("\nCross-pop LDSC:")
+    Omega, Omega_se = Run_Cross_LDSC(
         zscore1, n1, ldscore1, zscore2, n2, ldscore2, crossld, intercept
     )
     print("Omega:", Omega)
     print("Omega_se:", Omega_se)
+
+    print("\nCross-pop LDSC with fixed intercept:")
+    intercept_fixed = np.array([1.0, 1.0, 0.0])
+    Omega_fixed, Omega_se_fixed = Run_Cross_LDSC(
+        zscore1, n1, ldscore1, zscore2, n2, ldscore2, crossld, intercept_fixed
+    )
+    print("Omega with fixed intercept:", Omega_fixed)
+    print("Omega_se with fixed intercept:", Omega_se_fixed)
