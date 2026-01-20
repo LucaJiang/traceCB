@@ -1,3 +1,4 @@
+# script to run all simulation experiments
 python src/simulation/simulation.py --pop1_geno data/simulation/EAS_n5000_chr22_loci29.npy --pop2_geno data/simulation/EUR_n20000_chr22_loci29.npy --runname nt_n2_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 100 --n2 100 200 400 --nt 1000 5000 --nsnp 2000 --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir bench/result --nrep 100 --estimate_omega
 python src/simulation/visual_simulation.py --metric power --runname nt_n2_propt  --ymax 0.38 --ymin 0.16
 

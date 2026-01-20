@@ -15,7 +15,6 @@ from numba import njit, prange
 from traceCB.ldsc import Run_Cross_LDSC
 from traceCB.gmm import GMM, GMMtissue
 from traceCB.utils import z2p, MIN_HERITABILITY
-from traceCB.run_gmm import clip_correlation
 
 MIN_FLOAT = 1e-32
 P_VAL_THRED = 0.05  # for h2 and cov in omega

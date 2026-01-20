@@ -1,7 +1,5 @@
-import pandas as pd
 import plotly.graph_objects as go
 from visual.utils import *
-import glob
 
 # 加载数据
 data_dir = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc"

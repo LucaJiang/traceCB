@@ -1,6 +1,6 @@
 # plot egene replicate venn between QTDids
 ## ! Attention: eGene harmonized across QTDids
-from utils import *
+from visual.utils import *
 from matplotlib_venn import venn2, venn3
 from matplotlib_venn.layout.venn3 import DefaultLayoutAlgorithm
 from matplotlib_venn.layout.venn2 import DefaultLayoutAlgorithm as Venn2LayoutAlgorithm

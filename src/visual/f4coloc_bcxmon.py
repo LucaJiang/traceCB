@@ -1,5 +1,5 @@
 # %% plot fig 4 coloc heatmap for bcx mon
-from utils import *
+from visual.utils import *
 
 COLOC_THRESHOLD = 0.7
 # get annotation of gene id 2 name

@@ -1,5 +1,5 @@
 # Plot correlation density for all studies combined
-from utils import *
+from visual.utils import *
 import warnings
 
 warnings.filterwarnings("ignore")

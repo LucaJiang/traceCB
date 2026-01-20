@@ -6,21 +6,30 @@ build-backend = "setuptools.build_meta"
 name = "traceCB"
 version = "0.1.0"
 authors = [
-  { name="Luca Jiang" },
+  { name="Luca Jiang", email="wx.jiang@my.cityu.edu.hk" },
 ]
-description = "TraceCB Cell-type specific eQTL effects across populations using Method of Moments"
+description = "TraceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data"
 readme = "README.md"
 requires-python = ">=3.8"
+license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
+keywords = ["genetics", "bioinformatics", "GWAS", "eQTL", "single-cell", "method-of-moments"]
 dependencies = [
     "numpy",
     "pandas",
     "numba",
     "scipy",
+    "pyarrow",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/lucajiang/traceCB"
+"Bug Tracker" = "https://github.com/lucajiang/traceCB/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

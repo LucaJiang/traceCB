@@ -1,6 +1,6 @@
 # plot f5 AFR+GTEx violin plot for effective sample size
-from utils import *
-from f3violin import remove_outliers
+from visual.utils import *
+from visual.f3violin import remove_outliers
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 import os

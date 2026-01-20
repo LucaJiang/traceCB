@@ -1,9 +1,10 @@
-# How to run traceCB for BBJ, eQTL Catalogue and GTEx data
+# HowTO: Run traceCB pipeline
 
-This page describes how to preprocess data, run traceC and traceCB's gmm model, and visualize the results. If you use other eQTL data, please make sure the input data format is the same as described below.
+This page describes how to preprocess data, run traceC and traceCB's gmm model, and visualize the results. 
+All logs will be saved according to your `log_path`. Please check the log files carefully.
+If you use other eQTL data, please make sure the input data format is the same as described below.
 
-## Table of Contents
-
+- [xpmm](#xpmm)
   - [Preprocesssing](#preprocesssing)
     - [Format data by CHR](#format-data-by-chr)
     - [eQTLCatalogue Infomation](#eqtlcatalogue-infomation)
@@ -15,21 +16,7 @@ This page describes how to preprocess data, run traceC and traceCB's gmm model, 
   - [Visualization](#visualization)
   - [COLOC](#coloc)
 
-## Requirements and setup
-
-1. Install the required python packages:
-
-```shell
-pip install numpy pandas scipy pysnptools numba matplotlib seaborn sklearn statsmodels
-```
-
-2. Install `plink` and [s-ldxr](https://huwenboshi.github.io/s-ldxr/) software.
-
-3. Fill in the paths in `shell/settings.sh`.
-
 ## Preprocesssing
-
-Where to download data and software:
 
 - eQTLCatalogue: [tabix](https://github.com/eQTL-Catalogue/eQTL-Catalogue-resources/blob/master/tabix/tabix_ftp_paths.tsv)
 - GTEx: [gcloud](https://console.cloud.google.com/storage/browser/gtex-resources/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_eQTL_all_associations;tab=objects?inv=1&invt=Ab037A&prefix=&forceOnObjectsSortingFiltering=true) and [gtex](https://www.gtexportal.org/home/downloads/adult-gtex/qtl)
@@ -87,7 +74,7 @@ CHR,RSID,POS,A2,A1,GENE,BETA,Z,PVAL
 22,rs1000427,36890105,G,A,ENSG00000100060,-0.039387484946029,-0.221527620769525,0.825124526212667
 ```
 
-- eQTLCatalog: shell/eQTLCatalog_Preprocess.sh
+- eQTLCatalog: shell/eQTLCatalog_Preprocess.md
 
 Input example: `QTD000031.all.tsv.gz`
 
@@ -129,9 +116,9 @@ QTD000115: NK_cells, sample size: 247
 
 ### Cell type proportion
 
-<!-- TODO: details -->
+Note that you can use any other method to obtain cell type proportion.
 
-Use GTEx whole blood tpm file and [Cibersortx](https://cibersortx.stanford.edu/) online software to calculate cell type proportion.
+Use GTEx whole blood tpm file (need individual level data to calculate proportion) and `Cibersortx` online software to calculate cell type proportion.
 
 ```csv
 Cell_type,Proportion
@@ -150,7 +137,7 @@ Granulocyte,53.120311443234144
 
 ### Alignment
 
-Run `src/preprocess/merge.py` by `shell/run_merge.sh` to align all input data files. Result will be saved to `save_path_main`. Cell type proportion file will also be copied to the same directory.
+Run `src/preprocess/MergeChr.py` by `shell/run_merge.sh` to align all input data files. Result will be saved to `save_path_main`. Cell type proportion file will also be copied to the same directory.
 
 Output example:
 
@@ -164,9 +151,9 @@ rs4386418,ENSG00000015475,-0.172559,0.107485,-1.6054240126529282,0.110194,191
 rs2385713,ENSG00000015475,-0.00438877,0.0981174,-0.0447297828927387,0.964373,191
 
 head <save_path_main>/EAS_GTEx/QTD000021/INFO/chr22.csv
-GENE,RSID,POS,A1,A2
-ENSG00000141956,rs72613628,40881223,T,C
-ENSG00000141956,rs7279498,40881645,A,G
+RSID,GENE,A1,A2
+rs4386418,ENSG00000015475,A,C
+rs2385713,ENSG00000015475,A,G
 ```
 
 ### Annotate LD
@@ -252,45 +239,70 @@ After preprocessing, the folder for a study should look like this:
     ├── ...
 ```
 
-Use `shell/run_gmm.sh` to run `src/run_gmm.py` for each study. This will calculate the GMM results and save them in the `save_path_main` directory.
+Use `shell/run_gmm.sh` to run `src/traceCB/run_gmm.py` for each study. This will calculate the GMM results and save them in the `save_path_main` directory.
+
 Output example:
 
 ```shell
-<save_path_main>/EAS_GTEx/QTD@/GMM/chr@/ENSG@.csv:
-RSID,TAR_SBETA,TAR_CBETA,TAR_TBETA,TAR_SSE,TAR_CSE,TAR_TSE,TAR_SZ,TAR_CZ,TAR_TZ,TAR_SPVAL,TAR_CPVAL,TAR_TPVAL,AUX_SBETA,AUX_CBETA,AUX_TBETA,AUX_SSE,AUX_CSE,AUX_TSE,AUX_SZ,AUX_CZ,AUX_TZ,AUX_SPVAL,AUX_CPVAL,AUX_TPVAL,TISSUE_BETA,TISSUE_SE,TISSUE_Z,TISSUE_PVAL
-rs10738337,-0.218573418389311,-0.008294419021041131,-0.04038206057243096,0.2431349430015113,0.10591163828453204,0.10244247745371493,-0.898979865629402,-0.07831451911600254,-0.3941925417674147,0.37076020961439,0.9375778683499774,0.6934388916548393,0.0452562,0.03067393532694538,-0.014346591263839595,0.111361,0.11026942057576058,0.10432265251450933,0.4063918247860562,0.27817263541228876,-0.13752134285354997,0.684949,0.7808798399460992,0.890618723856331,-0.0587699,0.0475156,-1.2368548434619369,0.216624
-rs10961155,0.0736274810073055,0.09801075539874109,0.08612261969328758,0.164901922904843,0.15878379026850212,0.15775429789552664,0.446492555758688,0.6172592002811225,0.5459288326351818,0.656178806660539,0.537063773310086,0.5851148580952852,0.216722,0.16922020336632115,0.12220997962162766,0.310475,0.21246559055358924,0.20394416913335534,0.6980336581045172,0.7964593368997297,0.5992325259454553,0.486077,0.4257651013263122,0.5490178357069655,-0.0632752,0.107333,-0.5895223277090923,0.555733
+<save_path_main>/EAS_GTEx/QTD@/GMM/chr@/ENSG@.parquet: # for each gene
+RSID  TAR_SBETA  TAR_CBETA  TAR_TBETA   TAR_SSE   TAR_CSE   TAR_TSE    TAR_SZ    TAR_CZ    TAR_TZ  TAR_SPVAL  TAR_CPVAL     TAR_TPVAL  AUX_SBETA  AUX_CBETA  AUX_TBETA   AUX_SSE   AUX_CSE   AUX_TSE    AUX_SZ    AUX_CZ    AUX_TZ  AUX_SPVAL  AUX_CPVAL     AUX_TPVAL  TISSUE_BETA  TISSUE_SE  TISSUE_Z   TISSUE_PVAL
+rs10985869  -0.513371  -0.515194  -0.637880  0.150474  0.143661  0.127948 -3.411698 -3.586188 -4.985484   0.000924   0.000336  6.180674e-07  -0.160632  -0.184845  -0.228108  0.144584  0.053387  0.044848 -1.110994 -3.462335 -5.086225   0.267231   0.000536  3.652615e-07    -0.048964   0.005903   -8.2955  1.080400e-16
 
-<save_path_main>/EAS_GTEx/QTD@/GMM/chr@/summary.csv
-GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV,COV_PVAL,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
-ENSG00000005238,1822.0,2.7857883284876096e-05,1.6657978687744558e-05,1e-12,7.118640817536115e-06,5.2780567716556795e-09,0.9994814551731197,152.86558783402612,,,0.0,,,497416611.8914097,,,0.0,,,638662843.4278672,0.0
-ENSG00000011454,1724.0,5.3081856569818305e-05,2.569967695537234e-05,0.00015629291835265752,2.6459813162442765e-05,5.53790512393402e-05,0.022731906153504067,411.55410082730054,1098.801367801141,1211.63562949458,0.0,194.0,197.0,634.9874418978754,730.7892366877431,971.1327181950111,174.0,198.0,207.0,210.78945770297386,54.0
-ENSG00000023318,1600.0,1e-12,8.69308557471805e-06,4.829093055210316e-06,6.516001141075617e-06,1e-12,0.9999998243731301,-4382085988.71508,,,0.0,,,813.5234655127368,,,0.0,,,-774.9106238664701,0.0
+<save_path_main>/EAS_GTEx/QTD@/GMM/chr@/summary.csv # for all genes in one chromosome
+GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COR_X_ORI,COV_PVAL,COR_X,SIGMAO,RUN_GMM,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
+ENSG00000197563,2321,7.496220311530559e-05,2.011502227540292e-05,0.0002531782351655968,2.4300689095640065e-05,1.6474267061036236,2.2415841571456486e-10,0.9899999942102872,6.525303922270945e-06,True,269.0556459941143,933.1492802187638,1548.5439947504565,87,199.0,237.0,1725.9942415217718,1771.6907173545303,2944.1095306644656,536,540.0,718.0,44210.94968964821,1012
 ```
+
+where 'TAR_\*' means the target population (here is EAS), 'AUX_\*' means the auxiliary population (here is EUR), and '\*_S\*', '\*_C\*', '\*_T\*' means the summary statistics, cross-population enhancement, and cross-population with tissue enhancement results, respectively.
+
+Note that our software use the jit and nogil features of `numba` package to accelerate computation. Feel free to comment out the `numba` decorators (beginning with `@` before functions) if you encounter any issues, which will makes debugging easier but slower.
+
+Also, the gene-level results are saved in `parquet` format to reduce disk usage and speed up loading time. You can use `pandas` to read the files:
+
+```python
+import pandas as pd
+df = pd.read_parquet("ENSG00000197563.parquet")
+```
+
+Or, you can modify the code in `src/traceCB/run_gmm.py` to save as `csv` format if you prefer.
 
 ## Visualization
 
-<!-- ```shell
-# download visualization results
-QTDids=("QTD000021" "QTD000031" "QTD000066" "QTD000067" "QTD000069" "QTD000073" "QTD000081" "QTD000115" "QTD000371" "QTD000372")
-for j in "${QTDids[@]}"; do
-    rsync -avz --progress \
-        --include="*.png" --exclude="*" \
-        -e ssh \
-        wjiang49@burgundy.hpc.cityu.edu.hk:/gpfs1/scratch/wjiang49/xpmm/EAS_GTEx/${j}/results/visualization/ \
-        /Users/lucajiang/learn/CityU/xpmm/docs/EAS_GTEx/
-done
-``` -->
+Codes in `src/visual/` are used to visualize the GMM results. The `src/visual/utils.py` controls which study to plot for Python script. And `src/visual/meta_data.json` defines the color, label, and etc. for each study. For visualization of fig 3 or fig 5 in the paper, please choose the corresponding study in `src/visual/utils.py`.
 
-## COLOC
+## Colocalization
 
-<!-- ```shell
-QTDids=("QTD000021" "QTD000031" "QTD000066" "QTD000067" "QTD000069" "QTD000073" "QTD000081" "QTD000115" "QTD000371" "QTD000372")
-for j in "${QTDids[@]}"; do
-    rsync -avz --progress \
-        --include="*_coloc.csv" --exclude="*" \
-        -e ssh \
-        wjiang49@burgundy.hpc.cityu.edu.hk:/gpfs1/scratch/wjiang49/xpmm/EAS_GTEx/${j}/results/coloc/ \
-        /Users/lucajiang/learn/CityU/xpmm/coloc/data/
-done
-``` -->
+0. Prerequisites & Dependencies
+
+    *   **LDlinkR API token**: [LDLinkR](https://cran.r-project.org/web/packages/LDlinkR/vignettes/LDlinkR.html)
+    *   **Bedtools**: The `closestBed` binary is required.
+    *   **Reference Files**:
+        *   **Cytoband File**: hg19/GRCh37 cytoband definitions.
+        *   **Gene Annotation BED**: A BED file containing protein-coding gene coordinates (typically from GENCODE).
+
+Use you own token to access the `ldlinkr` API. You must fill in your token in `src/coloc/run_ldlink.R` before running the scripts.
+
+1. Run `find_leadingSNP.py` to find and annotate leading SNPs
+
+```bash
+python src/coloc/find_leadingSNP.py \
+  --gwas_sumstats_path <PATH_TO_GWAS_FILE> \
+  --save_path <OUTPUT_DIRECTORY> \
+  --save_prefix <FILE_PREFIX> \
+  [optional arguments]
+```
+
+The script used in this paper are commented at the top of `find_leadingSNP.py`.
+
+Output files:
+
+* **`{prefix}_GWAS.csv`**: Standardized GWAS data containing columns `SNP`, `PVALUE`, `CHR`, `POS`, `REF`, `ALT`.
+* **`{prefix}_leadingSNP.csv`**: A list of the most significant SNP (leading SNP) for each chromosomal band.
+* **`{prefix}_ldlink.csv`**: Output from the R script containing LD information for the identified loci.
+* **`{prefix}_GWAS_index_snps.bed`**: A BED file of the index SNPs derived from the LD results.
+* **`{prefix}.closest.protein_coding.bed`**: Result from `closestBed`, mapping SNPs to their nearest protein-coding genes.
+* **`{prefix}_loci.csv`**: **Final Result**. A summary table merging SNP positions with their closest Ensembl gene IDs and distance.
+
+2. Run COLOC analysis
+
+Use `shell/run_coloc.sh` to run code in `src/coloc/run_coloc.py` for each study. This will calculate the COLOC results and save them in the `save_path_main` directory.

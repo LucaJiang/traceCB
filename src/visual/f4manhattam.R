@@ -12,7 +12,7 @@ library(EnsDb.Hsapiens.v75)
 library(dplyr)
 library(rtracklayer)
 library(colorspace)
-
+# note: use arrow::read_parquet for parquet files, or convert to csv first
 
 # Configuration
 study_path_main <- "/Users/lucajiang/learn/CityU/traceCB/data/EAS_eQTLGen" # Update this path
@@ -28,7 +28,7 @@ token <- "72edb9cc22c9" # LD token for LDlink API
 # Plot gene info
 plot_gene_info <- list(
   # CTSW (chromosome 11)
-  # c("ENSG00000172543", "QTD000021", 11, "CTSW"),
+  c("ENSG00000172543", "QTD000021", 11, "CTSW"),
   c("ENSG00000172543", "QTD000069", 11, "CTSW"),
   c("ENSG00000172543", "QTD000081", 11, "CTSW"),
   c("ENSG00000172543", "QTD000031", 11, "CTSW"),

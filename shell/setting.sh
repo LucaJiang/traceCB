@@ -26,7 +26,7 @@ log_path="${main_repo}/log"
 
 ## Environment and Software
 python_env="py312"
-r_env="r412"
+r_env="r4"
 plink_path="/home/group1/wjiang49/software/plink"
 sldxr_path="/home/group1/wjiang49/software/s-ldxr-master"
 

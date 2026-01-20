@@ -2,7 +2,7 @@
 # Row 1: all_studies (2x width) + 2 individual studies
 # Row 2: 4 individual studies
 # Row 3: 4 individual studies
-from utils import *
+from visual.utils import *
 import pypdfium2 as pdfium
 from PIL import Image, ImageDraw, ImageFont
 

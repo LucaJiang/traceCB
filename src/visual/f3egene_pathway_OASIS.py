@@ -1,5 +1,5 @@
 # %% plot eGene in Nuclear and Membrane Pathway
-from utils import *
+from visual.utils import *
 from matplotlib.patches import Rectangle
 
 # config, gene list obtain from onek1k paper
