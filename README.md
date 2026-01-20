@@ -71,7 +71,7 @@ Scripts for visualization are provided in `src/visual/`.
 
 If you use **traceCB** in your research, please cite our paper:
 
-<!-- TODO -->
+> *Citation pending...*
 
 ## License
 

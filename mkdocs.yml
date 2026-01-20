@@ -11,15 +11,15 @@ theme:
   palette: 
     # Light mode
     - scheme: default
-      primary: teal
-      accent: purple
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     # Dark mode
     - scheme: slate
-      primary: teal
-      accent: lime
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -38,6 +38,10 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true 
   - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
 
 nav:
   - Home: index.md
