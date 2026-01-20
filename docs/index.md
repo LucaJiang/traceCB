@@ -1,8 +1,20 @@
 # Welcome to traceCB
 
-**traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating scRNA-seq and **B**ulk data ("Method of Moments").
+**traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating s**C**RNA-seq and **B**ulk data ("Method of Moments").
 
 ![traceCB Workflow](img/traceCB.png)
+
+- [Welcome to traceCB](#welcome-to-tracecb)
+  - [Overview](#overview)
+  - [Key Features](#key-features)
+  - [Documentation](#documentation)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Quick Start](#quick-start)
+  - [Citation](#citation)
+  - [Support](#support)
+
+
 
 ## Overview
 

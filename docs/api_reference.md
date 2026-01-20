@@ -2,6 +2,15 @@
 
 This page provides detailed documentation for the core functions in the `traceCB` package.
 
+- [API Reference](#api-reference)
+  - [traceCB.gmm](#tracecbgmm)
+    - [`GMM`](#gmm)
+    - [`GMMtissue`](#gmmtissue)
+  - [traceCB.ldsc](#tracecbldsc)
+    - [`Run_Single_LDSC`](#run_single_ldsc)
+    - [`Run_Cross_LDSC`](#run_cross_ldsc)
+
+
 ## traceCB.gmm
 
 Core functions for the Generalized Method of Moments (GMM) estimation.

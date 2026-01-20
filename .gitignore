@@ -1,8 +1,8 @@
 # datafiles
-data/simulation/
+data/*
+!data/toy_example/
 bench/
 .DS_Store
-bench/
 
 # temporary files
 tmp/

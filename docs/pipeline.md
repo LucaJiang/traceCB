@@ -4,7 +4,7 @@ This page describes how to preprocess data, run traceC and traceCB's gmm model, 
 All logs will be saved according to your `log_path`. Please check the log files carefully.
 If you use other eQTL data, please make sure the input data format is the same as described below.
 
-- [xpmm](#xpmm)
+- [HowTO: Run traceCB pipeline](#howto-run-tracecb-pipeline)
   - [Preprocesssing](#preprocesssing)
     - [Format data by CHR](#format-data-by-chr)
     - [eQTLCatalogue Infomation](#eqtlcatalogue-infomation)
@@ -14,7 +14,7 @@ If you use other eQTL data, please make sure the input data format is the same a
     - [Run s-ldxr](#run-s-ldxr)
   - [GMM](#gmm)
   - [Visualization](#visualization)
-  - [COLOC](#coloc)
+  - [Colocalization](#colocalization)
 
 ## Preprocesssing
 
