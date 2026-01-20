@@ -1,0 +1,46 @@
+site_name: traceCB
+site_url: https://lucajiang.github.io/traceCB/
+site_description: Trans-ancestry cell-type-specific eQTL effects mapping
+site_author: Luca Jiang
+
+repo_name: lucajiang/traceCB
+repo_url: https://github.com/lucajiang/traceCB
+
+theme:
+  name: material
+  palette: 
+    # Light mode
+    - scheme: default
+      primary: teal
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true 
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Pipeline: pipeline.md
+  - API Reference: api_reference.md
+  - Tutorial: https://github.com/LucaJiang/traceCB/blob/master/docs/tutorial/run_traceCB.ipynb

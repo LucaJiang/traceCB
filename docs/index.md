@@ -1,50 +1,41 @@
 # Welcome to traceCB
 
-**traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating s**C**RNA-seq and **B**ulk data ("Method of Moments").
+**traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating s**C**RNA-seq and **B**ulk data.
 
-![traceCB Workflow](img/traceCB.png)
+[![traceCB Workflow](img/traceCB.png)](img/traceCB.png)
 
-- [Welcome to traceCB](#welcome-to-tracecb)
-  - [Overview](#overview)
-  - [Key Features](#key-features)
-  - [Documentation](#documentation)
-  - [Installation](#installation)
-    - [Prerequisites](#prerequisites)
-    - [Quick Start](#quick-start)
-  - [Citation](#citation)
-  - [Support](#support)
+!!! info "Key Capabilities"
+    traceCB enables researchers to:
+    
+    * **Integrate** single-cell RNA-seq data with bulk GWAS summary statistics.
+    * **Estimate** cell-type-specific eQTL effects across different populations.
+    * **Perform** trans-ancestry analysis to improve resolution and power.
 
+---
 
+## Features
 
-## Overview
+<div class="grid cards" markdown>
 
-traceCB enables researchers to:
-- Integrate single-cell RNA-seq data with bulk GWAS summary statistics.
-- Estimate cell-type-specific eQTL effects across different populations.
-- Perform trans-ancestry analysis to improve resolution and power.
+-   :material-dna: **Integration**
+    ---
+    Seamlessly combines single-cell precision with bulk data scale for enhanced biological insights.
 
-## Key Features
+-   :material-earth: **Trans-ancestry**
+    ---
+    Leverages genetic diversity across populations to identify robust and causal signals.
 
-- **Integration**: Seamlessly combines single-cell precision with bulk data scale.
-- **Trans-ancestry**: Leverages diversity to find robust signals.
-- **Efficiency**: Optimized using `numba` for high-performance computing.
+-   :material-speedometer: **Efficiency**
+    ---
+    optimized numeric computing kernel using `numba` ensures high-performance analysis on large datasets.
 
-## Documentation
+</div>
 
-Explore our documentation to learn how to use traceCB:
+## Getting Started
 
-- **[Pipeline Workflow](pipeline.md)**: Detailed steps for data preprocessing and analysis modules.
-- **[API Reference](api_reference.md)**: Comprehensive documentation for core functions (`GMM`, `LDSC`).
-- **[Tutorial](tutorial/run_traceCB.ipynb)**: Step-by-step Jupyter notebook example.
+### Installation
 
-## Installation
-
-### Prerequisites
-- Python >= 3.8
-
-### Quick Start
-
-Clone the repository and install the package using pip:
+Prerequisites: Python >= 3.8
 
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
@@ -52,11 +43,19 @@ cd traceCB
 pip install -e .
 ```
 
+### Documentation
+
+Explore our documentation to learn how to use traceCB:
+
+* [Pipeline Workflow](pipeline.md) - Detailed steps for data preprocessing.
+* [API Reference](api_reference.md) - Documentation for core functions.
+* [Tutorial](https://github.com/LucaJiang/traceCB/blob/master/docs/tutorial/run_traceCB.ipynb) - Jupyter notebook example.
+
 ## Citation
 
 If you use **traceCB** in your research, please cite our paper:
 
-<!-- TODO -->
+> *Citation pending...*
 
 ## Support
 
