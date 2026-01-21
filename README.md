@@ -42,7 +42,7 @@ It is highly recommended to run this tutorial first to understand the input data
 
 ## Usage Pipeline
 
-For full-scale analysis, we provide a structured shell-script pipeline. Detailed preprocessing steps are described in [Pipeline Documentation](docs/pipeline.md).
+For full-scale analysis, we provide a structured shell-script pipeline. Detailed preprocessing steps are described in [Pipeline Documentation](https://lucajiang.github.io/traceCB/pipeline/).
 
 ### 1. Configuration
 Modify `shell/setting.sh` to specify your paths and parameters according to your environment.
