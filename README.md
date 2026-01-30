@@ -1,7 +1,7 @@
 # traceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 
 This repository contains code for the **traceCB** paper, featuring the main algorithm and a complete pipeline for trans-ancestry cell-type-specific eQTL mapping.
 
@@ -75,7 +75,7 @@ If you use **traceCB** in your research, please cite our paper:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GPL-3 License - see the LICENSE file for details.
 
 ## Contact
 
