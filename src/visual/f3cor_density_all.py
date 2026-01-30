@@ -56,7 +56,10 @@ def plot_cor_density_all_studies(summary_df_all, summary_sign_df_all):
     )
 
     print(f"Heritability Significant genes: {len(target_summary_df)}")
-    print(f"Correlation Significant genes: {len(target_summary_sign_df)}")
+    print(target_summary_df.COR_X_ORI.describe())
+    print(f"\nCorrelation Significant genes: {len(target_summary_sign_df)}")
+    print(target_summary_sign_df.COR_X_ORI.describe())
+
     print(f"Combined data points: {len(combined_df)}")
 
     # 使用 displot 并添加 rug

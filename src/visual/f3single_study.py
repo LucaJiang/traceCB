@@ -301,8 +301,9 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
         [target_summary_df, target_summary_sign_df], ignore_index=True
     )
 
-    # print(target_summary_df.COR.describe())
-    # print(target_summary_sign_df.COR.describe())
+    # print(f"Study {target_qtdid}:")
+    # print(target_summary_df.COR_X_ORI.describe())
+    # print(target_summary_sign_df.COR_X_ORI.describe())
 
     # 使用 displot 并添加 rug
     g = sns.displot(
@@ -452,7 +453,7 @@ if __name__ == "__main__":
             & (summary_df.H2SQ > 1e-12)
         )
         summary_df = summary_df.loc[both_sign_index, :]
-        # plot_cor_density(summary_df, summary_sign_df, target_qtdid)
+        plot_cor_density(summary_df, summary_sign_df, target_qtdid)
         ## scatter plot
         plot_neff_scatter(summary_df, target_qtdid)
         plot_neff_scatter(summary_df, target_qtdid, text_annot=False)
