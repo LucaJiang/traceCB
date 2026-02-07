@@ -69,7 +69,17 @@ for i, qtdid in enumerate(meta_data["QTDids"]):
 print(combined_df.head())
 # find unique genes in the combined_df
 unique_genes = combined_df["gene_name"].unique()
-print("number of unique gene: ", len(unique_genes))  # 51
+print("number of unique gene: ", len(unique_genes))  # 59
+
+# summarize newly detected coloced genes for each method across all studies
+num_traceC_newly_coloced = combined_df[
+    (combined_df["traceC"] == 1) & (combined_df["original"] == 0)
+].shape[0]
+print(f"traceC newly coloced genes: {num_traceC_newly_coloced}")
+num_traceCB_newly_coloced = combined_df[
+    (combined_df["traceCB"] == 1) & (combined_df["original"] == 0)
+].shape[0]
+print(f"traceCB newly coloced genes: {num_traceCB_newly_coloced}")
 
 # get replicate tissue coloced results
 replicate_df = pd.read_csv(replicate_path, sep=",")
