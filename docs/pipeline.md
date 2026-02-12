@@ -4,7 +4,7 @@ This guide details the steps to preprocess data, execute the traceCB GMM model, 
 
 All logs will be saved to your specified `log_path`. Please review the log files carefully for any warnings or errors.
 
-!!! warning "Data Format Requirement"
+!!! warning Data Format Requirement
     If you use your own eQTL data, ensure the input data format matches the specifications described below exactly to avoid runtime errors.
 
 ## Workflow Overview
@@ -154,6 +154,11 @@ Run `src/preprocess/MergeChr.py` via `shell/run_merge.sh` to align all input dat
 #### 1. Annotate LD
 Run `src/preprocess/create_ld_annot.py` via `shell/run_ld.sh`. This step prepares 1000G data for `s-ldxr`.
 
+!!! note Dependency
+    Requires `pysnptools` and `statsmodels` to run s-ldxr. Ensure these are installed in your Python environment.
+
+    
+
 **Input**: `1000G.<pop>.QC.maf.@.bed/bim/fam`
 
 **Output**:
@@ -167,7 +172,7 @@ Run `src/preprocess/create_ld_annot.py` via `shell/run_ld.sh`. This step prepare
 #### 2. Run s-ldxr
 Use `shell/run_ld.sh` to calculate gene-level LD scores.
 
-!!! failure "Common Error"
+!!! failure Common Error
     ```text
     IndexError: index 16464 is out of bounds for axis 0 with size 16464
     ```
@@ -210,7 +215,7 @@ Contains heritability estimates ($h^2$) and effective sample sizes ($N_{eff}$).
 | --------- | ---- | -------- | -------- | --------- | --- |
 | ENSG...63 | 2321 | 7.49e-05 | 2.53e-04 | 269.05    | ... |
 
-!!! note "Performance Optimization"
+!!! note Performance Optimization
     We use `numba` with `jit` and `nogil` for high-performance computing. If you need to debug, you can comment out the `@` decorators in the source code, though this will significantly slow down execution.
 
 ## Colocalization

@@ -20,7 +20,7 @@ This repository contains code for the **traceCB** paper, featuring the main algo
 
 ### Prerequisites
 - Python >= 3.8
-- `numba`, `pyarrow`, `numpy`, `pandas`, `scipy`, 
+- `numba`, `pyarrow`, `scipy`
 
 ### Install from source
 
@@ -29,6 +29,21 @@ Clone the repository and install the package using pip:
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
 cd traceCB
+```
+
+**Activate your preferred Python environment** (recommended, required python 3.8 or above):
+```bash
+conda activate <your_env_name>
+```
+
+Or, create a new environment:
+```bash
+conda create -n traceCB_env python=3.8
+conda activate traceCB_env
+```
+
+Then install the dependencies and this package:
+```bash
 pip install -e .
 ```
 
@@ -45,19 +60,27 @@ It is highly recommended to run this tutorial first to understand the input data
 For full-scale analysis, we provide a structured shell-script pipeline. Detailed preprocessing steps are described in [Pipeline Documentation](https://lucajiang.github.io/traceCB/pipeline/).
 
 ### 1. Configuration
-Modify `shell/setting.sh` to specify your paths and parameters according to your environment.
+
+1. Install [s-ldxr](https://github.com/huwenboshi/s-ldxr) and [plink1.9](https://www.cog-genomics.org/plink/).
+2. Prepare python environment for `s-ldxr` which requires `pysnptools` and `statsmodels` addtionally.
+    ```bash
+    pip install pysnptools
+    pip install statsmodels
+    ```
+    Prepare R environment if you need to run COLOC. Otherwise, omit the r_env option in next step.
+3. Modify `shell/setting.sh` to specify your paths and parameters according to your environment.
 
 ### 2. Run Pipeline Steps
 The analysis is divided into sequential modules:
 
 ```bash
-# 1. Merge GWAS summary statistics
+# 1. Merge and align GWAS summary statistics
 source shell/run_merge.sh
 
-# 2. Calculate LD scores (LDSC)
+# 2. Calculate LD scores (s-ldxr)
 source shell/run_ld.sh
 
-# 3. Run Gaussian Mixture Model (GMM)
+# 3. Run Generalized Method of Moments (GMM)
 source shell/run_gmm.sh
 
 # 4. Colocalization Analysis (Optional)
@@ -79,4 +102,4 @@ This project is licensed under the GPL-3 License - see the LICENSE file for deta
 
 ## Contact
 
-For any questions or issues, please contact [wx.jiang@my.cityu.edu.hk](mailto:wx.jiang@my.cityu.edu.hk).
+For any questions or issues, please contact [wx.jiang@my.cityu.edu.hk](mailto:wx.jiang@my.cityu.edu.hk) or open an issue on GitHub.
