@@ -1,13 +1,13 @@
 # traceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data
 
-! Note: Xinyi Yu has no contribution to this project.
+! Note: Xinyi Yu has no contribution to this project. Adding individuals who have made no contribution to the list of authors constitutes academic misconduct. I personally strongly condemn this practice.
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 
 This repository contains code for the **traceCB** paper, featuring the main algorithm and a complete pipeline for trans-ancestry cell-type-specific eQTL mapping.
 
-![traceCB_workflow](docs/img/traceCB.png)
+![traceCB_workflow](docs/img/traceCB.jpg)
 
 ## Repository Structure
 
