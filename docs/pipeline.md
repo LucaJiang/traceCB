@@ -20,14 +20,23 @@ graph LR
 
 ## Preprocessing
 
-Data sources used in our study (and supported by default):
+Data sources and software used in our study (and supported by default):
+
+Data Sources:
 
 *   **eQTLCatalogue**: [Tabix Index](https://github.com/eQTL-Catalogue/eQTL-Catalogue-resources/blob/master/tabix/tabix_ftp_paths.tsv)
-*   **GTEx**: [Google Cloud](https://console.cloud.google.com/storage/browser/gtex-resources/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_eQTL_all_associations;tab=objects?inv=1&invt=Ab037A&prefix=&forceOnObjectsSortingFiltering=true) and [Portal](https://www.gtexportal.org/home/downloads/adult-gtex/qtl)
+*   **GTEx**: [Google Cloud](https://console.cloud.google.com/storage/browser/gtex-resources/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_eQTL_all_associations;tab=objects?inv=1&invt=Ab037A&prefix=&forceOnObjectsSortingFiltering=true) or [Portal](https://www.gtexportal.org/home/downloads/adult-gtex/qtl)
+*   **eQTLGen**: [Official Site](https://www.eqtlgen.org/phase1.html)
 *   **BBJ**: [Official Site](http://jenger.riken.jp/en/result)
-*   **1000G**: [S-LDSC Reference](https://zenodo.org/records/7768714) or [Plink2 Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1)
-*   **S-LDXR**: [GitHub Algo](https://github.com/huwenboshi/s-ldxr/tree/master)
+*   **1000G**: [Plink2 Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1)
 *   **PopCell (AFR)**: [Nature 2023](https://doi.org/10.1038/s41586-023-06422-9). *Restricted Access* - [Apply Here](https://dataset.owey.io/doi/10.48802/owey.e4qn-9190).
+
+Software:
+
+*   **S-LDXR**: [GitHub Algo](https://github.com/huwenboshi/s-ldxr/tree/master)
+*   **Plink1.9**: [Official Site](https://www.cog-genomics.org/plink/1.9/)
+*   **Cibersortx**: [Official Site](https://cibersortx.stanford.edu/) used for cell type proportion estimation from GTEx data.
+*   **COLOC**: [CRAN Package](https://cran.r-project.org/web/packages/coloc/index.html) used for colocalization analysis (optional).
 
 ### Format Data by Chromosome
 
