@@ -1,7 +1,7 @@
 # Welcome to traceCB
 
 !!! error "Important Notice"
-    Xinyi Yu has no contribution to this project. Adding individuals who have made no contribution to the list of authors constitutes academic misconduct. I personally strongly condemn this practice.
+    Xinyi Yu from CUHK(SZ) has no contribution to this project. Adding individuals who have made no contribution to the list of authors constitutes academic misconduct. I personally strongly condemn this practice.
 
 
 **traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating s**C**RNA-seq and **B**ulk data.
