@@ -49,6 +49,6 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Tutorial: tutorial.md
   - Pipeline: pipeline.md
   - API Reference: api_reference.md
-  - Tutorial: https://github.com/LucaJiang/traceCB/blob/master/docs/tutorial/run_traceCB.ipynb
