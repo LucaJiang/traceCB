@@ -20,7 +20,7 @@ map_dict = {
 }
 
 
-data_path = "/Users/lucajiang/learn/CityU/xpmm/data/decon/ind_celltype_proportion.csv"
+data_path = "/home/wjiang49/group/wjiang49/data/traceCB/cell_type_proportion/ind_celltype_proportion.csv"
 raw_df = pd.read_csv(data_path, header=0)
 raw_df.columns = [x.replace(".", " ") for x in raw_df.columns]
 raw_df.head()
@@ -67,7 +67,7 @@ ax.set_ylabel("Proportion", fontsize=12)
 # plt.xticks(rotation=30, ha="center")
 plt.tight_layout()
 plt.savefig(
-    "/Users/lucajiang/learn/CityU/xpmm/docs/supplymentary/ct_proportion.pdf",
+    "/home/wjiang49/group/wjiang49/data/traceCB/cell_type_proportion/ct_proportion.pdf",
     bbox_inches="tight",
 )
 plt.show()
