@@ -79,7 +79,7 @@ def f5violin(summary_sign_df):
 
     # Add celltype background rectangles
     celltype_colors = meta_data["celltype_colors"]
-    celltype_ranges = {  # (起始索引, 覆盖宽度)
+    celltype_ranges = {  # (start index, coverage width)
         "Monocytes": (-0.5, 3),
         "CD4+T_cells": (2.5, 3),
         "CD8+T_cells": (5.5, 2),
@@ -91,21 +91,21 @@ def f5violin(summary_sign_df):
     for celltype, (x_start, width) in celltype_ranges.items():
         ax.add_patch(
             Rectangle(
-                (x_start + margin, y_min),  # 左下角坐标
-                width - margin * 2,  # 宽度
-                y_max - y_min,  # 高度（覆盖整个y轴范围）
+                (x_start + margin, y_min),  # Bottom-left coordinate
+                width - margin * 2,  # Width
+                y_max - y_min,  # Height (covers the entire y-axis range)
                 facecolor=celltype_colors[celltype],
                 edgecolor="white",
                 linewidth=0.2,
                 alpha=0.3,
-                zorder=0,  # 确保在最底层
+                zorder=0,  # Ensure it is at the bottom layer
             )
         )
 
-        # 添加celltype标注线
+        # Add celltype annotation line
         x_end = x_start + width
         ax.hlines(
-            y=y_min + (y_max - y_min) * 0.02,  # 位于x轴上方
+            y=y_min + (y_max - y_min) * 0.02,  # Located above the x-axis
             xmin=x_start + margin,
             xmax=x_end - margin,
             colors=celltype_colors[celltype],
@@ -119,7 +119,7 @@ def f5violin(summary_sign_df):
         x_center = x_start + width / 2
         ax.text(
             x_center,
-            y_min + (y_max - y_min) * 0.07,  # 位于标注线上方
+            y_min + (y_max - y_min) * 0.07,  # Located above the annotation line
             label_name_shorten[celltype],
             color="black",
             # fontsize=10,
@@ -129,7 +129,7 @@ def f5violin(summary_sign_df):
         )
     plt.tight_layout()
     plt.savefig(os.path.join(save_path, "f5violin.pdf"), dpi=300, bbox_inches="tight")
-    plt.close()  # 添加close以释放内存
+    plt.close()  # Add close to release memory
     print(f"Violin plot saved to {os.path.join(save_path, 'f5violin.pdf')}")
 
 

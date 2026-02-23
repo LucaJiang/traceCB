@@ -1,16 +1,16 @@
 import plotly.graph_objects as go
 from visual.utils import *
 
-# 加载数据
+# Load data
 data_dir = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/coloc"
 save_path = "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/coloc"
 
 prefix = "bcx"
-# 读取所有以_coloc.csv结尾的文件
+# Read all files ending with _coloc.csv
 coloc_files = glob.glob(f"{data_dir}/{prefix}*_coloc.csv")
 print(f"Found {len(coloc_files)} coloc files")
 
-# 合并所有数据（过滤掉空的DataFrame以避免FutureWarning）
+# Merge all data (filter out empty DataFrames to avoid FutureWarning)
 df_list = []
 for f in coloc_files:
     tmp_df = pd.read_csv(f)
@@ -19,10 +19,10 @@ for f in coloc_files:
 df = pd.concat(df_list, ignore_index=True)
 print(f"Total rows before filtering: {len(df)}")
 
-# 阈值为0.7
+# Threshold is 0.7
 threshold = 0.7
 
-# 过滤：只保留在至少一个条件下有h3或h4>0.7的gene
+# Filter: Keep genes with h3 or h4 > 0.7 in at least one condition
 has_signal = (
     (df["pp_h3_original"] > threshold)
     | (df["p_original"] > threshold)
@@ -34,7 +34,7 @@ has_signal = (
 df = df[has_signal]
 print(f"Total rows after filtering (at least one h3/h4 > 0.7): {len(df)}")
 
-# 计算每个方法的h3, h4, 和 其他（1-h3-h4）的数量
+# Calculate the count of h3, h4, and others (1-h3-h4) for each method
 # h3 > 0.7
 h3_original = (df["pp_h3_original"] > threshold).sum()
 h3_traceC = (df["pp_h3_traceC"] > threshold).sum()
@@ -45,7 +45,7 @@ h4_original = (df["p_original"] > threshold).sum()
 h4_traceC = (df["p_traceC"] > threshold).sum()
 h4_traceCB = (df["p_traceCB"] > threshold).sum()
 
-# 其他 (既不是h3也不是h4 > 0.7)
+# Other (neither h3 nor h4 > 0.7)
 other_original = (
     (df["pp_h3_original"] <= threshold) & (df["p_original"] <= threshold)
 ).sum()
@@ -60,15 +60,15 @@ print(f"traceC:   H3={h3_traceC}, H4={h4_traceC}, Other={other_traceC}")
 print(f"traceCB:  H3={h3_traceCB}, H4={h4_traceCB}, Other={other_traceCB}")
 
 
-# 计算状态类别（每行数据的状态）
+# Calculate state categories (state of each row)
 def get_category(df, h3_col, h4_col, threshold):
-    """返回每行的类别: 0=COLOC(H4), 1=Independent(H3), 2=Other"""
+    """Return category for each row: 0=COLOC(H4), 1=Independent(H3), 2=Other"""
     is_h3 = df[h3_col] > threshold
     is_h4 = df[h4_col] > threshold
-    # 优先级: H4(COLOC) > H3(Independent) > Other
-    category = pd.Series(2, index=df.index)  # 默认Other
-    category[is_h3] = 1  # Independent (原H3)
-    category[is_h4] = 0  # COLOC (原H4)
+    # Priority: H4(COLOC) > H3(Independent) > Other
+    category = pd.Series(2, index=df.index)  # Default Other
+    category[is_h3] = 1  # Independent (Original H3)
+    category[is_h4] = 0  # COLOC (Original H4)
     return category
 
 
@@ -76,29 +76,29 @@ cat_original = get_category(df, "pp_h3_original", "p_original", threshold)
 cat_traceC = get_category(df, "pp_h3_traceC", "p_traceC", threshold)
 cat_traceCB = get_category(df, "pp_h3_traceCB", "p_traceCB", threshold)
 
-# 计算转换矩阵: Original -> traceC
-# source: Original的COLOC(0), Independent(1), Other(2)
-# target: traceC的COLOC(3), Independent(4), Other(5)
+# Calculate transition matrix: Original -> traceC
+# source: Original's COLOC(0), Independent(1), Other(2)
+# target: traceC's COLOC(3), Independent(4), Other(5)
 flow_orig_to_traceC = pd.crosstab(cat_original, cat_traceC)
 print("\n=== Flow: Original -> traceC ===")
 print(flow_orig_to_traceC)
 
-# 计算转换矩阵: traceC -> traceCB
-# source: traceC的COLOC(3), Independent(4), Other(5)
-# target: traceCB的COLOC(6), Independent(7), Other(8)
+# Calculate transition matrix: traceC -> traceCB
+# source: traceC's COLOC(3), Independent(4), Other(5)
+# target: traceCB's COLOC(6), Independent(7), Other(8)
 flow_traceC_to_traceCB = pd.crosstab(cat_traceC, cat_traceCB)
 print("\n=== Flow: traceC -> traceCB ===")
 print(flow_traceC_to_traceCB)
 
-# 计算每个节点的数量
+# Calculate count for each node
 orig_counts = cat_original.value_counts().sort_index()
 traceC_counts = cat_traceC.value_counts().sort_index()
 traceCB_counts = cat_traceCB.value_counts().sort_index()
 
-# 定义节点（带数量标签）
-# 左列: Original的3个类别 (0,1,2)
-# 中列: traceC的3个类别 (3,4,5)
-# 右列: traceCB的3个类别 (6,7,8)
+# Define nodes (with count labels)
+# Left column: Original's 3 categories (0,1,2)
+# Middle column: traceC's 3 categories (3,4,5)
+# Right column: traceCB's 3 categories (6,7,8)
 category_names = ["COLOC", "Independent", "Undetermined"]
 nodes = [
     f"COLOC ({orig_counts.get(0, 0)})",
@@ -112,34 +112,34 @@ nodes = [
     f"Undetermined ({traceCB_counts.get(2, 0)})",  # traceCB: 6, 7, 8
 ]
 
-# 构建链接
+# Build links
 sources = []
 targets = []
 values = []
 colors_list = []
 
-# 为不同类别定义颜色
-coloc_color = "rgb(124, 200, 124)"  # 绿色 (COLOC)
-independent_color = "rgb(150, 181, 248)"  # 蓝色 (Independent)
-undetermined_color = "rgb(235, 160, 152)"  # 粉红色 (Undetermined)
+# Define colors for different categories
+coloc_color = "rgb(124, 200, 124)"  # Green (COLOC)
+independent_color = "rgb(150, 181, 248)"  # Blue (Independent)
+undetermined_color = "rgb(235, 160, 152)"  # Pink (Undetermined)
 category_colors = [coloc_color, independent_color, undetermined_color]
 
 
-# 链接颜色（半透明）
+# Link colors (semi-transparent)
 def color_to_rgba(color, alpha=0.5):
     """Convert hex or rgb color to rgba string"""
     if color.startswith("rgb("):
-        # rgb(r, g, b) 格式
+        # rgb(r, g, b) format
         rgb_values = color[4:-1].split(",")
         r, g, b = [int(v.strip()) for v in rgb_values]
     else:
-        # hex 格式
+        # hex format
         hex_color = color.lstrip("#")
         r, g, b = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
     return f"rgba({r}, {g}, {b}, {alpha})"
 
 
-# Original -> traceC 的流动
+# Flow: Original -> traceC
 for src_cat in range(3):  # COLOC, Independent, Undetermined
     for tgt_cat in range(3):
         if (
@@ -148,12 +148,12 @@ for src_cat in range(3):  # COLOC, Independent, Undetermined
         ):
             val = flow_orig_to_traceC.loc[src_cat, tgt_cat]
             if val > 0:
-                sources.append(src_cat)  # Original节点: 0, 1, 2
-                targets.append(tgt_cat + 3)  # traceC节点: 3, 4, 5
+                sources.append(src_cat)  # Original nodes: 0, 1, 2
+                targets.append(tgt_cat + 3)  # traceC nodes: 3, 4, 5
                 values.append(val)
                 colors_list.append(color_to_rgba(category_colors[src_cat]))
 
-# traceC -> traceCB 的流动
+# Flow: traceC -> traceCB
 for src_cat in range(3):  # COLOC, Independent, Undetermined
     for tgt_cat in range(3):
         if (
@@ -162,8 +162,8 @@ for src_cat in range(3):  # COLOC, Independent, Undetermined
         ):
             val = flow_traceC_to_traceCB.loc[src_cat, tgt_cat]
             if val > 0:
-                sources.append(src_cat + 3)  # traceC节点: 3, 4, 5
-                targets.append(tgt_cat + 6)  # traceCB节点: 6, 7, 8
+                sources.append(src_cat + 3)  # traceC nodes: 3, 4, 5
+                targets.append(tgt_cat + 6)  # traceCB nodes: 6, 7, 8
                 values.append(val)
                 colors_list.append(color_to_rgba(category_colors[src_cat]))
 
@@ -187,7 +187,7 @@ node_colors = [
 
 link_colors = colors_list
 
-# 创建Sankey图
+# Create Sankey diagram
 fig = go.Figure(
     data=[
         go.Sankey(
@@ -198,8 +198,28 @@ fig = go.Figure(
                 line=dict(color="white", width=1),
                 label=nodes,
                 color=node_colors,
-                x=[0.01, 0.01, 0.01, 0.5, 0.5, 0.5, 0.99, 0.99, 0.99],  # 手动定位3列
-                y=[0.15, 0.5, 0.85, 0.15, 0.5, 0.85, 0.15, 0.5, 0.85],  # 手动定位3行
+                x=[
+                    0.01,
+                    0.01,
+                    0.01,
+                    0.5,
+                    0.5,
+                    0.5,
+                    0.99,
+                    0.99,
+                    0.99,
+                ],  # Manually position 3 columns
+                y=[
+                    0.15,
+                    0.5,
+                    0.85,
+                    0.15,
+                    0.5,
+                    0.85,
+                    0.15,
+                    0.5,
+                    0.85,
+                ],  # Manually position 3 rows
             ),
             link=dict(
                 source=links["source"],
@@ -211,7 +231,7 @@ fig = go.Figure(
     ]
 )
 
-# 更新布局
+# Update layout
 yloc = 1.04
 fig.update_layout(
     title={
@@ -257,11 +277,11 @@ fig.update_layout(
     ],
 )
 
-# 保存为HTML
+# Save as HTML
 fig.write_html(f"{save_path}/{prefix}_sankey_by_category.html")
 print(f"Sankey diagram saved to {save_path}/{prefix}_sankey_by_category.html")
 
-# 保存为静态图片
+# Save as static image
 try:
     fig.write_image(
         f"{save_path}/{prefix}_sankey_by_category.pdf", width=550, height=380, scale=2
@@ -270,5 +290,5 @@ try:
 except Exception as e:
     print(f"Could not save images: {e}")
 
-# 显示图表（如果需要交互查看可以取消注释）
+# Show plot (uncomment if interactive view is needed)
 # fig.show()

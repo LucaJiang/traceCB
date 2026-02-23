@@ -9,12 +9,12 @@ library(gridExtra)
 library(GenomicFeatures)
 library(locuszoomr)
 library(EnsDb.Hsapiens.v75)
-library(ggtext) # 添加ggtext包用于支持富文本
+library(ggtext) # Add ggtext package to support rich text
 data(SLE_gwas_sub) # data from locuszoomr package
 
 save.path <-
   "/Users/lucajiang/learn/CityU/traceCB/data/img/eas_eqtlgen"
-# 导入bigWig数据
+# Import bigWig data
 base.path <- "/Users/lucajiang/learn/CityU/xpmm/data/Locuszoom/"
 meta_data <- jsonlite::fromJSON("/Users/lucajiang/learn/CityU/traceCB/src/visual/metadata.json")
 celltype_colors <- meta_data$celltype_colors
@@ -49,7 +49,7 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
   #   "CD8T" = celltype_colors$`CD8+T_cells`
   # )
 
-  # 创建细胞类型标签映射（使用expression）
+  # Create cell type label mapping(use expression)
   celltype_labels <- c(
     "B" = "B~cells",
     "Mon" = "Monocytes",
@@ -63,7 +63,7 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
     gene_name <- gene_names[i]
     gene_info <- gene_infos[i]
     ### --------------------------
-    ### 第一部分：信号峰图
+    ### Part 1: Signal Peak Plot
     ### --------------------------
     # From ENCODE https://www.encodeproject.org/search/?type=File&searchTerm=H3K27ac+CD4+positive+T+cell&file_type=bigWig&biosample_ontology.cell_slims=CD4%2B+T+cell
     b <-
@@ -77,7 +77,7 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
     nk <-
       import(paste0(base.path, "NK_ENCFF473CXT.bigWig"), which = region)
 
-    # 创建绘图数据框
+    # Create plotting data frame
     plot_data <- rbind(
       data.frame(
         position = start(b),
@@ -123,31 +123,31 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
         strip.text.y.left = element_text(
           angle = 0,
           hjust = 0.5,
-          margin = margin(r = 0, l = 0) # 减小标签右侧间隙
+          margin = margin(r = 0, l = 0) # Reduce label right margin
         ),
         strip.background.y = element_blank(),
-        # 减少标签的左右边距),
+        # Reduce label left and right margins),
         legend.position = "none",
-        # 移除图例，因为facet已经显示了标签
+        # Remove legend, because facet already shows the label
         panel.spacing.y = unit(0.2, "lines"),
-        # 减少子图间距
+        # Reduce subplot spacing
         axis.text.y = element_blank(),
-        # 去掉y轴刻度文字
+        # Remove y-axis tick text
         axis.ticks.y = element_blank(),
-        # 去掉y轴刻度线
+        # Remove y-axis tick lines
         # axis.text.x = element_blank(),
-        # 去掉x轴刻度文字
+        # Remove x-axis tick text
         # axis.ticks.x = element_blank(),
-        # 去掉x轴刻度线
+        # Remove x-axis tick lines
         # strip.background = element_blank(),
         strip.switch.pad.grid = unit(0, "pt"),
-        # 减少switch模式下的间距
+        # Reduce spacing in switch mode
         panel.grid.minor = element_blank(),
-        # 去掉次要网格线
+        # Remove minor grid lines
         panel.grid.major = element_blank(),
-        # 去掉主要网格线
+        # Remove major grid lines
         panel.background = element_blank(),
-        # 去掉面板背景
+        # Remove panel background
         plot.margin = margin(
           t = 2,
           r = 5,
@@ -161,14 +161,14 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
       paste0(save.path, "/", gene_name, "_H3K27ac_signal.pdf"),
       plot = signal_plot,
       width = 10,
-      height = 3.5, # 减少高度
+      height = 3.5, # Reduce height
       dpi = 300,
       device = "pdf"
     )
     # ---------------------
-    ### 第二部分：基因结构图
+    ### Part 2: Gene Structure Plot
     ### ---------------------
-    # 使用locuszoomr包绘制基因结构图
+    # Use locuszoomr package to plot gene structure
     loc <-
       locus(
         SLE_gwas_sub,
@@ -182,28 +182,28 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
         loc,
         maxrows = track_maxrow,
         filter_gene_biotype = "protein_coding",
-        cex.text = 1.2
+        cex.text = 1.2, highlight = gene_name, italics = TRUE
       ) +
       theme(
         axis.text.x = element_text(size = 14),
         axis.title.x = element_text(size = 14),
-        plot.margin = margin(t = 0, r = 5, b = 2, l = 5, unit = "pt") # 减少顶部边距
+        plot.margin = margin(t = 0, r = 5, b = 2, l = 5, unit = "pt") # Reduce top margin
       )
 
-    # # 组合信号峰图和基因结构图
+    # # Combine signal peak plot and gene structure plot
     # combined_plot <- grid.arrange(
     #   signal_plot,
     #   track,
     #   ncol = 1,
-    #   heights = c(4, 0.8)  # 减少第二个图的高度从1到0.8
+    #   heights = c(4, 0.8)  # Reduce the height of the second plot from 1 to 0.8
     # )
 
-    # 保存图像
+    # Save plot
     ggsave(
       paste0(save.path, "/", gene_name, "_genetrack.pdf"),
       plot = track,
       width = 12,
-      height = 2, # 适当减少总高度
+      height = 2, # Appropriately reduce total height
       dpi = 300,
       device = "pdf"
     )

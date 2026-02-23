@@ -97,13 +97,13 @@ replicate_coloced_annot = replicate_coloced[["gene"]].merge(
 # 1: original & traceC & traceCB
 # 2: traceC & traceCB & !original
 # 3: traceCB & !traceC & !original
-# 对coloc类型进行编码
+# Encode coloc types
 def get_coloc_type(row):
-    """确定每个基因的coloc类型
+    """Determine the coloc type for each gene
     1: original & traceC & traceCB
     2: traceC & traceCB & !original
     3: traceCB & !traceC & !original
-    0: 其他情况或不存在
+    0: Other cases or not present
     """
     if row["original"] == 1:
         return 1
@@ -115,27 +115,27 @@ def get_coloc_type(row):
         return 0
 
 
-# 应用函数获取coloc类型
+# Apply function to get coloc type
 combined_df["coloc_type"] = combined_df.apply(get_coloc_type, axis=1)
 
-# 创建基因-QTD矩阵
+# Create gene-QTD matrix
 gene_qtd_matrix = pd.DataFrame(0, index=unique_genes, columns=meta_data["QTDids"])
 
-# 填充矩阵
+# Fill the matrix
 for _, row in combined_df.iterrows():
     gene = row["gene_name"]
     qtd = row["QTDid"]
     coloc_type = row["coloc_type"]
     gene_qtd_matrix.loc[gene, qtd] = coloc_type
 
-# 检查结果
+# Check results
 print(gene_qtd_matrix.shape)
 print(gene_qtd_matrix.head())
 # # %% remove rows that only 1 or 2 no zero
 # remove_rows = (gene_qtd_matrix != 0).sum(axis=1) <= 2
 # gene_qtd_matrix = gene_qtd_matrix[~remove_rows]
 
-# %% 创建自定义颜色映射 制作最终绘图数据
+# %% Create custom color map and prepare final plotting data
 colors_list = [
     "#edede9",  # grey for background
     meta_data["Colors"][meta_data["method_name"][0]],  # Original
@@ -145,38 +145,38 @@ colors_list = [
 
 celltype_colors = meta_data["celltype_colors"]
 
-# 创建自定义颜色映射
+# Create custom color map
 import matplotlib.colors as mcolors
 
 cmap = mcolors.ListedColormap(colors_list)
 bounds = [-0.5, 0.5, 1.5, 2.5, 3.5]
 norm = mcolors.BoundaryNorm(bounds, cmap.N)
 
-# 删除全0/1行
+# Remove rows with mixed 0/1 entirely
 heatmap_df = gene_qtd_matrix.loc[
     gene_qtd_matrix.apply(lambda x: sum(x > 1) > 0, axis=1)
 ]
 
-# 计算每个基因的共定位类型总和，用于排序
+# Calculate the sum of colocalization types for each gene, for sorting
 gene_sums = (heatmap_df > 0).sum(axis=1).sort_values(ascending=False)
 sorted_genes = gene_sums.index
 heatmap_df = heatmap_df.loc[sorted_genes]
 
 # %% plot
-# 获取热图尺寸
+# Get heatmap dimensions
 num_genes = len(sorted_genes)
 num_qtds = len(meta_data["QTDids"])
-# 设置图形大小
-cell_size = 0.5  # 每个格子的大小(英寸)
+# Set figure size
+cell_size = 0.5  # Size of each cell (inches)
 plt.figure(figsize=(num_qtds * cell_size + 2, num_genes * cell_size + 1))
-# 设置标记
+# Set markers
 markers = np.where(heatmap_df == 2, "", np.where(heatmap_df == 3, "", ""))
-# 绘制热图
+# Plot heatmap
 ax = sns.heatmap(
     heatmap_df,
     cmap=cmap,
     norm=norm,
-    cbar=False,  # 不显示颜色条
+    cbar=False,  # Do not show color bar
     linewidths=8,
     square=True,
     linecolor="white",
@@ -190,18 +190,19 @@ ax = sns.heatmap(
     },
 )
 
-# 为重复验证的基因添加标记
+# Add markers for replicated genes
 for i, gene in enumerate(sorted_genes):
     if gene in replicate_coloced_annot["gene_name"].to_list():
         ax.text(
             -0.4, i + 0.5, "\u2605", fontsize=12, va="center", ha="center", color="red"
         )
 
-# 绘制背景celltype矩形标注 -------------------------
+
+# Draw background celltype rectangle annotations -------------------------
 from matplotlib.patches import Rectangle
 
-# 定义每个celltype的起始位置和宽度（无间隙全宽度覆盖）
-celltype_ranges = {  # (起始索引, 覆盖宽度)
+# Define start position and width for each celltype (full width coverage without gaps)
+celltype_ranges = {  # (start index, coverage width)
     "Monocytes": (0, 3),
     "CD4+T_cells": (3, 3),
     "CD8+T_cells": (6, 2),
@@ -213,30 +214,30 @@ margin = 0.1
 for celltype, (x_start, width) in celltype_ranges.items():
     ax.add_patch(
         Rectangle(
-            (x_start + margin, 0),  # 左下角坐标
+            (x_start + margin, 0),  # Bottom-left coordinate
             width - margin * 2,
-            num_genes,  # 覆盖全部基因行
+            num_genes,  # Cover all gene rows
             facecolor=celltype_colors[celltype],
-            edgecolor="white",  # 去除边框
+            edgecolor="white",  # Remove border
             linewidth=0.2,
             alpha=0.15,
         )
     )
-    x_end = x_start + width  # 计算分组右边界
+    x_end = x_start + width  # Calculate group right boundary
     ax.hlines(
-        y=-0.05,  # 位于标注文字下方0.3单位（根据实际布局调整）
-        xmin=x_start + 0.1,  # 左侧留白0.1
-        xmax=x_end - 0.1,  # 右侧留白0.1
+        y=-0.05,  # 0.3 units below annotation text (adjusted based on actual layout)
+        xmin=x_start + 0.1,  # 0.1 padding on the left
+        xmax=x_end - 0.1,  # 0.1 padding on the right
         colors=celltype_colors[celltype],
         linewidth=6,
         linestyle="-",
-        clip_on=False,  # 允许超出绘图区域
-        zorder=5,  # 确保在最上层
+        clip_on=False,  # Allow exceeding plot area
+        zorder=5,  # Ensure it is at the top layer
     )
 
-# 计算标注位置（每个分组的中间x坐标）
+# Calculate annotation position (center x-coordinate for each group)
 label_positions = {
-    "Monocytes": (0 + 2.8 / 2, num_genes + 0.5),  # 居中在矩形上方
+    "Monocytes": (0 + 2.8 / 2, num_genes + 0.5),  # Centered above the rectangle
     "CD4+T_cells": (3.2 + 2.8 / 2, num_genes + 0.5),
     "CD8+T_cells": (6.2 + 1.6 / 2, num_genes + 0.5),
     "B_cells": (8 + 0.8 / 2, num_genes + 0.5),
@@ -252,12 +253,12 @@ for celltype, (x_center, y) in label_positions.items():
         fontsize=14,
         ha="center",
         va="bottom",
-        # rotation=45,  # 斜体防止重叠（可选）
+        # rotation=45,  # Italic to prevent overlap (optional)
     )
 
-# plt.subplots_adjust(top=0.9)  # 给顶部标注留出空间
+# plt.subplots_adjust(top=0.9)  # Leave space for top annotation
 
-## # 创建自定义图例 -----------------
+## # Create custom legend -----------------
 from matplotlib.legend_handler import HandlerPatch
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
@@ -266,20 +267,20 @@ from matplotlib.lines import Line2D
 class SymbolPatch(Patch):
     def __init__(self, symbol="", **kwargs):
         super().__init__(**kwargs)
-        self.symbol = symbol  # 新增symbol属性存储标记类型
+        self.symbol = symbol  # Add symbol attribute to store marker type
 
 
 class SquareSymbolHandler(HandlerPatch):
     def create_artists(
         self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
     ):
-        # 修正颜色块定位逻辑（参照SquareHandler）
+        # Correct color block positioning logic (refer to SquareHandler)
         center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-        size = min(width, height)  # 直接取总宽高最小值
+        size = min(width, height)  # Directly take the minimum of total width/height
         x_left = center[0] - size / 2
         y_bottom = center[1] - size / 2
 
-        # 生成颜色块
+        # Generate color block
         rect = plt.Rectangle(
             (x_left, y_bottom),
             size,
@@ -290,7 +291,7 @@ class SquareSymbolHandler(HandlerPatch):
             transform=trans,
         )
 
-        # 修正符号定位逻辑（基于新的颜色块中心）
+        # Correct symbol positioning logic (based on new color block center)
         symbol_center_x = x_left + size / 2
         symbol_center_y = y_bottom + size / 2
 
@@ -299,15 +300,15 @@ class SquareSymbolHandler(HandlerPatch):
             [symbol_center_y],
             marker=orig_handle.symbol,
             color="black",
-            markersize=4,  # 与字体大小关联
+            markersize=4,  # Associated with font size
             linestyle="None",
             transform=trans,
-            # markeredgewidth=1.5,  # 增强符号可见性
+            # markeredgewidth=1.5,  # Enhance symbol visibility
         )
         return [rect, symbol]
 
 
-# 创建自定义图例
+# Create custom legend
 legend_elements = [
     SymbolPatch(
         symbol="",
@@ -337,19 +338,19 @@ legend_elements = [
     ),
 ]
 
-# 调整标签
+# Adjust labels
 plt.xlabel("Study", fontsize=12)
 plt.ylabel("Gene", fontsize=12)
 plt.title("Colocalization with BCX Monocyte Counts", fontsize=16, y=1.03, x=0.4)
 plt.legend(
     handles=legend_elements,
-    handler_map={Patch: SquareSymbolHandler()},  # 对Patch类使用自定义处理器
+    handler_map={Patch: SquareSymbolHandler()},  # Use custom handler for Patch class
     loc="upper left",
     bbox_to_anchor=(1, 1),
     title="Coloc Types",
-    handlelength=1.5,  # 控制符号的显示长度（正方形边长）
-    handleheight=1.5,  # 保持与handlelength相等以确保正方形
-    frameon=False,  # 去除图例边框
+    handlelength=1.5,  # Control symbol display length (square side length)
+    handleheight=1.5,  # Keep equal to handlelength to ensure square
+    frameon=False,  # Remove legend border
 )
 
 # x tick labels

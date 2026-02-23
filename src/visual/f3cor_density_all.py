@@ -46,11 +46,11 @@ def plot_cor_density_all_studies(summary_df_all, summary_sign_df_all):
     # Use all correlation significant data (no additional filtering needed)
     target_summary_sign_df = summary_sign_df_all.copy()
 
-    # 添加分组标签
+    # Add group labels
     target_summary_df.loc[:, "Type"] = "Heritability Significant"
     target_summary_sign_df.loc[:, "Type"] = "Correlation Significant"
 
-    # 合并数据
+    # Merge data
     combined_df = pd.concat(
         [target_summary_df, target_summary_sign_df], ignore_index=True
     )
@@ -62,7 +62,7 @@ def plot_cor_density_all_studies(summary_df_all, summary_sign_df_all):
 
     print(f"Combined data points: {len(combined_df)}")
 
-    # 使用 displot 并添加 rug
+    # Use displot and add rug
     g = sns.displot(
         data=combined_df,
         x="COR_X_ORI",
@@ -81,7 +81,7 @@ def plot_cor_density_all_studies(summary_df_all, summary_sign_df_all):
         aspect=2.0,
     )
 
-    # 设置图例
+    # Set legend
     sns.move_legend(
         g,
         "upper left",

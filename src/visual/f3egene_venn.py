@@ -19,12 +19,16 @@ def plot_venn3(Abc, aBc, abC, ABc, AbC, aBC, ABC, ax, labels):
         ),
     )
     # print(v.set_labels)
-    if v.set_labels[0]:  # 左上角标签 - 右移
+    if v.set_labels[0]:  # Top-left label - move right
         pos = v.set_labels[0].get_position()
-        v.set_labels[0].set_position((pos[0] + 0.2, pos[1]))  # x坐标右移0.05
-    if v.set_labels[1]:  # 右上角标签 - 左移
+        v.set_labels[0].set_position(
+            (pos[0] + 0.2, pos[1])
+        )  # x-coordinate move right by 0.05
+    if v.set_labels[1]:  # Top-right label - move left
         pos = v.set_labels[1].get_position()
-        v.set_labels[1].set_position((pos[0] - 0.2, pos[1]))  # x坐标左移0.05
+        v.set_labels[1].set_position(
+            (pos[0] - 0.2, pos[1])
+        )  # x-coordinate move left by 0.05
 
 
 def plot_venn2(Ab, aB, AB, ax, labels):

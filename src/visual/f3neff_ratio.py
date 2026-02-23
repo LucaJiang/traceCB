@@ -4,24 +4,24 @@ from adjustText import adjust_text
 from scipy import stats
 
 
-# 计算regression置信区间
+# Calculate regression confidence interval
 def prediction_interval(x, y, new_x, confidence=0.95):
-    """计算预测区间"""
+    """Calculate prediction interval"""
     n = len(x)
     x_mean = np.mean(x)
     y_mean = np.mean(y)
 
-    # 计算标准误差
+    # Calculate standard error
     sxx = np.sum((x - x_mean) ** 2)
     sxy = np.sum((x - x_mean) * (y - y_mean))
     syy = np.sum((y - y_mean) ** 2)
 
     s = np.sqrt((syy - sxy**2 / sxx) / (n - 2))
 
-    # t分布临界值
+    # t-distribution critical value
     t_val = stats.t.ppf((1 + confidence) / 2, n - 2)
 
-    # 置信区间
+    # Confidence interval
     se = s * np.sqrt(1 / n + (new_x - x_mean) ** 2 / sxx)
     margin = t_val * se
 
@@ -53,12 +53,12 @@ def f3neff_ratio_samplesize(summary_sign_df):
 
     # plot
     fig, ax = plt.subplots(figsize=(6, 4))
-    # 添加回归线和置信区间, exclude qtdid == "BLUEPRINT(191)" or "BLUEPRINT(167)"
+    # Add regression line and confidence interval, exclude qtdid == "BLUEPRINT(191)" or "BLUEPRINT(167)"
     blueprint_rows = samplesize_df.QTDid.isin(["QTD000021", "QTD000031"])
     x = samplesize_df.loc[~blueprint_rows, "SAMPLE_SIZE"]
     y = samplesize_df.loc[~blueprint_rows, "TAR_CNEFF_SNEFF_RATIO"]
 
-    # 计算回归线
+    # Calculate regression line
     slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
     line_x = np.linspace(
         samplesize_df.SAMPLE_SIZE.min(), samplesize_df.SAMPLE_SIZE.max(), 100
@@ -69,7 +69,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
         f"Regression line: y = {slope:.4f} * x + {intercept:.4f}, R^2 = {r_value**2:.4f}"
     )
 
-    # 绘制回归线
+    # Plot regression line
     ax.plot(
         line_x,
         line_y,
@@ -79,7 +79,7 @@ def f3neff_ratio_samplesize(summary_sign_df):
         alpha=0.5,
     )
 
-    # 绘制置信区间
+    # Plot confidence interval
     ax.fill_between(
         line_x,
         line_y - margin,
@@ -94,13 +94,13 @@ def f3neff_ratio_samplesize(summary_sign_df):
         data=samplesize_df,
         ax=ax,
         palette=meta_data["celltype_colors"],
-        s=50,  # 稍微增大点的大小
+        s=50,  # Slightly increase point size
         alpha=1,
         edgecolor="gray",
         linewidth=0.5,
     )
 
-    # 使用adjustText自动避让
+    # Use adjustText for automatic avoidance
     texts_upper = []
     for i, row in samplesize_df.iterrows():
         texts_upper.append(

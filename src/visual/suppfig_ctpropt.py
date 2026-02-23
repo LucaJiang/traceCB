@@ -1,6 +1,9 @@
 #  plot boxplot of cell type proportion
 # %%
-from utils import *
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from visual.utils import label_name_shorten, meta_data
 
 map_dict = {
     "B_cells": ["B cells naive", "B cells memory"],
@@ -32,40 +35,39 @@ ct_proportion_df
 
 
 # %%
-# 将数据转换为长格式以便绘图
+# Convert data to long format for plotting
 df_long = ct_proportion_df.melt(var_name="Cell Type", value_name="Proportion")
-# 使用新标签
+# Use new labels
 df_long["Cell Type"] = df_long["Cell Type"].map(label_name_shorten)
 
 
-# 创建箱形图
+# Create boxplot
 plt.figure(figsize=(6, 6), dpi=300)
-# 更新调色板以匹配新的短标签
+# Update palette to match new short labels
 short_name_colors = {
     label_name_shorten[k]: v for k, v in meta_data["celltype_colors"].items()
 }
-# 创建小提琴图
+# Create violin plot
 ax = sns.violinplot(
     x="Cell Type",
     y="Proportion",
     data=df_long,
     palette=short_name_colors,
     hue="Cell Type",
-    cut=0,  # 设定小提琴的延伸程度
+    cut=0,  # Set the extension degree of the violin plot
     linewidth=1,
 )
 
-# 添加标题和标签
+# Add title and labels
 ax.set_title("Cell Type Proportions of GTEx whole blood", fontsize=16)
 ax.set_xlabel("Cell Type", fontsize=12)
 ax.set_ylabel("Proportion", fontsize=12)
 
-# 旋转 x 轴标签以防重叠
+# Rotate x-axis labels to prevent overlap
 # plt.xticks(rotation=30, ha="center")
 plt.tight_layout()
 plt.savefig(
-    "/Users/lucajiang/learn/CityU/xpmm/docs/supplymentary/ct_proportion.png",
-    dpi=300,
+    "/Users/lucajiang/learn/CityU/xpmm/docs/supplymentary/ct_proportion.pdf",
     bbox_inches="tight",
 )
 plt.show()

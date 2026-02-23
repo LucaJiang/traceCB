@@ -277,7 +277,7 @@ plot_signal_plot <- function(chr, start_pos, end_pos, gene_name) {
     save_name,
     plot = signal_plot,
     width = 10,
-    height = 3.5, # 减少高度
+    height = 3.5, # Reduce height
     # dpi = 300
   )
   return(save_name)
@@ -351,11 +351,11 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
         logp = -log10(pval),
         ld_category = case_when(
           rsid == index_snp ~ "Index SNP",
-          r2 >= 0.8 ~ "r² ≥ 0.8",
-          r2 >= 0.6 ~ "0.6 ≤ r² < 0.8",
-          r2 >= 0.4 ~ "0.4 ≤ r² < 0.6",
-          r2 >= 0.2 ~ "0.2 ≤ r² < 0.4",
-          TRUE ~ "r² < 0.2"
+          r2 >= 0.8 ~ "r^2 >= 0.8",
+          r2 >= 0.6 ~ "0.6 <= r^2 < 0.8",
+          r2 >= 0.4 ~ "0.4 <= r^2 < 0.6",
+          r2 >= 0.2 ~ "0.2 <= r^2 < 0.4",
+          TRUE ~ "r^2 < 0.2"
         )
       ) %>%
       as.data.table()
