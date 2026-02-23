@@ -10,7 +10,7 @@ This tutorial provides a hands-on guide to applying `traceCB` using a sample dat
 
 ## Option 1: Quick Start with Google Colab
 
-For immediate exploration without configuring a local environment, use our Google Colab notebook.
+For immediate exploration without configuring a local environment, use our Google Colab notebook. Click the link below to open the tutorial directly in Colab, and use the **Run All** option to execute the entire notebook to see the results.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)[https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)
 
