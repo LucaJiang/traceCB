@@ -1,6 +1,10 @@
 # %% plot eGene in Nuclear and Membrane Pathway
 from visual.utils import *
 from matplotlib.patches import Rectangle
+from matplotlib.legend_handler import HandlerPatch
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+import matplotlib.colors as mcolors
 
 # config, gene list obtain from onek1k paper
 save_path += "/pathway"
@@ -199,16 +203,6 @@ for target_pathway in pathways_gene_dict.keys():
     gene_qtd_df = gene_qtd_df.loc[
         gene_qtd_df.sum(axis=1).sort_values(ascending=False).index
     ]
-
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from matplotlib.patches import Rectangle
-    import matplotlib.colors as mcolors
-    from matplotlib.legend_handler import HandlerPatch
-    from matplotlib.patches import Patch
-    from matplotlib.lines import Line2D
 
     name2id = {v: k for k, v in meta_data["id2name"].items()}
 
