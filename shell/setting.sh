@@ -14,7 +14,7 @@ eQTLCatalog_path="${load_path_main}/eQTLCatalogue/by_celltype_chr"
 BBJ_path="${load_path_main}/BBJ_eQTL/by_celltype_chr"
 AFR_path="${load_path_main}/popcell/AFB_NS"
 LDSC_path="${load_path_main}/1000G"
-aux_LDSC_path="${LDSC_path}/1000G_EAS_EUR/EUR"
+aux_LDSC_path="${LDSC_path}/1000G_EUR"
 coloc_data_path="/home/group1/wjiang49/data/traceCB/coloc"
 save_path_main="/home/group1/wjiang49/data/traceCB" # add suffix later based on tissue and population used
 
@@ -45,12 +45,12 @@ aux_population_data_path="$eQTLCatalogue_path"
 if [ "$target_population" == "EAS" ]; then
     target_population_data_path="$BBJ_path"
     target_population_samplesize=("${BBJ_Samplesize[@]}")
-    tar_LDSC_path="${LDSC_path}/1000G_EAS_EUR/EAS"
+    tar_LDSC_path="${LDSC_path}/1000G_EAS"
     save_path_main="${save_path_main}/EAS_"
 elif [ "$target_population" == "AFR" ]; then
     target_population_data_path="$AFR_path"
     target_population_samplesize=("${AFR_Samplesize[@]}")
-    tar_LDSC_path="${LDSC_path}/1000G_AFR/AFR"
+    tar_LDSC_path="${LDSC_path}/1000G_AFR"
     save_path_main="${save_path_main}/AFR_"
 else
     echo "Invalid target_population value. Please set it to either 'EAS' or 'AFR'."
