@@ -28,7 +28,7 @@ Data Sources:
 *   **GTEx**: [Google Cloud](https://console.cloud.google.com/storage/browser/gtex-resources/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_eQTL_all_associations;tab=objects?inv=1&invt=Ab037A&prefix=&forceOnObjectsSortingFiltering=true) or [Portal](https://www.gtexportal.org/home/downloads/adult-gtex/qtl)
 *   **eQTLGen**: [Official Site](https://www.eqtlgen.org/phase1.html)
 *   **BBJ**: [Official Site](http://jenger.riken.jp/en/result)
-*   **1000G**: [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [s-ldxc Resource](https://zenodo.org/records/7768714)
+*   **1000G**: [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [S-LDSC reference files](https://zenodo.org/records/10515792)
 *   **PopCell (AFR)**: [Nature 2023](https://doi.org/10.1038/s41586-023-06422-9). *Restricted Access* - [Apply Here](https://dataset.owey.io/doi/10.48802/owey.e4qn-9190).
 
 Software:
@@ -113,9 +113,15 @@ To optimize Python loading times, we split and format the data by chromosome.
 
 ### Prepare 1000G Reference Data
 
-To prepare 1000G reference data for LD score calculation, download the 1000G Phase 3 data from [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [s-ldxc Resource](https://zenodo.org/records/7768714). 
+#### Option 1: Use S-LDSC Reference Files (Recommended)
 
-Then run `shell/1000G_preprocess.sh` to filter samples by population, perform QC, and split by chromosome.
+You can directly use the preprocessed 1000G reference files for `EUR` and `EAS` populations from the [S-LDSC reference files](https://zenodo.org/records/10515792). Download the `1000G_Phase3_plinkfiles.tgz` for `EUR` and `1000G_Phase3_EAS_plinkfiles.tgz` for `EAS`, and extract them to your desired location. Ensure the file paths are correctly specified in your configuration.
+
+#### Option 2: Download from Plink Resource
+
+Alternatively, download the 1000G Phase 3 data from [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [s-ldxc Resource](https://zenodo.org/records/7768714). 
+
+Then run `shell/1000G_preprocess.sh` to filter samples by population (`EAS`, `EUR`, `AFR`), perform QC, and split by chromosome.
 
 ### Cell Type Information & Proportion
 
