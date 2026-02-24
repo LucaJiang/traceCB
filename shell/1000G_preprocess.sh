@@ -2,8 +2,9 @@
 # 1000G preprocessing script for EAS, EUR, and AFR populations  
 
 # Set path
-PLINK2=~/ResearchGroup/software/plink2
-DATA_ROOT=~/ResearchGroup/data/1000G
+PLINK1=/home/group1/wjiang49/software/plink
+PLINK2=/home/group1/wjiang49/software/plink2
+DATA_ROOT=/home/group1/wjiang49/data/1000G
 
 # Populations to process
 POPS=("AFR" "EAS" "EUR")
@@ -14,7 +15,7 @@ for POP in "${POPS[@]}"; do
     echo "=================================================="
     
     # Define working directory for this population
-    WORK_DIR="${DATA_ROOT}/1000G_${POP}"
+    WORK_DIR="${DATA_ROOT}"
     
     if [ ! -d "$WORK_DIR" ]; then
         echo "Error: Directory $WORK_DIR does not exist. Skipping $POP."
@@ -59,7 +60,7 @@ for POP in "${POPS[@]}"; do
     POP_LOWER=$(echo "$POP" | tr '[:upper:]' '[:lower:]')
     
     echo "[2/4] Filtering samples for $POP (SuperPop column 5)..."
-    awk -v p="$POP" '$5 == p {print $1, $2}' all_hg38.psam > "${POP_LOWER}_samples.txt"
+    awk -v p="$POP" '!/^#/ && $5 == p {print $1, $2}' all_hg38.psam > "${POP_LOWER}_samples.txt"
     
     SAMPLE_COUNT=$(wc -l < "${POP_LOWER}_samples.txt")
     echo "  > Found $SAMPLE_COUNT samples for $POP."
@@ -89,7 +90,7 @@ for POP in "${POPS[@]}"; do
     # Perform QC
     # MAF > 0.05, GENO < 0.02, HWE > 1e-6
     echo "  > Performing QC..."
-    $PLINK2 \
+    $PLINK1 \
       --bfile "all_hg38_${POP_LOWER}" \
       --maf 0.05 \
       --geno 0.02 \
@@ -105,7 +106,7 @@ for POP in "${POPS[@]}"; do
     # Loop through chromosomes 1-22
     for chr in {1..22}; do
       # echo "  > Processing Chr $chr..."
-      $PLINK2 \
+      $PLINK1 \
         --bfile "all_hg38_${POP_LOWER}.QC" \
         --chr ${chr} \
         --make-bed \
