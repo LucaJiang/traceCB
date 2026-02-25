@@ -52,7 +52,7 @@ Installation in editable mode (`-e`) allows you to import the `traceCB` module i
 
 ## Tutorial
 
-A step-by-step tutorial notebook is provided at `docs/tutorial/run_traceCB.ipynb`. This tutorial guides you through running the traceCB algorithm on a single gene example.
+A step-by-step tutorial notebook is provided at `docs/tutorial/run_traceCB.ipynb` and [colab](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing). This tutorial guides you through running the traceCB algorithm on a single gene example.
 
 It is highly recommended to run this tutorial first to understand the input data format and model outputs.
 
