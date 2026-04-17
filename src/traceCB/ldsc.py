@@ -284,7 +284,7 @@ def update_weights(weights: np.ndarray, preds: np.ndarray) -> np.ndarray:
     var_all[:, :2] = 2.0 * np.square(preds[:, :2])
     var_all[:, 2] = preds[:, 0] * preds[:, 1] + np.square(
         preds[:, 2]
-    )  #! test，its wrong
+    )
     return weights / var_all
 
 
