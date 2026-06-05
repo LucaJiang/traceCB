@@ -1,6 +1,33 @@
 # plot number of eGenes/eSNPs for each method
 from visual.utils import *
 from matplotlib.patches import Rectangle
+from adjustText import adjust_text
+from scipy import stats
+
+
+CELLTYPE_RANGES = {
+    "Monocytes": (-0.5, 3),
+    "CD4+T_cells": (2.5, 3),
+    "CD8+T_cells": (5.5, 2),
+    "B_cells": (7.5, 1),
+    "NK_cells": (8.5, 1),
+}
+
+
+def prediction_interval(x, y, new_x, confidence=0.95):
+    """Calculate the regression confidence interval."""
+    n = len(x)
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+
+    sxx = np.sum((x - x_mean) ** 2)
+    sxy = np.sum((x - x_mean) * (y - y_mean))
+    syy = np.sum((y - y_mean) ** 2)
+    s = np.sqrt((syy - sxy**2 / sxx) / (n - 2))
+
+    t_val = stats.t.ppf((1 + confidence) / 2, n - 2)
+    se = s * np.sqrt(1 / n + (new_x - x_mean) ** 2 / sxx)
+    return t_val * se
 
 
 def count_egene(df, replicate_egenes):
@@ -83,6 +110,203 @@ def count_egene(df, replicate_egenes):
     return count_df
 
 
+def prepare_growth_df(plot_df):
+    growth_df = plot_df.copy()
+    growth_df.loc[:, "CELL_TYPE"] = growth_df.QTDid.map(meta_data["id2celltype"])
+    growth_df.loc[:, "SAMPLE_SIZE"] = (
+        growth_df.name.str.extract(r"\((\d+)\)").astype(int)
+    )
+    growth_df.loc[:, "CELL_TYPE_PROP"] = growth_df.CELL_TYPE.map(
+        meta_data["celltype_proportion"]
+    )
+    growth_df.loc[:, "traceC_growth_ratio"] = (
+        growth_df[meta_data["method_name"][1]] / growth_df[meta_data["method_name"][0]]
+    )
+    growth_df.loc[:, "traceCB_growth_ratio"] = (
+        growth_df[meta_data["method_name"][2]] / growth_df[meta_data["method_name"][1]]
+    )
+    growth_df.loc[:, "traceC_growth_rate"] = (
+        growth_df["new_in_C"] / growth_df[meta_data["method_name"][0]]
+    )
+    growth_df.loc[:, "traceCB_growth_rate"] = (
+        growth_df["new_in_T"] / growth_df[meta_data["method_name"][1]]
+    )
+    print("eGene growth summary:")
+    print(
+        growth_df.loc[
+            :,
+            [
+                "QTDid",
+                "name",
+                "SAMPLE_SIZE",
+                "CELL_TYPE",
+                "CELL_TYPE_PROP",
+                "traceC_growth_ratio",
+                "traceCB_growth_ratio",
+                "traceC_growth_rate",
+                "traceCB_growth_rate",
+                "new_in_C",
+                "new_in_T",
+            ],
+        ]
+    )
+    return growth_df
+
+
+def add_celltype_background(ax):
+    celltype_colors = meta_data["celltype_colors"]
+    ax.set_xlim(-0.5, len(meta_data["Names"]) - 0.5)
+    y_min, y_max = ax.get_ylim()
+    y_max += (y_max - y_min) * 0.1
+    ax.set_ylim(y_min, y_max)
+    margin = 0.05
+
+    for celltype, (x_start, width) in CELLTYPE_RANGES.items():
+        ax.add_patch(
+            Rectangle(
+                (x_start + margin, y_min),
+                width - margin * 2,
+                y_max - y_min,
+                facecolor=celltype_colors[celltype],
+                edgecolor="white",
+                linewidth=0.2,
+                alpha=0.3,
+                zorder=0,
+            )
+        )
+
+        x_end = x_start + width
+        ax.hlines(
+            y=y_max - 110,
+            xmin=x_start + margin,
+            xmax=x_end - margin,
+            colors=celltype_colors[celltype],
+            linewidth=13,
+            linestyle="-",
+            clip_on=False,
+            zorder=5,
+        )
+
+    for celltype, (x_start, width) in CELLTYPE_RANGES.items():
+        x_center = x_start + width / 2
+        ax.text(
+            x_center,
+            y_max - (y_max - y_min) * 0.05,
+            cell_label_name[celltype],
+            color="black",
+            fontsize=11,
+            ha="center",
+            va="bottom",
+            clip_on=False,
+            zorder=8,
+        )
+
+
+def plot_growth_scatter(
+    plot_df,
+    x_col,
+    y_col,
+    x_label,
+    y_label,
+    save_name,
+    exclude_qtdids=None,
+):
+    fig, ax = plt.subplots(figsize=(6, 4))
+    exclude_qtdids = exclude_qtdids or []
+    regression_mask = ~plot_df.QTDid.isin(exclude_qtdids)
+    x = plot_df.loc[regression_mask, x_col]
+    y = plot_df.loc[regression_mask, y_col]
+
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    line_x = np.linspace(plot_df[x_col].min(), plot_df[x_col].max(), 100)
+    line_y = slope * line_x + intercept
+    margin = prediction_interval(x, y, line_x, confidence=0.95)
+    print(
+        f"{save_name} regression: y = {slope:.4f} * x + {intercept:.4f}, "
+        f"R^2 = {r_value**2:.4f}, p = {p_value:.4g}"
+    )
+
+    ax.plot(
+        line_x,
+        line_y,
+        color="black",
+        linewidth=2,
+        linestyle="--",
+        alpha=0.5,
+    )
+    ax.fill_between(
+        line_x,
+        line_y - margin,
+        line_y + margin,
+        color="gray",
+        alpha=0.1,
+    )
+    sns.scatterplot(
+        x=x_col,
+        y=y_col,
+        hue="CELL_TYPE",
+        data=plot_df,
+        ax=ax,
+        palette=meta_data["celltype_colors"],
+        s=50,
+        alpha=1,
+        edgecolor="gray",
+        linewidth=0.5,
+    )
+
+    texts = []
+    for _, row in plot_df.iterrows():
+        texts.append(
+            ax.text(
+                row[x_col],
+                row[y_col],
+                row["name"],
+                fontsize=10,
+                color="black",
+                ha="right",
+                va="bottom",
+            )
+        )
+
+    adjust_text(
+        texts,
+        ax=ax,
+        ha="center",
+        va="center",
+        force_text=(4.0, 4.0),
+        force_points=(0.5, 0.5),
+        force_objects=(0.5, 0.5),
+        expand_text=(1.5, 1.5),
+        expand_points=(1.5, 1.5),
+        expand_objects=(1.5, 1.5),
+        min_arrow_len=16,
+        lim=8000,
+        precision=0.0001,
+        arrowprops=dict(
+            arrowstyle="->",
+            color="grey",
+            lw=0.5,
+            shrinkA=4,
+            shrinkB=2,
+        ),
+    )
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+
+    handles, labels = ax.get_legend_handles_labels()
+    shortened_labels = [label_name_shorten.get(label, label) for label in labels]
+    ax.legend(
+        handles=handles,
+        labels=shortened_labels,
+        title="Cell Type",
+        loc="lower right",
+    )
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, save_name), bbox_inches="tight")
+    print(f"Figure saved to {os.path.join(save_path, save_name)}")
+
+
 def f3egene(plot_df):
     method_names = meta_data["method_name"]
     legend_order = meta_data["method_name"] + [m + " (replicate)" for m in method_names]
@@ -118,62 +342,7 @@ def f3egene(plot_df):
     ax.set_xticks(x)
     ax.set_xticklabels(studies, rotation=20, ha="right")
 
-    # 添加celltype背景矩形
-    celltype_colors = meta_data["celltype_colors"]
-    celltype_ranges = {  # (起始索引, 覆盖宽度)
-        "Monocytes": (-0.5, 3),
-        "CD4+T_cells": (2.5, 3),
-        "CD8+T_cells": (5.5, 2),
-        "B_cells": (7.5, 1),
-        "NK_cells": (8.5, 1),
-    }
-    ax.set_xlim(-0.5, len(meta_data["Names"]) - 0.5)
-    # 设置y轴范围以便添加标注线
-    y_min, y_max = ax.get_ylim()
-    y_max += (y_max - y_min) * 0.1
-    ax.set_ylim(y_min, y_max)  # 留出空间用于标注
-    margin = 0.05
-    for celltype, (x_start, width) in celltype_ranges.items():
-        ax.add_patch(
-            Rectangle(
-                (x_start + margin, y_min),  # 左下角坐标
-                width - margin * 2,  # 宽度
-                y_max - y_min,  # 高度（覆盖整个y轴范围）
-                facecolor=celltype_colors[celltype],
-                edgecolor="white",
-                linewidth=0.2,
-                alpha=0.3,
-                zorder=0,  # 确保在最底层
-            )
-        )
-
-        # 添加celltype标注线 - 在图形上边缘上方
-        x_end = x_start + width
-        ax.hlines(
-            y=y_max - 110,  # 位于图形上边缘上方
-            xmin=x_start + margin,
-            xmax=x_end - margin,
-            colors=celltype_colors[celltype],
-            linewidth=13,
-            linestyle="-",
-            clip_on=False,
-            zorder=5,
-        )
-
-    # 添加celltype标签 - 在标注线下方
-    for celltype, (x_start, width) in celltype_ranges.items():
-        x_center = x_start + width / 2
-        ax.text(
-            x_center,
-            y_max - (y_max - y_min) * 0.05,  # 位于标注线上方
-            cell_label_name[celltype],
-            color="black",
-            fontsize=11,
-            ha="center",
-            va="bottom",
-            clip_on=False,
-            zorder=8,
-        )
+    add_celltype_background(ax)
 
     # 图例handles和labels
     handles, labels = ax.get_legend_handles_labels()
@@ -198,9 +367,90 @@ def f3egene(plot_df):
     print(f"Figure saved to {os.path.join(save_path, save_name)}")
 
 
+def f3egene_increment(plot_df):
+    fig, ax = plt.subplots(figsize=(8.5, 5))
+
+    plot_df.QTDid = pd.Categorical(
+        plot_df.QTDid, categories=meta_data["QTDids"], ordered=True
+    )
+    plot_df = plot_df.sort_values("QTDid")
+    studies = plot_df.name.unique()
+    x = np.arange(len(studies))
+    width = 0.18
+
+    ax.bar(
+        x - 1.5 * width,
+        plot_df["new_in_C"],
+        width,
+        label=f"New in {meta_data['method_name'][1]}",
+        color=meta_data["Colors"][meta_data["method_name"][1]],
+    )
+    ax.bar(
+        x - 0.5 * width,
+        plot_df["new_in_C_replicate"],
+        width,
+        label=f"New in {meta_data['method_name'][1]} (replicate)",
+        color=meta_data["Colors"][meta_data["method_name"][1]],
+        hatch="\\\\",
+    )
+    ax.bar(
+        x + 0.5 * width,
+        plot_df["new_in_T"],
+        width,
+        label=f"New in {meta_data['method_name'][2]}",
+        color=meta_data["Colors"][meta_data["method_name"][2]],
+    )
+    ax.bar(
+        x + 1.5 * width,
+        plot_df["new_in_T_replicate"],
+        width,
+        label=f"New in {meta_data['method_name'][2]} (replicate)",
+        color=meta_data["Colors"][meta_data["method_name"][2]],
+        hatch="\\\\",
+    )
+
+    ax.set_ylabel("Number of Newly Discovered eGenes")
+    ax.set_xticks(x)
+    ax.set_xticklabels(studies, rotation=20, ha="right")
+    add_celltype_background(ax)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.0, 0.94), title="Discovery")
+
+    plt.tight_layout()
+    save_name = "f3egene_increment.pdf"
+    plt.savefig(os.path.join(save_path, save_name))
+    print(f"Figure saved to {os.path.join(save_path, save_name)}")
+
+
+def f3egene_growth_samplesize(plot_df):
+    plot_growth_scatter(
+        plot_df=plot_df,
+        x_col="SAMPLE_SIZE",
+        y_col="traceC_growth_ratio",
+        x_label="Sample Size of Study",
+        y_label=f"eGene Growth Ratio ({meta_data['method_name'][1]} / {meta_data['method_name'][0]})",
+        save_name="f3egene_growth_samplesize.pdf",
+        exclude_qtdids=["QTD000021", "QTD000031"],
+    )
+
+
+def f3egene_growth_celltype_proportion(plot_df):
+    plot_growth_scatter(
+        plot_df=plot_df,
+        x_col="CELL_TYPE_PROP",
+        y_col="traceCB_growth_ratio",
+        x_label="Cell Type Proportion (Mean)",
+        y_label=f"eGene Growth Ratio ({meta_data['method_name'][2]} / {meta_data['method_name'][1]})",
+        save_name="f3egene_growth_celltype_proportion.pdf",
+    )
+
+
 if __name__ == "__main__":
     _, summary_df = load_all_summary()
     replicate_df = pd.read_csv("/home/group1/wjiang49/data/hum0343/hum0343_eGene.csv")
     replicate_egenes = replicate_df.gene
     plot_df = count_egene(summary_df, replicate_egenes)
     f3egene(plot_df)
+    f3egene_increment(plot_df)
+    growth_df = prepare_growth_df(plot_df)
+    f3egene_growth_samplesize(growth_df)
+    f3egene_growth_celltype_proportion(growth_df)

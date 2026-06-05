@@ -2,6 +2,8 @@
 data/*
 !data/toy_example/
 bench/
+tools/
+tests/
 .DS_Store
 
 # temporary files

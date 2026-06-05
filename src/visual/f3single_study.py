@@ -23,6 +23,7 @@ target_qtdids = [
     "QTD000371",
     "QTD000372",
 ]
+summary_output_dir = f"{save_path}/single_study"
 
 
 def plot_neff_scatter(summary_df, target_qtdid, text_annot=True):
@@ -308,7 +309,7 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
     # 使用 displot 并添加 rug
     g = sns.displot(
         data=combined_df,
-        x="COR_X_ORI",
+        x="COR_X",
         hue="Type",
         kind="hist",
         bins=200,
@@ -351,6 +352,24 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
         bbox_inches="tight",
     )
     plt.close()
+
+
+def summarize_cor_density_by_study(
+    summary_df_all, summary_df_h2_sign, summary_sign_df, target_qtdid
+):
+    cor_col = "COR_X_ORI" if "COR_X_ORI" in summary_df_h2_sign.columns else "COR"
+    cor_series = pd.to_numeric(summary_df_h2_sign[cor_col], errors="coerce")
+
+    return {
+        "QTDid": target_qtdid,
+        "Study": meta_data["id2name"][target_qtdid],
+        "CellType": meta_data["id2celltype"][target_qtdid],
+        "Total_Genes": summary_df_all["GENE"].nunique(),
+        "Heritability_Significant_Genes": summary_df_h2_sign["GENE"].nunique(),
+        "Correlation_Significant_Genes": summary_sign_df["GENE"].nunique(),
+        "Median_cor": cor_series.median(),
+        "Median_abs_cor": cor_series.abs().median(),
+    }
 
 
 def format_eGene_df(df):
@@ -431,9 +450,13 @@ def plot_upset(eGene_df, target_qtdid):
 if __name__ == "__main__":
     if not os.path.exists(f"{save_path}/single_study/"):
         os.makedirs(f"{save_path}/single_study/")
+    if not os.path.exists(summary_output_dir):
+        os.makedirs(summary_output_dir)
     summary_sign_df_all, summary_df_all = load_all_summary()
+    summary_rows = []
     for target_qtdid in target_qtdids:
         summary_df = summary_df_all[summary_df_all.QTDid == target_qtdid].copy()
+        summary_df_all_study = summary_df.copy()
         summary_sign_df = summary_sign_df_all[
             summary_sign_df_all.QTDid == target_qtdid
         ].copy()
@@ -453,6 +476,11 @@ if __name__ == "__main__":
             & (summary_df.H2SQ > 1e-12)
         )
         summary_df = summary_df.loc[both_sign_index, :]
+        summary_rows.append(
+            summarize_cor_density_by_study(
+                summary_df_all_study, summary_df, summary_sign_df, target_qtdid
+            )
+        )
         plot_cor_density(summary_df, summary_sign_df, target_qtdid)
         ## scatter plot
         plot_neff_scatter(summary_df, target_qtdid)
@@ -464,3 +492,9 @@ if __name__ == "__main__":
         print(
             f"Processed {target_qtdid}: {meta_data['id2celltype'][target_qtdid]} - {meta_data['id2name'][target_qtdid]}"
         )
+    summary_table = pd.DataFrame(summary_rows)
+    summary_table.to_csv(
+        os.path.join(summary_output_dir, "f3cor_density_summary_by_study.tsv"),
+        sep="\t",
+        index=False,
+    )
