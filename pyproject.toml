@@ -4,27 +4,40 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "traceCB"
-version = "0.1.1-server"
-authors = [
-  { name="Luca Jiang", email="wx.jiang@my.cityu.edu.hk" },
-]
+version = "0.1.2"
+authors = [{ name = "Luca Jiang", email = "wx.jiang@my.cityu.edu.hk" }]
 description = "TraceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data"
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
+requires-python = ">=3.10"
+license = { text = "GPL-3.0" }
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-keywords = ["genetics", "bioinformatics", "GWAS", "eQTL", "single-cell", "method-of-moments"]
+keywords = [
+    "genetics",
+    "bioinformatics",
+    "GWAS",
+    "eQTL",
+    "single-cell",
+    "method-of-moments",
+]
 dependencies = [
     "numpy",
     "pandas",
     "numba",
     "scipy",
     "pyarrow",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "UpSetPlot",
+    "kaleido",
 ]
 
 [project.urls]

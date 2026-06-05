@@ -1,6 +1,6 @@
 # traceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 [![Open Tutorial In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)
 
@@ -20,7 +20,7 @@ This repository contains code for the **traceCB** paper, featuring the main algo
 ## Installation
 
 ### Prerequisites
-- Python >= 3.8
+- Python >= 3.10
 - `numba`, `pyarrow`, `scipy`
 
 ### Install from source
@@ -32,14 +32,14 @@ git clone https://github.com/lucajiang/traceCB.git
 cd traceCB
 ```
 
-**Activate your preferred Python environment** (recommended, required python 3.8 or above):
+**Activate your preferred Python environment** (recommended, required python 3.10 or above):
 ```bash
 conda activate <your_env_name>
 ```
 
 Or, create a new environment:
 ```bash
-conda create -n traceCB_env python=3.8
+conda create -n traceCB_env python=3.12
 conda activate traceCB_env
 ```
 

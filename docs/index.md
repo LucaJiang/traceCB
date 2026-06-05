@@ -35,7 +35,7 @@
 
 ### Installation
 
-Prerequisites: Python >= 3.8
+Prerequisites: Python >= 3.10
 
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
