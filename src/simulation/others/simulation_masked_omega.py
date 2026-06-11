@@ -30,7 +30,7 @@ for path in (SRC_DIR, SIMULATION_DIR):
         sys.path.insert(0, str(path))
 
 from simulation import cal_ld, generate_data, get_genotype  # noqa: E402
-from simulation_common import (  # noqa: E402
+from simulation_utils import (  # noqa: E402
     make_sim_seed,
     sanitize_ld_scores,
     validate_unit_interval,
@@ -248,7 +248,7 @@ def true_omega_terms(omega_true: np.ndarray, propt: float) -> tuple[np.ndarray, 
     return omega, float(pi2_omega_sum)
 
 
-@njit(nogil=True, parallel=True)
+@njit(nogil=True, parallel=True, cache=True)
 def run_pop1_target_methods(
     b1_hat: np.ndarray,
     se1_hat: np.ndarray,
@@ -373,7 +373,7 @@ def run_pop1_target_methods(
     return z
 
 
-@njit(nogil=True, parallel=True)
+@njit(nogil=True, parallel=True, cache=True)
 def calculate_metrics_all(causal: np.ndarray, z_scores: np.ndarray) -> np.ndarray:
     metrics = np.zeros((z_scores.shape[0], 2))
     causal_count = 0

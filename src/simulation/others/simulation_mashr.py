@@ -17,7 +17,7 @@ for path in (SRC_DIR, SIMULATION_DIR):
         sys.path.insert(0, str(path))
 
 from simulation import MIN_FLOAT, calculate_sumstats, get_genotype
-from simulation_common import unknown_cell_effect_scale
+from simulation_utils import standardize_genotype, unknown_cell_effect_scale
 from traceCB.utils import z2p
 
 
@@ -66,14 +66,10 @@ def generate_mashr_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal
     omega_causal = np.array(
         [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
     )
-    x1 = (G1[:n1, :] - np.mean(G1[:n1, :], axis=0)) / (
-        np.std(G1[:n1, :], axis=0) + MIN_FLOAT
-    )
-    x2 = (G2[:n2, :] - np.mean(G2[:n2, :], axis=0)) / (
-        np.std(G2[:n2, :], axis=0) + MIN_FLOAT
-    )
+    x1 = standardize_genotype(G1[:n1, :], MIN_FLOAT)
+    x2 = standardize_genotype(G2[:n2, :], MIN_FLOAT)
     xt_raw = G2[n2 : n2 + nt, :]
-    xt = (xt_raw - np.mean(xt_raw, axis=0)) / (np.std(xt_raw, axis=0) + MIN_FLOAT)
+    xt = standardize_genotype(xt_raw, MIN_FLOAT)
 
     num_causal = int(pcausal * nsnp)
     causal_ids = np.array([], dtype=int)

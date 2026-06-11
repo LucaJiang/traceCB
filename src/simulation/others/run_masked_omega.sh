@@ -3,25 +3,21 @@ set -euo pipefail
 
 # Run masked-omega comparisons for pop1 target.
 #
-# Defaults are production-style and align with src/simulation/run_simulation.sh.
-# Default rho grid: 0.01, 0.3, 0.7.
-# Uses true omega by default, matching simulation.py when --estimate_omega is absent.
-# - type I error: h1sq=0.000000000001
+# Usage:
+#   bash src/simulation/others/run_masked_omega.sh
 #
-# Run from the repository root. The script activates conda env py312.
-# Override NREP/NSNP/OUT_DIR from the environment for quick checks, e.g.
-# NREP=3 NSNP=500 bash src/simulation/others/run_masked_omega.sh
-# ALPHA_GCS="0.01 0.3" bash src/simulation/others/run_masked_omega.sh
+# Useful server overrides:
+#   SIM_DATA_DIR=/path/to/simulation/data OUT_DIR=/path/to/result \
+#     NREP=100 NSNP=2000 OMEGA_MODE=both bash src/simulation/others/run_masked_omega.sh
+#
+# OMEGA_MODE can be both, estimate, or true. RUN_VISUALS=0 skips plotting.
 
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate py312
-export PYTHONUNBUFFERED=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../run_common.sh
+source "${SCRIPT_DIR}/../run_common.sh"
+setup_simulation_env
 
-POP1_GENO="${POP1_GENO:-data/simulation/EAS_n5000_chr22_loci29.npy}"
-POP2_GENO="${POP2_GENO:-data/simulation/EUR_n20000_chr22_loci29.npy}"
 OUT_DIR="${OUT_DIR:-bench/result/masked_omega_compare}"
-NREP="${NREP:-100}"
-NSNP="${NSNP:-2000}"
 MASKED_OMEGA_SEED="${MASKED_OMEGA_SEED:-20260525}"
 
 ALPHA_GCS="${ALPHA_GCS:-0.01 0.3 0.7}"
@@ -29,41 +25,90 @@ ALPHA_RUNNAME_GC001="${ALPHA_RUNNAME_GC001:-alpha_masked_omega_trueomega_gc0.01_
 ALPHA_RUNNAME_GC03="${ALPHA_RUNNAME_GC03:-alpha_masked_omega_trueomega_gc0.3_h2sq_pcausal_propt}"
 ALPHA_RUNNAME_GC07="${ALPHA_RUNNAME_GC07:-alpha_masked_omega_trueomega_gc0.7_h2sq_pcausal_propt}"
 
-for GC in ${ALPHA_GCS}; do
-    if [[ "${GC}" == "0.01" ]]; then
-        ALPHA_RUNNAME="${ALPHA_RUNNAME_GC001}"
-    elif [[ "${GC}" == "0.3" ]]; then
-        ALPHA_RUNNAME="${ALPHA_RUNNAME_GC03}"
-    elif [[ "${GC}" == "0.7" ]]; then
-        ALPHA_RUNNAME="${ALPHA_RUNNAME_GC07}"
+masked_runname_for_omega() {
+    local omega_kind="$1"
+    local base_runname="$2"
+    if [[ "${omega_kind}" == "true" ]]; then
+        printf "%s\n" "${base_runname}"
+    elif [[ "${base_runname}" == *trueomega* ]]; then
+        printf "%s\n" "${base_runname/trueomega/estomega}"
     else
-        echo "Unexpected alpha GC value: ${GC}" >&2
-        exit 1
+        printf "%s_estomega\n" "${base_runname}"
     fi
-    python3 src/simulation/others/simulation_masked_omega.py \
-        --pop1_geno "${POP1_GENO}" \
-        --pop2_geno "${POP2_GENO}" \
-        --runname "${ALPHA_RUNNAME}" \
-        --h1sq 0.000000000001 \
-        --h2sq 0.1 0.2 \
-        --gc "${GC}" \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --nsnp "${NSNP}" \
-        --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005 0.01 0.02 \
-        --out_dir "${OUT_DIR}" \
-        --nrep "${NREP}" \
-        --seed "${MASKED_OMEGA_SEED}"
-done
+}
 
-python3 src/simulation/others/visual_masked_omega.py \
-    --base_path "${OUT_DIR}" \
-    --runname "${ALPHA_RUNNAME_GC001}" "${ALPHA_RUNNAME_GC03}" "${ALPHA_RUNNAME_GC07}" \
-    --save_prefix alpha_masked_omega_trueomega_gc_h2sq_pcausal_propt \
-    --metric alpha \
-    --x propt \
-    --row gc \
-    --col pcausal \
-    --alpha_ymax 0.48
+base_alpha_runname_for_gc() {
+    local gc="$1"
+    if [[ "${gc}" == "0.01" ]]; then
+        printf "%s\n" "${ALPHA_RUNNAME_GC001}"
+    elif [[ "${gc}" == "0.3" ]]; then
+        printf "%s\n" "${ALPHA_RUNNAME_GC03}"
+    elif [[ "${gc}" == "0.7" ]]; then
+        printf "%s\n" "${ALPHA_RUNNAME_GC07}"
+    else
+        echo "Unexpected alpha GC value: ${gc}" >&2
+        return 1
+    fi
+}
+
+run_masked_for_omega() {
+    local omega_kind="$1"
+    local omega_args=()
+    if [[ "${omega_kind}" == "estimate" ]]; then
+        omega_args+=(--estimate_omega)
+    fi
+
+    for GC in ${ALPHA_GCS}; do
+        local base_runname
+        local runname
+        base_runname="$(base_alpha_runname_for_gc "${GC}")"
+        runname="$(masked_runname_for_omega "${omega_kind}" "${base_runname}")"
+        run_cmd "${PYTHON}" src/simulation/others/simulation_masked_omega.py \
+            --pop1_geno "${POP1_GENO}" \
+            --pop2_geno "${POP2_GENO}" \
+            --runname "${runname}" \
+            --h1sq 0.000000000001 \
+            --h2sq 0.1 0.2 \
+            --gc "${GC}" \
+            --n1 100 \
+            --n2 400 \
+            --nt 5000 \
+            --nsnp "${NSNP}" \
+            --propt 0.01 0.2 0.4 0.6 0.8 \
+            --pcausal 0.005 0.01 0.02 \
+            --out_dir "${OUT_DIR}" \
+            --nrep "${NREP}" \
+            --seed "${MASKED_OMEGA_SEED}" \
+            "${omega_args[@]}"
+    done
+}
+
+plot_masked_for_omega() {
+    local omega_kind="$1"
+    if [[ "${RUN_VISUALS}" != "1" ]]; then
+        return
+    fi
+
+    local runnames=()
+    for GC in ${ALPHA_GCS}; do
+        local base_runname
+        base_runname="$(base_alpha_runname_for_gc "${GC}")"
+        runnames+=("$(masked_runname_for_omega "${omega_kind}" "${base_runname}")")
+    done
+
+    run_cmd "${PYTHON}" src/simulation/others/visual_masked_omega.py \
+        --base_path "${OUT_DIR}" \
+        --runname "${runnames[@]}" \
+        --save_prefix "alpha_masked_omega_$(omega_label "${omega_kind}")_gc_h2sq_pcausal_propt" \
+        --metric alpha \
+        --x propt \
+        --row gc \
+        --col pcausal \
+        --alpha_ymax 0.48
+}
+
+while IFS= read -r omega_kind; do
+    echo "Running masked-omega grids with $(omega_label "${omega_kind}")"
+    run_masked_for_omega "${omega_kind}"
+    plot_masked_for_omega "${omega_kind}"
+done < <(omega_modes)

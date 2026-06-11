@@ -20,7 +20,7 @@ from traceCB.utils import (
 # ------------------------------------------------------------------------------
 
 
-@njit(parallel=True)
+@njit(parallel=True, cache=True)
 def run_gmm_kernel(
     nsnp,
     run_tissue,

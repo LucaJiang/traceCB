@@ -9,7 +9,23 @@ conda activate py312
 
 The simulation outputs are written under `bench/result` by default. For smoke
 tests or temporary reruns, set `OUT_DIR` or pass `--out_dir` to a temporary
-folder and delete it after inspection.
+folder and delete it after inspection. Shell entry points also accept
+`SIM_DATA_DIR`, `POP1_GENO`, and `POP2_GENO`; `SIM_DATA_DIR` should contain
+`EAS_n5000_chr22_loci29.npy` and `EUR_n20000_chr22_loci29.npy`.
+
+To run the full small-window simulation suite on a server:
+
+```bash
+SIM_DATA_DIR=/path/to/simulation/data \
+OUT_DIR=/path/to/results \
+NREP=100 \
+NSNP=2000 \
+OMEGA_MODE=both \
+bash src/simulation/others/run.sh all
+```
+
+Use `OMEGA_MODE=estimate` or `OMEGA_MODE=true` to run only one omega mode.
+Use `RUN_VISUALS=0` when submitting simulation jobs that should skip plotting.
 
 ## Main Small-Window Simulations
 

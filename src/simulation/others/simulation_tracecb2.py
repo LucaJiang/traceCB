@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from numba import prange
+from numba import njit, prange
 
 SIMULATION_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = SIMULATION_DIR.parents[1]
@@ -44,16 +44,162 @@ from simulation import (
     get_genotype,
     re2_meta,
 )
-from simulation_common import (
+from simulation_utils import (
     iter_gmm_propt_subsettings,
     list_arg,
     make_sim_seed,
     perturb_gmm_propt,
     sanitize_ld_scores,
+    standardize_genotype,
     unknown_cell_effect_scale,
     validate_nonnegative,
     validate_unit_interval,
 )
+
+
+@njit(nogil=True, parallel=True, cache=True)
+def run_tracecb2_inference_kernel(
+    nsnp,
+    run_gmm,
+    run_tracecb,
+    run_tracecb2,
+    omega,
+    pi2_omega_sum,
+    pi2_omega_sum1,
+    pi2_omega_sum2,
+    pi12_omega_sum12,
+    gmm_propt,
+    b1_hat,
+    se1_hat,
+    bt1_hat,
+    se_t1_hat,
+    b2_hat,
+    se2_hat,
+    bt2_hat,
+    se_t2_hat,
+    ld1,
+    ld2,
+    ldx,
+):
+    pop1_beta = np.empty((nsnp, 4))
+    pop2_beta = np.empty((nsnp, 4))
+    pop1_se = np.empty((nsnp, 4))
+    pop2_se = np.empty((nsnp, 4))
+    meta_beta = np.empty(nsnp)
+    meta_se = np.empty(nsnp)
+    meta_tissue_beta = np.empty(nsnp)
+    meta_tissue_se = np.empty(nsnp)
+    eye2 = np.eye(2)
+    eye3 = np.eye(3)
+    eye4 = np.eye(4)
+
+    for j in prange(nsnp):
+        pop1_beta[j, 0] = b1_hat[j]
+        pop1_se[j, 0] = se1_hat[j]
+        pop2_beta[j, 0] = b2_hat[j]
+        pop2_se[j, 0] = se2_hat[j]
+
+        if run_gmm:
+            (
+                pop1_beta[j, 1],
+                pop1_se[j, 1],
+                pop2_beta[j, 1],
+                pop2_se[j, 1],
+            ) = GMM(
+                omega,
+                eye2,
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+            )
+        else:
+            pop1_beta[j, 1] = b1_hat[j]
+            pop1_se[j, 1] = se1_hat[j]
+            pop2_beta[j, 1] = b2_hat[j]
+            pop2_se[j, 1] = se2_hat[j]
+
+        if run_tracecb:
+            (
+                pop1_beta[j, 2],
+                pop1_se[j, 2],
+                pop2_beta[j, 2],
+                pop2_se[j, 2],
+            ) = GMMtissue(
+                omega,
+                eye3,
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+                bt2_hat[j],
+                se_t2_hat[j],
+                pi2_omega_sum,
+                gmm_propt,
+            )
+        else:
+            pop1_beta[j, 2] = pop1_beta[j, 1]
+            pop1_se[j, 2] = pop1_se[j, 1]
+            pop2_beta[j, 2] = pop2_beta[j, 1]
+            pop2_se[j, 2] = pop2_se[j, 1]
+
+        if run_tracecb2:
+            (
+                pop1_beta[j, 3],
+                pop1_se[j, 3],
+                pop2_beta[j, 3],
+                pop2_se[j, 3],
+            ) = GMMtissueBoth(
+                omega,
+                eye4,
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                bt1_hat[j],
+                se_t1_hat[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+                bt2_hat[j],
+                se_t2_hat[j],
+                pi2_omega_sum1,
+                pi2_omega_sum2,
+                pi12_omega_sum12,
+                gmm_propt,
+                gmm_propt,
+            )
+        else:
+            pop1_beta[j, 3] = pop1_beta[j, 2]
+            pop1_se[j, 3] = pop1_se[j, 2]
+            pop2_beta[j, 3] = pop2_beta[j, 2]
+            pop2_se[j, 3] = pop2_se[j, 2]
+
+        meta_beta[j], meta_se[j] = re2_meta(
+            np.array([b1_hat[j], b2_hat[j]]),
+            np.array([se1_hat[j], se2_hat[j]]),
+        )
+        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
+            np.array([b1_hat[j], bt1_hat[j], b2_hat[j], bt2_hat[j]]),
+            np.array([se1_hat[j], se_t1_hat[j], se2_hat[j], se_t2_hat[j]]),
+        )
+
+    return (
+        pop1_beta,
+        pop1_se,
+        pop2_beta,
+        pop2_se,
+        meta_beta,
+        meta_se,
+        meta_tissue_beta,
+        meta_tissue_se,
+    )
 
 
 def parse_args():
@@ -305,14 +451,10 @@ def generate_data_tracecb2(
     omega_causal = np.array(
         [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
     )
-    X1 = G1[:n1, :]
-    X1 = (X1 - np.mean(X1, axis=0)) / (np.std(X1, axis=0) + MIN_FLOAT)
-    X2 = G2[:n2, :]
-    X2 = (X2 - np.mean(X2, axis=0)) / (np.std(X2, axis=0) + MIN_FLOAT)
-    Xt1 = G1[-nt1:, :]
-    Xt1 = (Xt1 - np.mean(Xt1, axis=0)) / (np.std(Xt1, axis=0) + MIN_FLOAT)
-    Xt2 = G2[n2 : n2 + nt2, :]
-    Xt2 = (Xt2 - np.mean(Xt2, axis=0)) / (np.std(Xt2, axis=0) + MIN_FLOAT)
+    X1 = standardize_genotype(G1[:n1, :], MIN_FLOAT)
+    X2 = standardize_genotype(G2[:n2, :], MIN_FLOAT)
+    Xt1 = standardize_genotype(G1[-nt1:, :], MIN_FLOAT)
+    Xt2 = standardize_genotype(G2[n2 : n2 + nt2, :], MIN_FLOAT)
 
     num_causal = int(pcausal * nsnp)
     region_a = np.zeros(nsnp, dtype=bool)
@@ -664,100 +806,38 @@ def run_one(
             gmm_propt,
         )
 
-    pop1_beta = np.zeros((nsnp, 4))
-    pop2_beta = np.zeros((nsnp, 4))
-    pop1_se = np.zeros((nsnp, 4))
-    pop2_se = np.zeros((nsnp, 4))
-    pop1_beta[:, 0] = b1_hat
-    pop1_se[:, 0] = se1_hat
-    pop2_beta[:, 0] = b2_hat
-    pop2_se[:, 0] = se2_hat
-
-    if run_gmm:
-        for j in prange(nsnp):
-            pop1_beta[j, 1], pop1_se[j, 1], pop2_beta[j, 1], pop2_se[j, 1] = GMM(
-                omega,
-                np.eye(2),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-            )
-    else:
-        pop1_beta[:, 1] = b1_hat
-        pop1_se[:, 1] = se1_hat
-        pop2_beta[:, 1] = b2_hat
-        pop2_se[:, 1] = se2_hat
-
-    if run_tracecb:
-        for j in prange(nsnp):
-            pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
-                omega,
-                np.eye(3),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-                bt2_hat[j],
-                se_t2_hat[j],
-                pi2_omega_sum,
-                gmm_propt,
-            )
-    else:
-        pop1_beta[:, 2] = pop1_beta[:, 1]
-        pop1_se[:, 2] = pop1_se[:, 1]
-        pop2_beta[:, 2] = pop2_beta[:, 1]
-        pop2_se[:, 2] = pop2_se[:, 1]
-
-    if run_tracecb2:
-        for j in prange(nsnp):
-            pop1_beta[j, 3], pop1_se[j, 3], pop2_beta[j, 3], pop2_se[j, 3] = (
-                GMMtissueBoth(
-                    omega,
-                    np.eye(4),
-                    b1_hat[j],
-                    se1_hat[j],
-                    ld1[j],
-                    bt1_hat[j],
-                    se_t1_hat[j],
-                    b2_hat[j],
-                    se2_hat[j],
-                    ld2[j],
-                    ldx[j],
-                    bt2_hat[j],
-                    se_t2_hat[j],
-                    pi2_omega_sum1,
-                    pi2_omega_sum2,
-                    pi12_omega_sum12,
-                    gmm_propt,
-                    gmm_propt,
-                )
-            )
-    else:
-        pop1_beta[:, 3] = pop1_beta[:, 2]
-        pop1_se[:, 3] = pop1_se[:, 2]
-        pop2_beta[:, 3] = pop2_beta[:, 2]
-        pop2_se[:, 3] = pop2_se[:, 2]
-
-    meta_beta = np.zeros(nsnp)
-    meta_se = np.zeros(nsnp)
-    meta_tissue_beta = np.zeros(nsnp)
-    meta_tissue_se = np.zeros(nsnp)
-    for j in prange(nsnp):
-        meta_beta[j], meta_se[j] = re2_meta(
-            np.array([b1_hat[j], b2_hat[j]]),
-            np.array([se1_hat[j], se2_hat[j]]),
-        )
-        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
-            np.array([b1_hat[j], bt1_hat[j], b2_hat[j], bt2_hat[j]]),
-            np.array([se1_hat[j], se_t1_hat[j], se2_hat[j], se_t2_hat[j]]),
-        )
+    (
+        pop1_beta,
+        pop1_se,
+        pop2_beta,
+        pop2_se,
+        meta_beta,
+        meta_se,
+        meta_tissue_beta,
+        meta_tissue_se,
+    ) = run_tracecb2_inference_kernel(
+        nsnp,
+        run_gmm,
+        run_tracecb,
+        run_tracecb2,
+        omega,
+        pi2_omega_sum,
+        pi2_omega_sum1,
+        pi2_omega_sum2,
+        pi12_omega_sum12,
+        gmm_propt,
+        b1_hat,
+        se1_hat,
+        bt1_hat,
+        se_t1_hat,
+        b2_hat,
+        se2_hat,
+        bt2_hat,
+        se_t2_hat,
+        ld1,
+        ld2,
+        ldx,
+    )
 
     pop1_z = pop1_beta / (pop1_se + MIN_FLOAT)
     pop2_z = pop2_beta / (pop2_se + MIN_FLOAT)

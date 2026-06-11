@@ -6,46 +6,123 @@ set -euo pipefail
 # Usage:
 #   bash src/simulation/run_simulation.sh
 #
-# Run from the repository root. The script activates conda env py312.
-# Each simulation.py command is followed by its visual_simulation.py command so
-# the paper figure is regenerated with the same parameters.
+# Useful server overrides:
+#   SIM_DATA_DIR=/path/to/simulation/data OUT_DIR=/path/to/result \
+#     NREP=100 NSNP=2000 OMEGA_MODE=both bash src/simulation/run_simulation.sh
+#
+# OMEGA_MODE can be both, estimate, or true. RUN_VISUALS=0 skips plotting.
 
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate py312
-export PYTHONUNBUFFERED=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=run_common.sh
+source "${SCRIPT_DIR}/run_common.sh"
+setup_simulation_env
 
-POP1_GENO="${POP1_GENO:-data/simulation/EAS_n5000_chr22_loci29.npy}"
-POP2_GENO="${POP2_GENO:-data/simulation/EUR_n20000_chr22_loci29.npy}"
 OUT_DIR="${OUT_DIR:-bench/result}"
-NREP="${NREP:-100}"
-NSNP="${NSNP:-2000}"
 SIMULATION_SEED="${SIMULATION_SEED:-20260525}"
 
-## estimated Omega in fig 2
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname nt_n2_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 100 --n2 100 200 400 --nt 1000 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}" --estimate_omega
-python3 src/simulation/visual_simulation.py --metric power --runname nt_n2_propt  --ymax 0.38 --ymin 0.16 --base_path "${OUT_DIR}" --omega false
+run_simulation_grid() {
+    local omega_kind="$1"
+    local runname="$2"
+    local metric="$3"
+    local ymin="$4"
+    local ymax="$5"
+    shift 5
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname h2sq_gc_propt --h1sq 0.1 --h2sq 0.1 0.2 --gc 0.01 0.5 0.9 --n1 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}" --estimate_omega
-python3 src/simulation/visual_simulation.py --metric power --runname h2sq_gc_propt --ymax 0.42 --ymin 0.12 --base_path "${OUT_DIR}" --omega false
+    local omega_args=()
+    if [[ "${omega_kind}" == "estimate" ]]; then
+        omega_args+=(--estimate_omega)
+    fi
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname n1_pcausal_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 50 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}" --estimate_omega
-python3 src/simulation/visual_simulation.py --metric power --runname n1_pcausal_propt --ymax 0.32 --ymin 0.05 --base_path "${OUT_DIR}" --omega false
+    run_cmd "${PYTHON}" src/simulation/simulation.py \
+        --pop1_geno "${POP1_GENO}" \
+        --pop2_geno "${POP2_GENO}" \
+        --runname "${runname}" \
+        "$@" \
+        --nsnp "${NSNP}" \
+        --out_dir "${OUT_DIR}" \
+        --nrep "${NREP}" \
+        --seed "${SIMULATION_SEED}" \
+        "${omega_args[@]}"
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname alpha_h2sq_pcausal_propt --h1sq 0.000000000001 --h2sq 0.1 0.2 --gc 0 --n1 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}" --estimate_omega
-python3 src/simulation/visual_simulation.py --metric alpha --runname alpha_h2sq_pcausal_propt --ymax 0.48 --base_path "${OUT_DIR}" --omega false
+    if [[ "${RUN_VISUALS}" == "1" ]]; then
+        local visual_args=(
+            src/simulation/visual_simulation.py
+            --metric "${metric}"
+            --runname "${runname}"
+            --base_path "${OUT_DIR}"
+            --omega "$(omega_filter_arg "${omega_kind}")"
+        )
+        if [[ -n "${ymin}" ]]; then
+            visual_args+=(--ymin "${ymin}")
+        fi
+        if [[ -n "${ymax}" ]]; then
+            visual_args+=(--ymax "${ymax}")
+        fi
+        run_cmd "${PYTHON}" "${visual_args[@]}"
+    fi
+}
 
-# ---------------------------
+run_all_grids_for_omega() {
+    local omega_kind="$1"
+    local omega_name
+    omega_name="$(omega_label "${omega_kind}")"
+    local nt_ymin="0.16"
+    local nt_ymax="0.38"
+    local h2_ymin="0.12"
+    local h2_ymax="0.42"
+    local n1_ymin="0.05"
+    local n1_ymax="0.32"
+    if [[ "${omega_kind}" == "true" ]]; then
+        nt_ymin=""
+        nt_ymax="0.88"
+        h2_ymin=""
+        h2_ymax="0.88"
+        n1_ymin=""
+        n1_ymax="0.88"
+    fi
+    echo "Running main small-window grids with ${omega_name}"
 
-## true Omega in supplementary
+    run_simulation_grid "${omega_kind}" nt_n2_propt power "${nt_ymin}" "${nt_ymax}" \
+        --h1sq 0.1 \
+        --h2sq 0.1 \
+        --gc 0.7 \
+        --n1 100 \
+        --n2 100 200 400 \
+        --nt 1000 5000 \
+        --propt 0.01 0.2 0.4 0.6 0.8 \
+        --pcausal 0.005
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname nt_n2_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 100 --n2 100 200 400 --nt 1000 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}"
-python3 src/simulation/visual_simulation.py --metric power --runname nt_n2_propt --ymax 0.88 --base_path "${OUT_DIR}" --omega true
+    run_simulation_grid "${omega_kind}" h2sq_gc_propt power "${h2_ymin}" "${h2_ymax}" \
+        --h1sq 0.1 \
+        --h2sq 0.1 0.2 \
+        --gc 0.01 0.5 0.9 \
+        --n1 100 \
+        --n2 400 \
+        --nt 5000 \
+        --propt 0.01 0.2 0.4 0.6 0.8 \
+        --pcausal 0.005
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname h2sq_gc_propt --h1sq 0.1 --h2sq 0.1 0.2 --gc 0.01 0.5 0.9 --n1 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}"
-python3 src/simulation/visual_simulation.py --metric power --runname h2sq_gc_propt --ymax 0.88 --base_path "${OUT_DIR}" --omega true
+    run_simulation_grid "${omega_kind}" n1_pcausal_propt power "${n1_ymin}" "${n1_ymax}" \
+        --h1sq 0.1 \
+        --h2sq 0.1 \
+        --gc 0.7 \
+        --n1 50 100 \
+        --n2 400 \
+        --nt 5000 \
+        --propt 0.01 0.2 0.4 0.6 0.8 \
+        --pcausal 0.005 0.01 0.02
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname n1_pcausal_propt --h1sq 0.1 --h2sq 0.1 --gc 0.7 --n1 50 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}"
-python3 src/simulation/visual_simulation.py --metric power --runname n1_pcausal_propt --ymax 0.88 --base_path "${OUT_DIR}" --omega true
+    run_simulation_grid "${omega_kind}" alpha_h2sq_pcausal_propt alpha "" 0.48 \
+        --h1sq 0.000000000001 \
+        --h2sq 0.1 0.2 \
+        --gc 0 \
+        --n1 100 \
+        --n2 400 \
+        --nt 5000 \
+        --propt 0.01 0.2 0.4 0.6 0.8 \
+        --pcausal 0.005 0.01 0.02
+}
 
-python3 src/simulation/simulation.py --pop1_geno "${POP1_GENO}" --pop2_geno "${POP2_GENO}" --runname alpha_h2sq_pcausal_propt --h1sq 0.000000000001 --h2sq 0.1 0.2 --gc 0 --n1 100 --n2 400 --nt 5000 --nsnp "${NSNP}" --propt 0.01 0.2 0.4 0.6 0.8 --pcausal 0.005 0.01 0.02 --out_dir "${OUT_DIR}" --nrep "${NREP}" --seed "${SIMULATION_SEED}"
-python3 src/simulation/visual_simulation.py --metric alpha --runname alpha_h2sq_pcausal_propt --ymax 0.48 --base_path "${OUT_DIR}" --omega true
+while IFS= read -r omega_kind; do
+    run_all_grids_for_omega "${omega_kind}"
+done < <(omega_modes)

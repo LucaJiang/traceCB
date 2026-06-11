@@ -49,15 +49,21 @@ def parse_args():
         default=Path("bench/result_power_gain/img/power_gain"),
         help="Output path without extension.",
     )
+    parser.add_argument(
+        "--omega",
+        choices=("true", "false"),
+        default="true",
+        help="Read true-omega or estimated-omega aggregate result tables.",
+    )
     return parser.parse_args()
 
 
-def read_result_df(base_path, runname):
+def read_result_df(base_path, runname, omega):
     run_dir = base_path / runname
-    candidates = [
-        run_dir / "result_df_trueomega.csv",
-        run_dir / "result_df.csv",
-    ]
+    if omega == "true":
+        candidates = [run_dir / "result_df_trueomega.csv", run_dir / "result_df.csv"]
+    else:
+        candidates = [run_dir / "result_df_estomega.csv", run_dir / "result_df.csv"]
     for result_file in candidates:
         if result_file.exists():
             df = pd.read_csv(result_file)
@@ -70,7 +76,7 @@ def read_result_df(base_path, runname):
                 df[col] = pd.to_numeric(df[col], errors="coerce")
             return df.dropna(subset=METHOD_COLUMNS).copy()
     raise FileNotFoundError(
-        f"Missing result_df_trueomega.csv/result_df.csv under {run_dir}. "
+        f"Missing aggregate result table for omega={omega} under {run_dir}. "
         "Run visual_simulation.py aggregation first."
     )
 
@@ -182,8 +188,8 @@ def plot_figure(tracec_summary, tracecb_summary, output_prefix):
 
 def main():
     args = parse_args()
-    tracec_df = read_result_df(args.base_path, args.tracec_runname)
-    tracecb_df = read_result_df(args.base_path, args.tracecb_runname)
+    tracec_df = read_result_df(args.base_path, args.tracec_runname, args.omega)
+    tracecb_df = read_result_df(args.base_path, args.tracecb_runname, args.omega)
     tracec_summary = summarize_gain(
         tracec_df,
         x="n2",

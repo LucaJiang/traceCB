@@ -4,6 +4,46 @@ import hashlib
 
 import numpy as np
 
+MISSING_GENOTYPE_VALUE = 3
+
+
+def impute_missing_genotype(
+    genotype: np.ndarray, missing_value: int | float = MISSING_GENOTYPE_VALUE
+) -> np.ndarray:
+    """Return float genotype dosage with missing values imputed by SNP mean."""
+    geno = np.asarray(genotype, dtype=np.float32).copy()
+    valid = np.isfinite(geno) & (geno != missing_value)
+    if np.all(valid):
+        return geno
+
+    counts = np.sum(valid, axis=0)
+    sums = np.sum(np.where(valid, geno, 0.0), axis=0, dtype=np.float64)
+    col_mean = np.divide(
+        sums,
+        counts,
+        out=np.zeros(geno.shape[1], dtype=np.float64),
+        where=counts > 0,
+    ).astype(np.float32)
+    missing = ~valid
+    geno[missing] = np.take(col_mean, np.where(missing)[1])
+    return geno
+
+
+def load_genotype_window(
+    geno_file: str,
+    nsnp: int,
+    snp_start: int,
+    missing_value: int | float = MISSING_GENOTYPE_VALUE,
+) -> np.ndarray:
+    """Load a SNP window from a simulation .npy genotype file."""
+    geno = np.load(geno_file, mmap_mode="r")[:, snp_start : nsnp + snp_start]
+    return impute_missing_genotype(geno, missing_value=missing_value)
+
+
+def standardize_genotype(genotype: np.ndarray, min_float: float) -> np.ndarray:
+    x = np.asarray(genotype, dtype=float)
+    return (x - np.mean(x, axis=0)) / (np.std(x, axis=0) + min_float)
+
 
 def flatten_float_seq(x):
     """Scalar, list, tuple, or array -> flat list of floats."""

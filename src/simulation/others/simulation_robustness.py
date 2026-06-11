@@ -72,7 +72,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from numba import prange
 
 SIMULATION_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = SIMULATION_DIR.parents[1]
@@ -82,7 +81,6 @@ for path in (SRC_DIR, SIMULATION_DIR):
         sys.path.insert(0, str(path))
 
 from traceCB.ldsc import Run_Cross_LDSC
-from traceCB.gmm import GMM, GMMtissue
 from traceCB.utils import z2p, MIN_HERITABILITY
 from simulation import (
     MIN_FLOAT,
@@ -90,15 +88,16 @@ from simulation import (
     cal_ld,
     calculate_sumstats,
     get_genotype,
-    re2_meta,
+    run_gmm_meta_kernel,
 )
-from simulation_common import (
+from simulation_utils import (
     calculate_pi2_omega_sum_const,
     flatten_float_seq,
     iter_gmm_propt_subsettings,
     make_sim_seed,
     perturb_gmm_propt,
     sanitize_ld_scores,
+    standardize_genotype,
     unknown_cell_effect_scale,
     validate_nonnegative,
     validate_unit_interval,
@@ -692,11 +691,11 @@ def generate_data(
     )
     # print("Omega:", Omega_causal / nsnp)
     G1c = G1[:n1, :]
-    X1 = (G1c - np.mean(G1c, axis=0)) / (np.std(G1c, axis=0) + MIN_FLOAT)
+    X1 = standardize_genotype(G1c, MIN_FLOAT)
     G2c = G2[:n2, :]
-    X2 = (G2c - np.mean(G2c, axis=0)) / (np.std(G2c, axis=0) + MIN_FLOAT)
+    X2 = standardize_genotype(G2c, MIN_FLOAT)
     G2t = G2[n2 : n2 + nt, :]
-    Xt = (G2t - np.mean(G2t, axis=0)) / (np.std(G2t, axis=0) + MIN_FLOAT)
+    Xt = standardize_genotype(G2t, MIN_FLOAT)
     # cell type data
     num_causal = int(pcausal * nsnp)
     region_a = np.zeros(nsnp, dtype=bool)
@@ -1005,74 +1004,35 @@ def simulation(
         run_gmm,
         run_gmm_tissue,
     )
-    # GMM
-    pop1_beta = np.zeros((nsnp, 3))  # sumstat, cross, tissue
-    pop2_beta = np.zeros((nsnp, 3))
-    pop1_se = np.zeros((nsnp, 3))
-    pop2_se = np.zeros((nsnp, 3))
-    pop1_beta[:, 0] = b1_hat
-    pop1_se[:, 0] = se1_hat
-    pop2_beta[:, 0] = b2_hat
-    pop2_se[:, 0] = se2_hat
-
-    if run_gmm:
-        for j in prange(nsnp):
-            pop1_beta[j, 1], pop1_se[j, 1], pop2_beta[j, 1], pop2_se[j, 1] = GMM(
-                Omega,
-                np.eye(2),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-            )
-    else:  # no run gmm, keep sumstat results
-        pop1_beta[:, 1] = b1_hat
-        pop1_se[:, 1] = se1_hat
-        pop2_beta[:, 1] = b2_hat
-        pop2_se[:, 1] = se2_hat
-    if run_gmm_tissue:
-        for j in prange(nsnp):
-            pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
-                Omega,
-                np.eye(3),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-                bt_hat[j],
-                se_t_hat[j],
-                pi2_omega_sum,
-                gmm_propt,
-            )
-    else:  # no run gmm, keep sumstat results
-        pop1_beta[:, 2] = pop1_beta[:, 1]
-        pop1_se[:, 2] = pop1_se[:, 1]
-        pop2_beta[:, 2] = pop2_beta[:, 1]
-        pop2_se[:, 2] = pop2_se[:, 1]
+    (
+        pop1_beta,
+        pop1_se,
+        pop2_beta,
+        pop2_se,
+        meta_beta,
+        meta_se,
+        meta_tissue_beta,
+        meta_tissue_se,
+    ) = run_gmm_meta_kernel(
+        nsnp,
+        run_gmm,
+        run_gmm_tissue,
+        Omega,
+        pi2_omega_sum,
+        gmm_propt,
+        b1_hat,
+        se1_hat,
+        ld1,
+        b2_hat,
+        se2_hat,
+        ld2,
+        ldx,
+        bt_hat,
+        se_t_hat,
+    )
 
     pop1_z = pop1_beta / (pop1_se + MIN_FLOAT)
     pop2_z = pop2_beta / (pop2_se + MIN_FLOAT)
-    ## meta-analysis
-    meta_beta = np.zeros((nsnp,))
-    meta_se = np.zeros((nsnp,))
-    meta_tissue_beta = np.zeros((nsnp,))
-    meta_tissue_se = np.zeros((nsnp,))
-    for j in prange(nsnp):
-        ## meta-analysis
-        meta_beta[j], meta_se[j] = re2_meta(
-            np.array([b1_hat[j], b2_hat[j]]),
-            np.array([se1_hat[j], se2_hat[j]]),
-        )
-        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
-            np.array([b1_hat[j], b2_hat[j], bt_hat[j]]),
-            np.array([se1_hat[j], se2_hat[j], se_t_hat[j]]),
-        )
     # save results
     all_results_columns = [
         "causal",

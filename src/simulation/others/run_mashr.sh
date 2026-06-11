@@ -3,30 +3,40 @@ set -euo pipefail
 
 # Generate mashr-ready simulations for selected nt_n2_propt settings,
 # run mashr with two input condition sets, and draw true-sign diagnostics.
+#
+# Useful server overrides:
+#   SIM_DATA_DIR=/path/to/simulation/data BASE_PATH=/path/to/mashr_result \
+#     NREP=100 NSNP=2000 bash src/simulation/others/run_mashr.sh
 
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate py312
-export PYTHONUNBUFFERED=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../run_common.sh
+source "${SCRIPT_DIR}/../run_common.sh"
+setup_simulation_env
 
-BASE_PATH="${BASE_PATH:-bench/result_mashr}"
+BASE_PATH="${BASE_PATH:-${OUT_DIR:-bench/result_mashr}}"
 RUNNAME="${RUNNAME:-nt_n2_propt_mashr}"
 MASHR_COV_METHOD="${MASHR_COV_METHOD:-canonical_pca}"
+MASHR_SEED="${MASHR_SEED:-20260604}"
 FORCE="${FORCE:-0}"
 
 run_simulation() {
     local args=(
         src/simulation/others/simulation_mashr.py
+        --pop1_geno "${POP1_GENO}"
+        --pop2_geno "${POP2_GENO}"
         --out_dir "${BASE_PATH}"
         --runname "${RUNNAME}"
         --n2 400
         --nt 5000
+        --nsnp "${NSNP}"
         --propt 0.4 0.8
-        --nrep 100
+        --nrep "${NREP}"
+        --seed "${MASHR_SEED}"
     )
     if [[ "${FORCE}" == "1" ]]; then
         args+=(--force)
     fi
-    python3 "${args[@]}"
+    run_cmd "${PYTHON}" "${args[@]}"
 }
 
 run_mashr_condition_set() {
@@ -45,7 +55,7 @@ run_mashr_condition_set() {
     if [[ "${FORCE}" == "1" ]]; then
         args+=(--force)
     fi
-    Rscript "${args[@]}"
+    run_cmd Rscript "${args[@]}"
 }
 
 run_simulation
