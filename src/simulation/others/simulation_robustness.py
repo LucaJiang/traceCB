@@ -97,6 +97,7 @@ from simulation_utils import (
     make_sim_seed,
     perturb_gmm_propt,
     sanitize_ld_scores,
+    seed_random_component,
     standardize_genotype,
     unknown_cell_effect_scale,
     validate_nonnegative,
@@ -282,8 +283,8 @@ def parse_args():
         default=None,
         help=(
             "Base random seed. When omitted, the current start time is used. "
-            "Each replicate seed is derived from this base seed and the full "
-            "simulation setting."
+            "Each full simulation setting and replicate gets independent "
+            "component-specific random streams derived from this base seed."
         ),
     )
     return parser.parse_args()
@@ -644,6 +645,9 @@ def generate_data(
     causal_max_abs_cor=None,
     causal_partition_mode="none",
     null_region_prop=0.8,
+    tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
 ):
     """
     Generate data for simulation.
@@ -669,6 +673,11 @@ def generate_data(
             correlation threshold.
         causal_partition_mode (str): Optional segmented causal architecture.
         null_region_prop (float): Proportion assigned to pop1-null region A.
+        tissue_start (int | None): Row offset for the population 2 tissue panel.
+            Defaults to n2 for backward compatibility.
+        seed_base (int | None): Base seed for component-specific random streams.
+            When None, use the caller's current NumPy RNG state.
+        seed_parts (tuple): Stable identifiers for the replicate random streams.
 
     Returns:
         tuple: A tuple containing:
@@ -690,16 +699,33 @@ def generate_data(
         [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
     )
     # print("Omega:", Omega_causal / nsnp)
+    if tissue_start is None:
+        tissue_start = n2
+    if n1 > G1.shape[0]:
+        raise ValueError(f"n1={n1} exceeds population 1 genotype rows={G1.shape[0]}")
+    if n2 > G2.shape[0]:
+        raise ValueError(f"n2={n2} exceeds population 2 genotype rows={G2.shape[0]}")
+    if tissue_start < n2:
+        raise ValueError(
+            f"tissue_start={tissue_start} must be >= n2={n2} to keep panels disjoint"
+        )
+    if tissue_start + nt > G2.shape[0]:
+        raise ValueError(
+            f"tissue_start + nt = {tissue_start + nt} exceeds "
+            f"population 2 genotype rows={G2.shape[0]}"
+        )
+
     G1c = G1[:n1, :]
     X1 = standardize_genotype(G1c, MIN_FLOAT)
     G2c = G2[:n2, :]
     X2 = standardize_genotype(G2c, MIN_FLOAT)
-    G2t = G2[n2 : n2 + nt, :]
+    G2t = G2[tissue_start : tissue_start + nt, :]
     Xt = standardize_genotype(G2t, MIN_FLOAT)
     # cell type data
     num_causal = int(pcausal * nsnp)
     region_a = np.zeros(nsnp, dtype=bool)
     if causal_partition_mode == "pop2_a_shared_b":
+        seed_random_component(seed_base, seed_parts, "causal_partition")
         beta1, beta2, causal_ids, _pop2_a_ids, region_a = (
             generate_partitioned_causal_effects(
                 nsnp,
@@ -713,18 +739,21 @@ def generate_data(
             )
         )
     elif causal_overlap is None:
+        seed_random_component(seed_base, seed_parts, "causal_ids")
         causal_ids = sample_causal_ids(
             nsnp, num_causal, causal_corr, causal_max_abs_cor
         )
         beta1 = np.zeros(nsnp)
         beta2 = np.zeros(nsnp)
         if num_causal > 0:
+            seed_random_component(seed_base, seed_parts, "causal_effects")
             beta_causal = np.random.multivariate_normal(
                 mean=np.zeros(2), cov=Omega_causal / num_causal, size=num_causal
             )  # (M, <c11, c12>)
             beta1[causal_ids] = beta_causal[:, 0]
             beta2[causal_ids] = beta_causal[:, 1]
     else:
+        seed_random_component(seed_base, seed_parts, "causal_overlap")
         beta1, beta2, causal_ids, _causal_ids2 = generate_causal_effects_by_overlap(
             nsnp,
             pcausal,
@@ -734,11 +763,14 @@ def generate_data(
             causal_corr,
             causal_max_abs_cor,
         )
+    seed_random_component(seed_base, seed_parts, "pop1_noise")
     y1 = X1 @ beta1.T + np.sqrt(1 - h1sq) * np.random.randn(n1)
+    seed_random_component(seed_base, seed_parts, "pop2_noise")
     y2 = X2 @ beta2.T + np.sqrt(1 - h2sq) * np.random.randn(n2)
 
     # tissue data
     delta = 5  # control the variance of pi
+    seed_random_component(seed_base, seed_parts, "cell_proportion")
     pi_ind = np.random.beta(
         (propt + MIN_FLOAT) * delta, (1 - propt + MIN_FLOAT) * delta, nt
     )
@@ -746,14 +778,16 @@ def generate_data(
     ## define unknown cell type
     beta_unknown = np.zeros(nsnp)
     num_unknown_celltype = 1
-    for _ in range(num_unknown_celltype):
+    for celltype_id in range(num_unknown_celltype):
         num_unknown_causal = int(pcausal * nsnp)
         if num_unknown_causal <= 0:
             continue
+        seed_random_component(seed_base, seed_parts, f"unknown_ids_{celltype_id}")
         causal_unknown_id = sample_causal_ids(
             nsnp, num_unknown_causal, causal_corr, causal_max_abs_cor
         )
         # causal_unknown_id = causal_ids  #! share causal SNPs
+        seed_random_component(seed_base, seed_parts, f"unknown_effects_{celltype_id}")
         beta_causal_unknown = np.random.normal(
             loc=0,
             scale=unknown_cell_effect_scale(
@@ -769,13 +803,15 @@ def generate_data(
         # beta_unknown[causal_ids] += (
         #     beta_causal[:, 1] / 2
         # )  #! share effect with known cell type
+    seed_random_component(seed_base, seed_parts, "tissue_noise")
+    tissue_noise = np.random.randn(nt)
     yt = (
         pi_ind * (Xt @ beta2.T)
         + (1 - pi_ind) * (Xt @ beta_unknown.T)
         + np.sqrt(
             np.maximum(1 - (pi_ind**2 + (1 - pi_ind) ** 2) * h2sq, MIN_FLOAT)
         )
-        * np.random.randn(nt)
+        * tissue_noise
     )
 
     # sumstats
@@ -840,6 +876,9 @@ def simulation(
     out_dir,
     true_omega,
     id_sim,
+    tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
 ):
     """
     Run simulation for GMM, save results to out_dir
@@ -864,6 +903,8 @@ def simulation(
     out_dir: output directory
     true_omega: true covariance matrix
     id_sim: simulation id
+    tissue_start: row offset for the population 2 tissue panel
+    seed_base, seed_parts: common-random-number seed controls
     :return
     None
     """
@@ -920,7 +961,11 @@ def simulation(
         causal_max_abs_cor,
         causal_partition_mode,
         null_region_prop,
+        tissue_start=tissue_start,
+        seed_base=seed_base,
+        seed_parts=seed_parts,
     )
+    seed_random_component(seed_base, seed_parts, "gmm_propt")
     gmm_propt = perturb_gmm_propt(
         propt, gmm_propt_mode, gmm_propt_normal_var, gmm_propt_mode_scale
     )
@@ -1145,6 +1190,13 @@ def main():
 
     start_time = time.time()
     base_seed = int(args.seed) if args.seed is not None else int(start_time)
+    pop2_tissue_start = None
+    max_tissue_end = max(n2) + max(nt)
+    if max_tissue_end > G2.shape[0]:
+        raise ValueError(
+            f"required n2/nt sample rows = {max_tissue_end} exceeds population 2 "
+            f"genotype rows={G2.shape[0]}"
+        )
     print("Simulation start at ", time.ctime())
     print("Simulation base seed: ", base_seed)
     for h1sqi in h1sq:
@@ -1170,10 +1222,7 @@ def main():
                                                     null_region_propa
                                                 ) in null_region_prop:
                                                     for s in range(args.nrep):
-                                                        # Keep the generated data paired across GMM
-                                                        # proportion perturbations and omega modes.
-                                                        sim_seed = make_sim_seed(
-                                                            base_seed,
+                                                        seed_parts = (
                                                             h1sqi,
                                                             h2sqj,
                                                             gck,
@@ -1182,6 +1231,9 @@ def main():
                                                             ntn,
                                                             nsnp,
                                                             proptp,
+                                                            gmm_propt_modeq,
+                                                            gmm_propt_nvq,
+                                                            gmm_propt_scaleq,
                                                             pcausalr,
                                                             causal_overlapo,
                                                             args.causal_max_abs_cor,
@@ -1189,7 +1241,6 @@ def main():
                                                             null_region_propa,
                                                             s,
                                                         )
-                                                        np.random.seed(sim_seed)
                                                         simulation(
                                                             args.runname,
                                                             G1,
@@ -1217,6 +1268,9 @@ def main():
                                                             args.out_dir,
                                                             trueOmega,
                                                             s,
+                                                            tissue_start=pop2_tissue_start,
+                                                            seed_base=base_seed,
+                                                            seed_parts=seed_parts,
                                                         )
                                                     have_run += 1
                                                     if have_run % 5 == 0:

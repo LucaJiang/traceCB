@@ -83,6 +83,13 @@ def make_sim_seed(base_seed, *parts):
     )
 
 
+def seed_random_component(seed_base, seed_parts, component):
+    """Reset NumPy's legacy RNG for one simulation random component."""
+    if seed_base is None:
+        return
+    np.random.seed(make_sim_seed(seed_base, component, *seed_parts))
+
+
 def unknown_cell_effect_scale(h2sq, num_causal, num_unknown_celltype):
     if num_causal <= 0:
         return 0.0
@@ -90,7 +97,7 @@ def unknown_cell_effect_scale(h2sq, num_causal, num_unknown_celltype):
 
 
 def calculate_pi2_omega_sum_const(proportion):
-    return 2 * proportion
+    return 2 * proportion  # only for two cell types scenario
 
 
 def perturb_gmm_propt(propt, mode="exact", normal_var=0.01, scale=0.1):

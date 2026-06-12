@@ -90,7 +90,7 @@ run_all_grids_for_omega() {
         --n2 100 200 400 \
         --nt 1000 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005
+        --pcausal 0.05
 
     run_simulation_grid "${omega_kind}" h2sq_gc_propt power "${h2_ymin}" "${h2_ymax}" \
         --h1sq 0.1 \
@@ -100,7 +100,7 @@ run_all_grids_for_omega() {
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005
+        --pcausal 0.05
 
     run_simulation_grid "${omega_kind}" n1_pcausal_propt power "${n1_ymin}" "${n1_ymax}" \
         --h1sq 0.1 \
@@ -110,7 +110,7 @@ run_all_grids_for_omega() {
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005 0.01 0.02
+        --pcausal 0.01 0.02 0.05
 
     run_simulation_grid "${omega_kind}" alpha_h2sq_pcausal_propt alpha "" 0.48 \
         --h1sq 0.000000000001 \
@@ -120,7 +120,7 @@ run_all_grids_for_omega() {
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005 0.01 0.02
+        --pcausal 0.01 0.02 0.05
 }
 
 while IFS= read -r omega_kind; do

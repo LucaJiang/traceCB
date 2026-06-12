@@ -47,9 +47,9 @@ from simulation import (
 from simulation_utils import (
     iter_gmm_propt_subsettings,
     list_arg,
-    make_sim_seed,
     perturb_gmm_propt,
     sanitize_ld_scores,
+    seed_random_component,
     standardize_genotype,
     unknown_cell_effect_scale,
     validate_nonnegative,
@@ -243,8 +243,8 @@ def parse_args():
         default=None,
         help=(
             "Base random seed. When omitted, the current start time is used. "
-            "Each replicate seed is derived from this base seed and the "
-            "data-generating setting."
+            "Each full simulation setting and replicate gets independent "
+            "component-specific random streams derived from this base seed."
         ),
     )
     return parser.parse_args()
@@ -447,18 +447,41 @@ def generate_data_tracecb2(
     causal_max_abs_cor=None,
     causal_partition_mode="none",
     null_region_prop=0.8,
+    pop2_tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
 ):
     omega_causal = np.array(
         [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
     )
+    if pop2_tissue_start is None:
+        pop2_tissue_start = n2
+    if n1 > G1.shape[0]:
+        raise ValueError(f"n1={n1} exceeds population 1 genotype rows={G1.shape[0]}")
+    if n2 > G2.shape[0]:
+        raise ValueError(f"n2={n2} exceeds population 2 genotype rows={G2.shape[0]}")
+    if nt1 > G1.shape[0]:
+        raise ValueError(f"nt1={nt1} exceeds population 1 genotype rows={G1.shape[0]}")
+    if pop2_tissue_start < n2:
+        raise ValueError(
+            f"pop2_tissue_start={pop2_tissue_start} must be >= n2={n2} "
+            "to keep panels disjoint"
+        )
+    if pop2_tissue_start + nt2 > G2.shape[0]:
+        raise ValueError(
+            f"pop2_tissue_start + nt2 = {pop2_tissue_start + nt2} exceeds "
+            f"population 2 genotype rows={G2.shape[0]}"
+        )
+
     X1 = standardize_genotype(G1[:n1, :], MIN_FLOAT)
     X2 = standardize_genotype(G2[:n2, :], MIN_FLOAT)
     Xt1 = standardize_genotype(G1[-nt1:, :], MIN_FLOAT)
-    Xt2 = standardize_genotype(G2[n2 : n2 + nt2, :], MIN_FLOAT)
+    Xt2 = standardize_genotype(G2[pop2_tissue_start : pop2_tissue_start + nt2, :], MIN_FLOAT)
 
     num_causal = int(pcausal * nsnp)
     region_a = np.zeros(nsnp, dtype=bool)
     if causal_partition_mode == "pop2_a_shared_b":
+        seed_random_component(seed_base, seed_parts, "causal_partition")
         beta1, beta2, causal_ids, _pop2_a_ids, region_a = generate_partitioned_causal_effects(
             nsnp,
             pcausal,
@@ -470,16 +493,19 @@ def generate_data_tracecb2(
             causal_max_abs_cor,
         )
     elif causal_overlap is None:
+        seed_random_component(seed_base, seed_parts, "causal_ids")
         causal_ids = sample_causal_ids(nsnp, num_causal, causal_corr, causal_max_abs_cor)
         beta1 = np.zeros(nsnp)
         beta2 = np.zeros(nsnp)
         if num_causal > 0:
+            seed_random_component(seed_base, seed_parts, "causal_effects")
             beta_causal = np.random.multivariate_normal(
                 mean=np.zeros(2), cov=omega_causal / num_causal, size=num_causal
             )
             beta1[causal_ids] = beta_causal[:, 0]
             beta2[causal_ids] = beta_causal[:, 1]
     else:
+        seed_random_component(seed_base, seed_parts, "causal_overlap")
         beta1, beta2, causal_ids, _causal_ids2 = generate_causal_effects_by_overlap(
             nsnp,
             pcausal,
@@ -490,39 +516,49 @@ def generate_data_tracecb2(
             causal_max_abs_cor,
         )
 
+    seed_random_component(seed_base, seed_parts, "pop1_noise")
     y1 = X1 @ beta1.T + np.sqrt(1 - h1sq) * np.random.randn(n1)
+    seed_random_component(seed_base, seed_parts, "pop2_noise")
     y2 = X2 @ beta2.T + np.sqrt(1 - h2sq) * np.random.randn(n2)
 
     delta = 5
+    seed_random_component(seed_base, seed_parts, "cell_proportion_pop1")
     pi_ind1 = np.random.beta(
         (propt + MIN_FLOAT) * delta, (1 - propt + MIN_FLOAT) * delta, nt1
     )
+    seed_random_component(seed_base, seed_parts, "cell_proportion_pop2")
     pi_ind2 = np.random.beta(
         (propt + MIN_FLOAT) * delta, (1 - propt + MIN_FLOAT) * delta, nt2
     )
     pi_mean1 = float(np.mean(pi_ind1))
     pi_mean2 = float(np.mean(pi_ind2))
+    seed_random_component(seed_base, seed_parts, "unknown_pop1")
     beta_unknown1 = sample_unknown_effects(
         nsnp, pcausal, h1sq, causal_corr, causal_max_abs_cor
     )
+    seed_random_component(seed_base, seed_parts, "unknown_pop2")
     beta_unknown2 = sample_unknown_effects(
         nsnp, pcausal, h2sq, causal_corr, causal_max_abs_cor
     )
+    seed_random_component(seed_base, seed_parts, "tissue_noise_pop1")
+    tissue_noise1 = np.random.randn(nt1)
     yt1 = (
         pi_ind1 * (Xt1 @ beta1.T)
         + (1 - pi_ind1) * (Xt1 @ beta_unknown1.T)
         + np.sqrt(
             np.maximum(1 - (pi_ind1**2 + (1 - pi_ind1) ** 2) * h1sq, MIN_FLOAT)
         )
-        * np.random.randn(nt1)
+        * tissue_noise1
     )
+    seed_random_component(seed_base, seed_parts, "tissue_noise_pop2")
+    tissue_noise2 = np.random.randn(nt2)
     yt2 = (
         pi_ind2 * (Xt2 @ beta2.T)
         + (1 - pi_ind2) * (Xt2 @ beta_unknown2.T)
         + np.sqrt(
             np.maximum(1 - (pi_ind2**2 + (1 - pi_ind2) ** 2) * h2sq, MIN_FLOAT)
         )
-        * np.random.randn(nt2)
+        * tissue_noise2
     )
 
     b1_hat, se1_hat = calculate_sumstats(X1, y1, n1)
@@ -703,6 +739,9 @@ def run_one(
     out_dir,
     true_omega,
     id_sim,
+    pop2_tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
 ):
     path = (
         f"{runname}/h1sq_{h1sq}_h2sq_{h2sq}_gc_{gc}_n1_{n1}_n2_{n2}"
@@ -747,7 +786,11 @@ def run_one(
         causal_max_abs_cor,
         causal_partition_mode,
         null_region_prop,
+        pop2_tissue_start=pop2_tissue_start,
+        seed_base=seed_base,
+        seed_parts=seed_parts,
     )
+    seed_random_component(seed_base, seed_parts, "gmm_propt")
     gmm_propt = perturb_gmm_propt(
         propt, gmm_propt_mode, gmm_propt_normal_var, gmm_propt_mode_scale
     )
@@ -979,6 +1022,17 @@ def main():
     done = 0
     start_time = time.time()
     base_seed = int(args.seed) if args.seed is not None else int(start_time)
+    pop2_tissue_start = None
+    max_pop2_tissue_end = max(args.n2) + max(args.nt2)
+    if max(args.nt1) > G1.shape[0]:
+        raise ValueError(
+            f"max(nt1)={max(args.nt1)} exceeds population 1 genotype rows={G1.shape[0]}"
+        )
+    if max_pop2_tissue_end > G2.shape[0]:
+        raise ValueError(
+            f"required n2/nt2 sample rows = {max_pop2_tissue_end} exceeds population 2 "
+            f"genotype rows={G2.shape[0]}"
+        )
     print("traceCB^2 simulation start at ", time.ctime())
     print("traceCB^2 simulation base seed: ", base_seed)
     for i, h1sq in enumerate(args.h1sq):
@@ -1003,8 +1057,7 @@ def main():
                                                         args.null_region_prop
                                                     ):
                                                         for rep in range(args.nrep):
-                                                            sim_seed = make_sim_seed(
-                                                                base_seed,
+                                                            seed_parts = (
                                                                 h1sq,
                                                                 h2sq,
                                                                 gc,
@@ -1014,6 +1067,9 @@ def main():
                                                                 nt2,
                                                                 args.nsnp,
                                                                 propt,
+                                                                mode,
+                                                                normal_var,
+                                                                scale,
                                                                 pcausal,
                                                                 causal_overlap,
                                                                 args.causal_max_abs_cor,
@@ -1021,7 +1077,6 @@ def main():
                                                                 null_region_prop,
                                                                 rep,
                                                             )
-                                                            np.random.seed(sim_seed)
                                                             run_one(
                                                                 args.runname,
                                                                 G1,
@@ -1050,6 +1105,9 @@ def main():
                                                                 args.out_dir,
                                                                 true_omega,
                                                                 rep,
+                                                                pop2_tissue_start=pop2_tissue_start,
+                                                                seed_base=base_seed,
+                                                                seed_parts=seed_parts,
                                                             )
                                                         done += 1
                                                         if done % 5 == 0:

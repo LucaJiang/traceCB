@@ -17,7 +17,11 @@ for path in (SRC_DIR, SIMULATION_DIR):
         sys.path.insert(0, str(path))
 
 from simulation import MIN_FLOAT, calculate_sumstats, get_genotype
-from simulation_utils import standardize_genotype, unknown_cell_effect_scale
+from simulation_utils import (
+    seed_random_component,
+    standardize_genotype,
+    unknown_cell_effect_scale,
+)
 from traceCB.utils import z2p
 
 
@@ -62,13 +66,44 @@ def setting_path(runname, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
     )
 
 
-def generate_mashr_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
+def generate_mashr_data(
+    G1,
+    G2,
+    h1sq,
+    h2sq,
+    gc,
+    n1,
+    n2,
+    nt,
+    nsnp,
+    propt,
+    pcausal,
+    tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
+):
     omega_causal = np.array(
         [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
     )
+    if tissue_start is None:
+        tissue_start = n2
+    if n1 > G1.shape[0]:
+        raise ValueError(f"n1={n1} exceeds population 1 genotype rows={G1.shape[0]}")
+    if n2 > G2.shape[0]:
+        raise ValueError(f"n2={n2} exceeds population 2 genotype rows={G2.shape[0]}")
+    if tissue_start < n2:
+        raise ValueError(
+            f"tissue_start={tissue_start} must be >= n2={n2} to keep panels disjoint"
+        )
+    if tissue_start + nt > G2.shape[0]:
+        raise ValueError(
+            f"tissue_start + nt = {tissue_start + nt} exceeds "
+            f"population 2 genotype rows={G2.shape[0]}"
+        )
+
     x1 = standardize_genotype(G1[:n1, :], MIN_FLOAT)
     x2 = standardize_genotype(G2[:n2, :], MIN_FLOAT)
-    xt_raw = G2[n2 : n2 + nt, :]
+    xt_raw = G2[tissue_start : tissue_start + nt, :]
     xt = standardize_genotype(xt_raw, MIN_FLOAT)
 
     num_causal = int(pcausal * nsnp)
@@ -76,7 +111,9 @@ def generate_mashr_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal
     beta1_true = np.zeros(nsnp)
     beta2_true = np.zeros(nsnp)
     if num_causal > 0:
-        causal_ids = np.random.choice(np.arange(nsnp), num_causal, replace=False)
+        seed_random_component(seed_base, seed_parts, "causal_ids")
+        causal_ids = np.random.permutation(nsnp)[:num_causal]
+        seed_random_component(seed_base, seed_parts, "causal_effects")
         beta_causal = np.random.multivariate_normal(
             mean=np.zeros(2),
             cov=omega_causal / (pcausal * nsnp),
@@ -85,9 +122,12 @@ def generate_mashr_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal
         beta1_true[causal_ids] = beta_causal[:, 0]
         beta2_true[causal_ids] = beta_causal[:, 1]
 
+    seed_random_component(seed_base, seed_parts, "pop1_noise")
     y1 = x1 @ beta1_true.T + np.sqrt(1 - h1sq) * np.random.randn(n1)
+    seed_random_component(seed_base, seed_parts, "pop2_noise")
     y2 = x2 @ beta2_true.T + np.sqrt(1 - h2sq) * np.random.randn(n2)
 
+    seed_random_component(seed_base, seed_parts, "cell_proportion")
     pi_ind = np.random.beta(
         (propt + MIN_FLOAT) * 5, (1 - propt + MIN_FLOAT) * 5, nt
     )
@@ -95,21 +135,23 @@ def generate_mashr_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal
     beta_unknown_true = np.zeros(nsnp)
     num_unknown_causal = int(pcausal * nsnp)
     if num_unknown_causal > 0:
-        causal_unknown_id = np.random.choice(
-            np.arange(nsnp), num_unknown_causal, replace=False
-        )
+        seed_random_component(seed_base, seed_parts, "unknown_ids")
+        causal_unknown_id = np.random.permutation(nsnp)[:num_unknown_causal]
+        seed_random_component(seed_base, seed_parts, "unknown_effects")
         beta_unknown_true[causal_unknown_id] += np.random.normal(
             loc=0,
             scale=unknown_cell_effect_scale(h2sq, num_unknown_causal, 1),
             size=num_unknown_causal,
         )
+    seed_random_component(seed_base, seed_parts, "tissue_noise")
+    tissue_noise = np.random.randn(nt)
     yt = (
         pi_ind * (xt @ beta2_true.T)
         + (1 - pi_ind) * (xt @ beta_unknown_true.T)
         + np.sqrt(
             np.maximum(1 - (pi_ind**2 + (1 - pi_ind) ** 2) * h2sq, MIN_FLOAT)
         )
-        * np.random.randn(nt)
+        * tissue_noise
     )
     beta_tissue_mean_true = pi_mean * beta2_true + (1 - pi_mean) * beta_unknown_true
 
@@ -151,9 +193,15 @@ def main():
     print("Simulation base seed:", args.seed)
     g1 = get_genotype(args.pop1_geno, args.nsnp)
     g2 = get_genotype(args.pop2_geno, args.nsnp)
+    tissue_start = args.n2
+    if tissue_start + args.nt > g2.shape[0]:
+        raise ValueError(
+            f"n2 + nt = {tissue_start + args.nt} exceeds population 2 "
+            f"genotype rows={g2.shape[0]}"
+        )
 
     written = 0
-    for p_idx, propt in enumerate(args.propt):
+    for propt in args.propt:
         sim_path = setting_path(
             args.runname,
             args.h1sq,
@@ -172,7 +220,18 @@ def main():
             output_file = os.path.join(output_dir, f"simulation_{rep}.csv")
             if os.path.exists(output_file) and not args.force:
                 continue
-            np.random.seed(args.seed + p_idx * args.nrep + rep)
+            seed_parts = (
+                args.h1sq,
+                args.h2sq,
+                args.gc,
+                args.n1,
+                args.n2,
+                args.nt,
+                args.nsnp,
+                propt,
+                args.pcausal,
+                rep,
+            )
             df = generate_mashr_data(
                 g1,
                 g2,
@@ -185,6 +244,9 @@ def main():
                 args.nsnp,
                 propt,
                 args.pcausal,
+                tissue_start=tissue_start,
+                seed_base=args.seed,
+                seed_parts=seed_parts,
             )
             df.to_csv(output_file, index=False)
             written += 1

@@ -31,7 +31,6 @@ for path in (SRC_DIR, SIMULATION_DIR):
 
 from simulation import cal_ld, generate_data, get_genotype  # noqa: E402
 from simulation_utils import (  # noqa: E402
-    make_sim_seed,
     sanitize_ld_scores,
     validate_unit_interval,
 )
@@ -435,6 +434,13 @@ def main() -> None:
     rows: list[dict] = []
     setting_id = 0
     start = time.time()
+    pop2_tissue_start = None
+    max_tissue_end = max(args.n2) + max(args.nt)
+    if max_tissue_end > G2.shape[0]:
+        raise ValueError(
+            f"required n2/nt sample rows = {max_tissue_end} exceeds population 2 "
+            f"genotype rows={G2.shape[0]}"
+        )
 
     for h1sq in args.h1sq:
         for h2sq in args.h2sq:
@@ -452,8 +458,7 @@ def main() -> None:
                                         f"propt={propt}, pcausal={pcausal}"
                                     )
                                     for rep in range(args.nrep):
-                                        sim_seed = make_sim_seed(
-                                            args.seed,
+                                        seed_parts = (
                                             h1sq,
                                             h2sq,
                                             gc,
@@ -465,7 +470,6 @@ def main() -> None:
                                             pcausal,
                                             rep,
                                         )
-                                        np.random.seed(sim_seed)
                                         (
                                             _omega_true,
                                             b1_hat,
@@ -491,6 +495,9 @@ def main() -> None:
                                             args.nsnp,
                                             propt,
                                             pcausal,
+                                            tissue_start=pop2_tissue_start,
+                                            seed_base=args.seed,
+                                            seed_parts=seed_parts,
                                         )
                                         omega_true_corr = safe_corr(_omega_true)
                                         if args.estimate_omega:

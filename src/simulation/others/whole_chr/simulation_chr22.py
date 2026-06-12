@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
 import itertools
 import math
 import sys
@@ -299,6 +300,8 @@ def build_setting_args(
     setting_args.n1 = n1
     setting_args.n2 = n2
     setting_args.nt = nt
+    setting_args.pop2_sample_start = n1
+    setting_args.pop2_tissue_start = n2
     setting_args.propt = propt
     setting_args.pcausal = pcausal
     if should_use_grid_runname(args):
@@ -530,6 +533,28 @@ def standardize_genotype(geno: np.ndarray) -> np.ndarray:
     return (geno - mean) / (std + MIN_FLOAT)
 
 
+def make_component_rng(
+    seed_base: int | None,
+    seed_parts: tuple,
+    component: str,
+    fallback_rng: np.random.Generator,
+) -> np.random.Generator:
+    if seed_base is None:
+        return fallback_rng
+    tokens = []
+    for part in (component, *seed_parts):
+        if isinstance(part, float):
+            tokens.append(f"{part:.17g}")
+        else:
+            tokens.append(str(part))
+    seed_key = "|".join([str(int(seed_base)), *tokens])
+    seed = int.from_bytes(
+        hashlib.blake2s(seed_key.encode("utf-8"), digest_size=8).digest(),
+        "little",
+    )
+    return np.random.default_rng(seed)
+
+
 def calculate_sumstats(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     n = x.shape[0]
     x_inner = np.sum(x * x, axis=0) + MIN_FLOAT
@@ -585,16 +610,36 @@ def generate_data(
     propt: float,
     pcausal: float,
     rng: np.random.Generator,
+    tissue_start: int | None = None,
+    seed_base: int | None = None,
+    seed_parts: tuple = (),
 ) -> tuple:
     nsnp = g1.shape[1]
+    if tissue_start is None:
+        tissue_start = n2
+    if n1 > g1.shape[0]:
+        raise ValueError(f"n1={n1} exceeds population 1 genotype rows={g1.shape[0]}")
+    if n2 > g2.shape[0]:
+        raise ValueError(f"n2={n2} exceeds population 2 genotype rows={g2.shape[0]}")
+    if tissue_start < n2:
+        raise ValueError(
+            f"tissue_start={tissue_start} must be >= n2={n2} to keep panels disjoint"
+        )
+    if tissue_start + nt > g2.shape[0]:
+        raise ValueError(
+            f"tissue_start + nt = {tissue_start + nt} exceeds "
+            f"population 2 genotype rows={g2.shape[0]}"
+        )
+
     x1 = standardize_genotype(g1[:n1, :])
     x2 = standardize_genotype(g2[:n2, :])
-    xt = standardize_genotype(g2[n2 : n2 + nt, :])
+    xt = standardize_genotype(g2[tissue_start : tissue_start + nt, :])
 
     causal_mass = pcausal * nsnp
     num_causal = int(causal_mass)
+    causal_id_rng = make_component_rng(seed_base, seed_parts, "causal_ids", rng)
     causal_ids = (
-        rng.choice(np.arange(nsnp), num_causal, replace=False)
+        causal_id_rng.choice(np.arange(nsnp), num_causal, replace=False)
         if num_causal > 0
         else np.array([], dtype=int)
     )
@@ -608,8 +653,9 @@ def generate_data(
 
     if architecture not in ARCHITECTURES:
         raise ValueError(f"Unknown architecture: {architecture}")
+    effect_rng = make_component_rng(seed_base, seed_parts, "causal_effects", rng)
     if num_causal > 0 and architecture == "shared":
-        beta_causal = rng.multivariate_normal(
+        beta_causal = effect_rng.multivariate_normal(
             mean=np.zeros(2), cov=omega_causal / causal_mass, size=num_causal
         )
         beta1[causal_ids] = beta_causal[:, 0]
@@ -617,37 +663,46 @@ def generate_data(
         causal_ids_pop1 = causal_ids
         causal_ids_pop2 = causal_ids
     elif num_causal > 0 and architecture == "pop1_specific":
-        beta1[causal_ids] = rng.normal(
+        beta1[causal_ids] = effect_rng.normal(
             loc=0.0, scale=math.sqrt(h1sq / causal_mass), size=num_causal
         )
         causal_ids_pop1 = causal_ids
     elif num_causal > 0 and architecture == "pop2_specific":
-        beta2[causal_ids] = rng.normal(
+        beta2[causal_ids] = effect_rng.normal(
             loc=0.0, scale=math.sqrt(h2sq / causal_mass), size=num_causal
         )
         causal_ids_pop2 = causal_ids
 
     y1_noise_var = 1 - h1sq if causal_ids_pop1.size else 1.0
     y2_noise_var = 1 - h2sq if causal_ids_pop2.size else 1.0
-    y1 = x1 @ beta1 + math.sqrt(max(y1_noise_var, MIN_FLOAT)) * rng.normal(size=n1)
-    y2 = x2 @ beta2 + math.sqrt(max(y2_noise_var, MIN_FLOAT)) * rng.normal(size=n2)
+    pop1_noise_rng = make_component_rng(seed_base, seed_parts, "pop1_noise", rng)
+    pop2_noise_rng = make_component_rng(seed_base, seed_parts, "pop2_noise", rng)
+    y1 = x1 @ beta1 + math.sqrt(max(y1_noise_var, MIN_FLOAT)) * pop1_noise_rng.normal(size=n1)
+    y2 = x2 @ beta2 + math.sqrt(max(y2_noise_var, MIN_FLOAT)) * pop2_noise_rng.normal(size=n2)
 
     delta = 5
-    pi_ind = rng.beta(propt * delta, (1 - propt + MIN_FLOAT) * delta, nt)
+    pi_rng = make_component_rng(seed_base, seed_parts, "cell_proportion", rng)
+    pi_ind = pi_rng.beta(propt * delta, (1 - propt + MIN_FLOAT) * delta, nt)
     pi_mean = float(np.mean(pi_ind))
     beta_unknown = np.zeros(nsnp)
     tissue_has_effect = has_tissue_genetic_effect(architecture)
     if num_causal > 0 and tissue_has_effect:
-        unknown_ids = rng.choice(np.arange(nsnp), num_causal, replace=False)
-        beta_unknown[unknown_ids] = rng.normal(
+        unknown_id_rng = make_component_rng(seed_base, seed_parts, "unknown_ids", rng)
+        unknown_effect_rng = make_component_rng(
+            seed_base, seed_parts, "unknown_effects", rng
+        )
+        unknown_ids = unknown_id_rng.choice(np.arange(nsnp), num_causal, replace=False)
+        beta_unknown[unknown_ids] = unknown_effect_rng.normal(
             loc=0.0, scale=h2sq / causal_mass, size=num_causal
         )
     tissue_hsq = h2sq if tissue_has_effect else 0.0
     tissue_noise_var = 1 - (pi_ind**2 + (1 - pi_ind) ** 2) * tissue_hsq
+    tissue_noise_rng = make_component_rng(seed_base, seed_parts, "tissue_noise", rng)
     yt = (
         pi_ind * (xt @ beta2)
         + (1 - pi_ind) * (xt @ beta_unknown)
-        + np.sqrt(np.maximum(tissue_noise_var, MIN_FLOAT)) * rng.normal(size=nt)
+        + np.sqrt(np.maximum(tissue_noise_var, MIN_FLOAT))
+        * tissue_noise_rng.normal(size=nt)
     )
 
     b1_hat, se1_hat = calculate_sumstats(x1, y1)
@@ -1045,21 +1100,27 @@ def run_single_simulation(args: argparse.Namespace) -> None:
     ]
     summary_rows: list[dict] = []
 
-    n_required_pop2 = args.n2 + args.nt
+    pop2_sample_start = getattr(args, "pop2_sample_start", args.n1)
+    pop2_tissue_start = getattr(args, "pop2_tissue_start", args.n2)
+    n_required_pop2 = pop2_tissue_start + args.nt
     if one_prefix:
-        total_required = args.n1 + n_required_pop2
+        total_required = pop2_sample_start + n_required_pop2
         if pop1_reader.n_samples < total_required:
             raise ValueError(
                 f"{pop1_prefix}.fam has {pop1_reader.n_samples} samples, "
-                f"but n1+n2+nt={total_required}."
+                f"but pop2_sample_start+pop2_tissue_start+nt={total_required}."
             )
         pop1_samples = np.arange(args.n1)
-        pop2_samples = np.arange(args.n1, args.n1 + n_required_pop2)
+        pop2_samples = np.arange(
+            pop2_sample_start, pop2_sample_start + n_required_pop2
+        )
     else:
         if pop1_reader.n_samples < args.n1:
             raise ValueError(f"pop1 has fewer than n1={args.n1} samples.")
         if pop2_reader.n_samples < n_required_pop2:
-            raise ValueError(f"pop2 has fewer than n2+nt={n_required_pop2} samples.")
+            raise ValueError(
+                f"pop2 has fewer than pop2_tissue_start+nt={n_required_pop2} samples."
+            )
         pop1_samples = np.arange(args.n1)
         pop2_samples = np.arange(n_required_pop2)
 
@@ -1068,7 +1129,22 @@ def run_single_simulation(args: argparse.Namespace) -> None:
         f"nrep={args.nrep}, one_prefix={one_prefix}"
     )
     for rep in range(args.nrep):
-        rep_rng = np.random.default_rng(args.seed + rep)
+        setting_seed_parts = (
+            args.h1sq,
+            args.h2sq,
+            args.gc,
+            args.n1,
+            args.n2,
+            args.nt,
+            args.propt,
+            args.pcausal,
+        )
+        rep_rng = make_component_rng(
+            args.seed,
+            (*setting_seed_parts, rep),
+            "gene_selection",
+            np.random.default_rng(args.seed + rep),
+        )
         for gene_i, (gene_id, raw_gene_rows) in enumerate(groups, start=1):
             architecture = architecture_map[gene_id]
             gene_rows = select_gene_snps(raw_gene_rows, args.max_snps_per_gene, rep_rng)
@@ -1112,6 +1188,9 @@ def run_single_simulation(args: argparse.Namespace) -> None:
                 args.propt,
                 args.pcausal,
                 rep_rng,
+                tissue_start=pop2_tissue_start,
+                seed_base=args.seed,
+                seed_parts=(*setting_seed_parts, rep, gene_id),
             )
             if ld_scores is not None:
                 ld1, ld2, ldx = ld_scores.get(
