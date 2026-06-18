@@ -8,9 +8,9 @@ set -euo pipefail
 #
 # Useful server overrides:
 #   SIM_DATA_DIR=/path/to/simulation/data OUT_DIR=/path/to/result \
-#     NREP=100 NSNP=2000 OMEGA_MODE=both bash src/simulation/others/run_robustness.sh
+#     NREP=100 NSNP=2000 bash src/simulation/others/run_robustness.sh
 #
-# OMEGA_MODE can be both, estimate, or true. RUN_VISUALS=0 skips plotting.
+# This curated entry point pins omega per robustness suite. RUN_VISUALS=0 skips plotting.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../run_common.sh
@@ -25,21 +25,21 @@ run_robustness_grid() {
     local runname="$2"
     shift 2
 
-    local omega_args=()
+    local sim_args=(
+        "${PYTHON}" src/simulation/others/simulation_robustness.py
+        --pop1_geno "${POP1_GENO}"
+        --pop2_geno "${POP2_GENO}"
+        --runname "${runname}"
+        "$@"
+        --nsnp "${NSNP}"
+        --out_dir "${OUT_DIR}"
+        --nrep "${NREP}"
+        --seed "${GMM_PROPT_SEED}"
+    )
     if [[ "${omega_kind}" == "estimate" ]]; then
-        omega_args+=(--estimate_omega)
+        sim_args+=(--estimate_omega)
     fi
-
-    run_cmd "${PYTHON}" src/simulation/others/simulation_robustness.py \
-        --pop1_geno "${POP1_GENO}" \
-        --pop2_geno "${POP2_GENO}" \
-        --runname "${runname}" \
-        "$@" \
-        --nsnp "${NSNP}" \
-        --out_dir "${OUT_DIR}" \
-        --nrep "${NREP}" \
-        --seed "${GMM_PROPT_SEED}" \
-        "${omega_args[@]}"
+    run_cmd "${sim_args[@]}"
 }
 
 plot_robustness_grid() {
@@ -60,6 +60,7 @@ plot_robustness_grid() {
         --runname "${runname}"
         --omega "$(omega_filter_arg "${omega_kind}")"
         --base_path "${OUT_DIR}"
+        --img_dir "${IMG_DIR}"
         "$@"
     )
     if [[ -n "${ymin}" ]]; then
@@ -71,7 +72,7 @@ plot_robustness_grid() {
     run_cmd "${PYTHON}" "${visual_args[@]}"
 }
 
-run_gmm_propt_robustness() {
+run_gmm_propt_robustness() { # whether robust to error in cell type proportion estimation
     local omega_kind="$1"
     local runname="alpha_pcausal_propt_gmmproptmode"
 
@@ -113,69 +114,13 @@ run_gmm_propt_robustness() {
     plot_robustness_grid "${omega_kind}" alpha "${runname}" "" 0.4
 }
 
-run_causal_overlap_robustness() {
-    local omega_kind="$1"
-
-    run_robustness_grid "${omega_kind}" h2sq_causaloverlap_propt \
-        --h1sq 0.1 \
-        --h2sq 0.1 0.2 \
-        --gc 0 \
-        --causal_overlap 0 0.5 0.9 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" power h2sq_causaloverlap_propt 0.12 0.42
-
-    run_robustness_grid "${omega_kind}" alpha_h2sq_causaloverlap_propt \
-        --h1sq 0.000000000001 \
-        --h2sq 0.1 0.2 \
-        --gc 0 \
-        --causal_overlap 0.4 0.8 \
-        --causal_max_abs_cor 0.6 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.3 0.6 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" alpha alpha_h2sq_causaloverlap_propt "" 0.4
-
-    run_robustness_grid "${omega_kind}" power_h2sq_causaloverlap_propt \
-        --h1sq 0.1 \
-        --h2sq 0.1 0.2 \
-        --gc 0 \
-        --causal_overlap 0.4 0.8 \
-        --causal_max_abs_cor 0.6 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.3 0.6 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" power power_h2sq_causaloverlap_propt 0.0 0.42
-}
-
 run_segmented_null_robustness() {
     local omega_kind="$1"
-
-    run_robustness_grid "${omega_kind}" alpha_a_h2sq_nullregionprop_propt \
-        --h1sq 0.1 \
-        --h2sq 0.1 0.2 \
-        --gc 0 \
-        --causal_partition_mode pop2_a_shared_b \
-        --null_region_prop 0.8 \
-        --causal_max_abs_cor 0.6 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.3 0.6 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" alpha_a alpha_a_h2sq_nullregionprop_propt 0.0 0.4
-
+    # h1sq is for shared region |B|
     run_robustness_grid "${omega_kind}" alpha_a_h2sq_nullregionprop_propt_nocormax \
         --h1sq 0.1 \
         --h2sq 0.1 0.2 \
-        --gc 0 \
+        --gc 0.3 0.5 0.9 \
         --causal_partition_mode pop2_a_shared_b \
         --null_region_prop 0.2 0.5 \
         --n1 100 \
@@ -183,40 +128,15 @@ run_segmented_null_robustness() {
         --nt 5000 \
         --propt 0.01 0.3 0.6 \
         --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" alpha_a alpha_a_h2sq_nullregionprop_propt_nocormax 0.0 0.4
-
-    run_robustness_grid "${omega_kind}" alpha_a_pA02_h2sq_gc_propt_nocormax \
-        --h1sq 0.1 \
-        --h2sq 0.1 0.2 \
-        --gc 0.3 0.5 0.9 \
-        --causal_partition_mode pop2_a_shared_b \
-        --null_region_prop 0.2 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.3 0.6 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" alpha_a alpha_a_pA02_h2sq_gc_propt_nocormax 0.0 0.4
-    plot_robustness_grid "${omega_kind}" power alpha_a_pA02_h2sq_gc_propt_nocormax 0.0 0.6
-
-    run_robustness_grid "${omega_kind}" alpha_a_pA05_h2sq_gc_propt_nocormax \
-        --h1sq 0.1 \
-        --h2sq 0.1 0.2 \
-        --gc 0.3 0.5 0.9 \
-        --causal_partition_mode pop2_a_shared_b \
-        --null_region_prop 0.5 \
-        --n1 100 \
-        --n2 400 \
-        --nt 5000 \
-        --propt 0.01 0.3 0.6 \
-        --pcausal 0.005
-    plot_robustness_grid "${omega_kind}" alpha_a alpha_a_pA05_h2sq_gc_propt_nocormax 0.0 0.4
-    plot_robustness_grid "${omega_kind}" power alpha_a_pA05_h2sq_gc_propt_nocormax 0.0 0.6
+    plot_robustness_grid "${omega_kind}" alpha_a alpha_a_h2sq_nullregionprop_propt_nocormax 0.0 0.4 \
+        --row h2sq_nullregionprop \
+        --col gc \
+        --x propt \
+        --plot_filter gc=0.3,0.5,0.9
 }
 
-while IFS= read -r omega_kind; do
-    echo "Running robustness grids with $(omega_label "${omega_kind}")"
-    run_gmm_propt_robustness "${omega_kind}"
-    run_causal_overlap_robustness "${omega_kind}"
-    run_segmented_null_robustness "${omega_kind}"
-done < <(omega_modes)
+echo "Running GMM proportion robustness with $(omega_label estimate)"
+run_gmm_propt_robustness estimate
+
+echo "Running segmented-null robustness with $(omega_label true)"
+run_segmented_null_robustness true

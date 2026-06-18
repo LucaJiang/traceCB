@@ -3,8 +3,8 @@
 This is the paired visualizer for ``simulation.py``. It reads
 ``simulation_<rep>.csv`` files from ``<base_path>/<runname>/<setting>/``,
 computes power or type I error for each method, writes
-``<base_path>/<runname>/result_df.csv``, and saves figures in
-``<base_path>/img``.
+``<base_path>/<runname>/result_df.csv``, and saves figures in ``--img_dir``
+or ``$IMG_DIR``.
 
 The production plotting commands live in ``src/simulation/run_simulation.sh``
 immediately after the simulation commands that generate each runname.
@@ -61,6 +61,8 @@ result_param_names = [
     "n1",
     "n2",
     "nt",
+    "nt1",
+    "nt2",
     "nsnp",
     "propt",
     "gmmproptmode",
@@ -223,6 +225,32 @@ def get_result_table(result_path, eval_method, target_id=1):
 
         for csv_file in csv_files:
             df = pd.read_csv(csv_file)
+            tracecb2_columns = {
+                "z1_tracecb2",
+                "z2_tracecb2",
+                "zt1_sumstat",
+                "zt2_sumstat",
+            }
+            if tracecb2_columns.intersection(df.columns):
+                raise ValueError(
+                    f"{csv_file} looks like traceCB^2 output. "
+                    "Rename that run with a tracecb2_ prefix and use "
+                    "src/simulation/others/visual_tracecb2.py for plotting."
+                )
+            required_columns = [
+                "causal",
+                f"z{target_id}_sumstat",
+                f"z{target_id}_cross",
+                f"z{target_id}_tissue",
+                "z_meta",
+                "z_metatissue",
+            ]
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                raise ValueError(
+                    f"{csv_file} is missing required simulation.py columns: "
+                    + ", ".join(missing_columns)
+                )
             if "gmm_propt" in df.columns:
                 result_row.loc[0, "gmmpropt"] = df["gmm_propt"].iloc[0]
             # causal,sign1,sign2,sign_t,z1_sumstat,z1_cross,z1_tissue,z2_sumstat,z2_cross,z2_tissue,zt_sumstat,z_meta,z_metatissue
@@ -263,10 +291,13 @@ def get_result_table(result_path, eval_method, target_id=1):
                 gt, metatissue_pred[eval_mask], metric_method
             )
             result_df = pd.concat([result_df, result_row], ignore_index=True)
-    # if N1, N2, Nt are in columns, convert them to int
-    for param in ["n1", "n2", "nt"]:
+    # Keep integer-valued parameters nullable because some result grids omit
+    # one or more sample-size dimensions.
+    for param in ["n1", "n2", "nt", "nt1", "nt2"]:
         if param in result_df.columns:
-            result_df[param] = result_df[param].astype(int)
+            result_df[param] = pd.to_numeric(
+                result_df[param], errors="raise"
+            ).astype("Int64")
     if "gmmproptmode" in result_df.columns:
         result_df["gmmproptmode"] = result_df["gmmproptmode"].fillna("exact")
         result_df["gmmproptmode"] = pd.Categorical(
@@ -314,6 +345,7 @@ color_map = {
 all_param_mapping = {
     "h1sq": r"$h_1^2$",
     "h2sq": r"$h_2^2$",
+    "h2sq_nullregionprop": r"$h_2^2$, $|A|$",
     "propt": r"$\pi$",
     "gmmproptmode": r"$\hat{\pi}$ mode",
     "gmmproptpanel": r"$\hat{\pi}$ mode",
@@ -322,6 +354,8 @@ all_param_mapping = {
     "n1": r"$N_1$",
     "n2": r"$N_2$",
     "nt": r"$N_t$",
+    "nt1": r"$N_{t1}$",
+    "nt2": r"$N_{t2}$",
     "nsnp": r"$N_{snp}$",
     "pcausal": r"$p_{causal}$",
     "causaloverlap": r"$p_{shared}$",
@@ -359,7 +393,75 @@ def infer_plot_axes(runname):
     return row, col, x
 
 
+def format_plot_value(value):
+    if pd.isna(value):
+        return "NA"
+    if isinstance(value, (float, np.floating, int, np.integer)):
+        return f"{value:g}"
+    return str(value)
+
+
+def add_plot_derived_columns(df, variables):
+    df = df.copy()
+    if "h2sq_nullregionprop" in variables:
+        required_cols = ["h2sq", "nullregionprop"]
+        missing = [col for col in required_cols if col not in df.columns]
+        if missing:
+            raise ValueError(
+                "h2sq_nullregionprop requires columns: "
+                + ", ".join(required_cols)
+                + f". Missing: {', '.join(missing)}"
+            )
+
+        def build_row_label(row):
+            h2sq = format_plot_value(row["h2sq"])
+            nullregionprop = format_plot_value(row["nullregionprop"])
+            return rf"$h_2^2 = {h2sq}$" + "\n" + rf"$|A| = {nullregionprop}$"
+
+        order_df = (
+            df.loc[:, required_cols]
+            .drop_duplicates()
+            .assign(
+                _nullregionprop_order=lambda x: pd.to_numeric(
+                    x["nullregionprop"], errors="coerce"
+                ),
+                _h2sq_order=lambda x: pd.to_numeric(x["h2sq"], errors="coerce"),
+            )
+            .sort_values(
+                ["_nullregionprop_order", "_h2sq_order", "nullregionprop", "h2sq"]
+            )
+        )
+        categories = [build_row_label(row) for _, row in order_df.iterrows()]
+        df["h2sq_nullregionprop"] = df.apply(build_row_label, axis=1)
+        df["h2sq_nullregionprop"] = pd.Categorical(
+            df["h2sq_nullregionprop"],
+            categories=categories,
+            ordered=True,
+        )
+    return df
+
+
+def get_facet_order(df, column):
+    series = df[column]
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        present = set(series.dropna())
+        return [value for value in series.cat.categories if value in present]
+
+    values = list(series.dropna().unique())
+    numeric_values = pd.to_numeric(pd.Series(values), errors="coerce")
+    if numeric_values.notna().all():
+        return [
+            value
+            for _, value in sorted(
+                zip(numeric_values.astype(float).tolist(), values),
+                key=lambda item: item[0],
+            )
+        ]
+    return sorted(values, key=str)
+
+
 def prepare_plot_df(df, row, col, x, value_name, methods):
+    df = add_plot_derived_columns(df, [row, col, x])
     melted_df = pd.melt(
         df.loc[:, [row, col, x] + methods],
         id_vars=[row, col, x],
@@ -373,14 +475,62 @@ def prepare_plot_df(df, row, col, x, value_name, methods):
         x: all_param_mapping.get(x, x),
     }
     renamed_df = melted_df.rename(columns=param_mapping)
-    facet_col = param_mapping.get(col, col)
-    return renamed_df, param_mapping
+    facet_orders = {
+        "row": get_facet_order(renamed_df, param_mapping.get(row, row)),
+        "col": get_facet_order(renamed_df, param_mapping.get(col, col)),
+    }
+    return renamed_df, param_mapping, facet_orders
+
+
+def apply_plot_filters(df, filter_specs):
+    for filter_spec in filter_specs:
+        if "=" not in filter_spec:
+            raise ValueError(
+                f"Invalid --plot_filter {filter_spec!r}; expected column=value1,value2."
+            )
+        column, raw_values = filter_spec.split("=", 1)
+        column = column.strip()
+        values = [
+            parse_param_value(value.strip())
+            for value in raw_values.split(",")
+            if value.strip()
+        ]
+        if not column or not values:
+            raise ValueError(
+                f"Invalid --plot_filter {filter_spec!r}; expected column=value1,value2."
+            )
+        if column not in df.columns:
+            raise ValueError(f"--plot_filter column not found in result table: {column}")
+
+        numeric_values = []
+        for value in values:
+            try:
+                numeric_values.append(float(value))
+            except (TypeError, ValueError):
+                numeric_values = []
+                break
+
+        if numeric_values:
+            series = pd.to_numeric(df[column], errors="coerce")
+            mask = np.logical_or.reduce(
+                [
+                    np.isclose(series.astype(float), value, rtol=0, atol=1e-12)
+                    for value in numeric_values
+                ]
+            )
+        else:
+            mask = df[column].astype(str).isin([str(value) for value in values])
+
+        df = df.loc[mask].copy()
+        if df.empty:
+            raise ValueError(f"No rows left after --plot_filter {filter_spec!r}.")
+    return df
 
 
 def plot_power_analysis(
     result_df, row="h1sq", col="h2sq", x="propt", ymin=0.0, ymax=0.48, save_name="./"
 ):
-    renamed_df, param_mapping = prepare_plot_df(
+    renamed_df, param_mapping, facet_orders = prepare_plot_df(
         result_df, row, col, x, "power", methods_power
     )
 
@@ -410,6 +560,8 @@ def plot_power_analysis(
             renamed_df,
             row=param_mapping.get(row, row),
             col=param_mapping.get(col, col),
+            row_order=facet_orders["row"],
+            col_order=facet_orders["col"],
             **facet_kwargs,
         )
     g.map_dataframe(
@@ -466,6 +618,8 @@ def plot_power_analysis(
 
     if col == "gmmproptpanel":
         g.set_titles(template="{col_name}")
+    elif row == "h2sq_nullregionprop":
+        g.set_titles(row_template="{row_name}", col_template="{col_var} = {col_name}")
     else:
         g.set_titles(template="{row_name} | {col_name}")
     g.figure.subplots_adjust(
@@ -485,7 +639,7 @@ def plot_power_analysis(
 def plot_alpha_analysis(
     result_df, row="pcau", col="h22sq", x="pi", ymin=0.0, ymax=0.3, save_name="./"
 ):
-    renamed_df, param_mapping = prepare_plot_df(
+    renamed_df, param_mapping, facet_orders = prepare_plot_df(
         result_df, row, col, x, "Type 1 error", methods_alpha
     )
 
@@ -514,6 +668,8 @@ def plot_alpha_analysis(
             renamed_df,
             row=param_mapping[row],
             col=param_mapping[col],
+            row_order=facet_orders["row"],
+            col_order=facet_orders["col"],
             **facet_kwargs,
         )
     g.map_dataframe(
@@ -581,6 +737,8 @@ def plot_alpha_analysis(
 
     if col == "gmmproptpanel":
         g.set_titles(template="{col_name}")
+    elif row == "h2sq_nullregionprop":
+        g.set_titles(row_template="{row_name}", col_template="{col_var} = {col_name}")
     else:
         g.set_titles(template="{row_name} | {col_name}")
     g.figure.subplots_adjust(
@@ -668,6 +826,21 @@ def add_parser(parser):
         default=None,
         help="Optional suffix appended to output figure and result table names.",
     )
+    parser.add_argument(
+        "--plot_filter",
+        action="append",
+        default=[],
+        help=(
+            "Optional result-table filter as column=value1,value2. "
+            "Can be repeated."
+        ),
+    )
+    parser.add_argument(
+        "--img_dir",
+        type=str,
+        default=os.environ.get("IMG_DIR"),
+        help="Directory for figure PDFs. Defaults to $IMG_DIR or <base_path>/img.",
+    )
     return parser
 
 
@@ -697,6 +870,7 @@ if __name__ == "__main__":
         ].copy()
         if result_df.empty:
             raise ValueError(f"No rows left after --omega {omega_filter} filter.")
+    result_df = apply_plot_filters(result_df, args.plot_filter)
     save_suffix = args.save_suffix
     if save_suffix is None:
         if omega_filter == "true":
@@ -714,7 +888,8 @@ if __name__ == "__main__":
         plot_func = plot_alpha_analysis
     else:
         raise ValueError("metric should be power, alpha, or alpha_a")
-    os.makedirs(os.path.join(base_path, "img"), exist_ok=True)
+    img_dir = args.img_dir or os.path.join(base_path, "img")
+    os.makedirs(img_dir, exist_ok=True)
     inferred_row, inferred_col, inferred_x = infer_plot_axes(runname)
     row = args.row or inferred_row
     col = args.col or inferred_col
@@ -726,5 +901,5 @@ if __name__ == "__main__":
         x=x,
         ymin=ymin,
         ymax=ymax,
-        save_name=os.path.join(base_path, "img", f"{runname}{save_suffix}"),
+        save_name=os.path.join(img_dir, f"{runname}{save_suffix}"),
     )

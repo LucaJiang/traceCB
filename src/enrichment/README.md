@@ -30,8 +30,6 @@ The three annotations are not fit as one three-column custom joint model.
   filtering, and publication-style dotplot helpers.
 - `06_ora_significant_pathways.py`: ORA for heritability- and
   correlation-significant gene sets.
-- `07_ora_two_tier_enrichment.py`: two-tier ORA for original, traceC
-  incremental, traceCB incremental, and full original/traceC/traceCB eGenes.
 - `run_ora_pipeline.sh`: runs both ORA scripts and overwrites the ORA output
   folders.
 - `run_all_sldsc_gsea.sh`: runs all steps in order.
@@ -70,4 +68,3 @@ bash /home/wjiang49/traceCB/src/enrichment/run_ora_pipeline.sh
 - `results/summary/master_sldsc_gsea_results.csv`: all 198 custom annotation results.
 - `visualization/`: publication-style PDF/PNG figures.
 - `ora/significant_pathways/`: local-GMT ORA for heritability- and correlation-significant genes.
-- `ora/two_tier_enrichment/`: two-tier local-GMT ORA for incremental and full original/traceC/traceCB eGene groups, including tier pathway-count summaries.

@@ -4,17 +4,17 @@ set -euo pipefail
 # Simulation shell entrypoint.
 #
 # Usage:
-#   bash src/simulation/others/run.sh simulation      # simulation.py paper grids
-#   bash src/simulation/others/run.sh robustness      # robustness supplementary grids
-#   bash src/simulation/others/run.sh tracecb2        # traceCB^2 grids
-#   bash src/simulation/others/run.sh masked_omega    # masked-omega grids
-#   bash src/simulation/others/run.sh mashr           # mashr benchmark grids
-#   bash src/simulation/others/run.sh power_gain      # power-gain figure grids
-#   bash src/simulation/others/run.sh all             # run all of the above
+#   bash src/simulation/others/run_all.sh simulation      # simulation.py paper grids
+#   bash src/simulation/others/run_all.sh robustness      # robustness supplementary grids
+#   bash src/simulation/others/run_all.sh tracecb2        # traceCB^2 grids
+#   bash src/simulation/others/run_all.sh masked_omega    # masked-omega grids
+#   bash src/simulation/others/run_all.sh mashr           # mashr benchmark grids
+#   bash src/simulation/others/run_all.sh power_gain      # power-gain figure grids
+#   bash src/simulation/others/run_all.sh all             # run all of the above
 #
 # Common server overrides:
 #   SIM_DATA_DIR=/path/to/simulation/data OUT_DIR=/path/to/result \
-#     NREP=100 NSNP=2000 OMEGA_MODE=both bash src/simulation/others/run.sh all
+#     NREP=100 NSNP=2000 OMEGA_MODE=both bash src/simulation/others/run_all.sh all
 #
 # OMEGA_MODE can be both, estimate, or true for scripts with omega modes.
 # RUN_VISUALS=0 skips plotting.

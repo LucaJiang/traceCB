@@ -19,7 +19,6 @@ map_dict = {
     "Monocytes": ["Monocytes"],
 }
 
-
 data_path = "/home/wjiang49/group/wjiang49/data/traceCB/cell_type_proportion/ind_celltype_proportion.csv"
 raw_df = pd.read_csv(data_path, header=0)
 raw_df.columns = [x.replace(".", " ") for x in raw_df.columns]
@@ -31,7 +30,10 @@ ct_proportion_df["Mixture"] = raw_df["Mixture"]
 for ct, ct_list in map_dict.items():
     ct_proportion_df[ct] = raw_df[ct_list].sum(axis=1)
 ct_proportion_df = ct_proportion_df.set_index("Mixture")
-ct_proportion_df
+print(ct_proportion_df)
+print("Average cell type proportions:")
+for ct in map_dict.keys():
+    print(f"{ct}: {ct_proportion_df[ct].mean():.8f}")
 
 
 # %%

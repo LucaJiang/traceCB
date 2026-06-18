@@ -105,6 +105,11 @@ def parse_args():
     parser.add_argument("--base_path", "-b", default="bench/result_estOmega_omegaCompare")
     parser.add_argument("--runname", "-r", default="alpha_pcausal_propt_gmmproptmode")
     parser.add_argument("--x", default="propt")
+    parser.add_argument(
+        "--img_dir",
+        default=os.environ.get("IMG_DIR"),
+        help="Directory for figure PDFs. Defaults to $IMG_DIR or <base_path>/img.",
+    )
     return parser.parse_args()
 
 
@@ -250,18 +255,19 @@ def main():
     args = parse_args()
     result_path = os.path.join(args.base_path, args.runname)
     result_df = read_omega_summaries(result_path)
-    os.makedirs(os.path.join(args.base_path, "img"), exist_ok=True)
+    img_dir = args.img_dir or os.path.join(args.base_path, "img")
+    os.makedirs(img_dir, exist_ok=True)
     summary_path = os.path.join(result_path, "omega_summary_df.csv")
     result_df.to_csv(summary_path, index=False)
     long_df = build_long_df(result_df)
     plot_diff(
         long_df,
         args.x,
-        os.path.join(args.base_path, "img", f"{args.runname}_omega_diff"),
+        os.path.join(img_dir, f"{args.runname}_omega_diff"),
     )
     plot_scatter(
         long_df,
-        os.path.join(args.base_path, "img", f"{args.runname}_omega_est_vs_true"),
+        os.path.join(img_dir, f"{args.runname}_omega_est_vs_true"),
     )
     print(f"Omega summary saved to {summary_path}")
 

@@ -5,7 +5,7 @@ This visualizer pairs with ``simulation_masked_omega.py`` and the shell wrapper
 facet over genetic correlation values while comparing original traceC/traceCB
 against masked-input variants.
 
-Outputs are saved to ``<base_path>/img`` as both PDF and PNG.
+Outputs are saved to ``<img_dir>`` as PDF.
 """
 
 import argparse
@@ -67,6 +67,18 @@ all_param_mapping = {
 }
 
 
+def set_alpha_yticks(ax, ymin, ymax):
+    yticks = [
+        tick
+        for tick in [0, 0.05, 0.10, 0.20, 0.30, 0.40]
+        if ymin <= tick <= ymax
+    ]
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(
+        [f"{tick:g}" if tick == 0 else f"{tick:.2f}" for tick in yticks]
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Visualize masked-omega traceC/traceCB simulation results."
@@ -81,7 +93,12 @@ def parse_args():
     parser.add_argument(
         "--save_prefix",
         default=None,
-        help="Output filename prefix under <base_path>/img. Defaults to runname.",
+        help="Output filename prefix under --img_dir. Defaults to runname.",
+    )
+    parser.add_argument(
+        "--img_dir",
+        default=os.environ.get("IMG_DIR"),
+        help="Directory for figure PDFs. Defaults to $IMG_DIR or <base_path>/img.",
     )
     parser.add_argument("--x", default="propt")
     parser.add_argument("--row", default="h1sq")
@@ -183,6 +200,7 @@ def plot_metric(
         ax.grid(True, alpha=0.8)
         ax.set_ylabel(y_name)
         if metric == "alpha":
+            set_alpha_yticks(ax, ymin, ymax)
             ax.axhline(0.05, color="#e63946", linestyle="--", linewidth=1.6)
 
     g.set_titles(template="{row_name} | {col_name}")
@@ -216,7 +234,8 @@ def main():
             "No replicate_metrics.csv found for requested runname(s)"
         )
     result_df = pd.concat(result_dfs, ignore_index=True)
-    os.makedirs(os.path.join(args.base_path, "img"), exist_ok=True)
+    img_dir = args.img_dir or os.path.join(args.base_path, "img")
+    os.makedirs(img_dir, exist_ok=True)
     save_prefix = args.save_prefix or "_".join(args.runname)
 
     if args.metric in ("power", "both"):
@@ -228,7 +247,7 @@ def main():
             x=args.x,
             ymin=args.ymin,
             ymax=args.power_ymax,
-            save_name=os.path.join(args.base_path, "img", f"{save_prefix}_power"),
+            save_name=os.path.join(img_dir, f"{save_prefix}_power"),
         )
     if args.metric in ("alpha", "both"):
         plot_metric(
@@ -239,7 +258,7 @@ def main():
             x=args.x,
             ymin=args.ymin,
             ymax=args.alpha_ymax,
-            save_name=os.path.join(args.base_path, "img", f"{save_prefix}_alpha"),
+            save_name=os.path.join(img_dir, f"{save_prefix}_alpha"),
         )
 
 

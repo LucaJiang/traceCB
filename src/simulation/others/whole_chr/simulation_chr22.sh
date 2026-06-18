@@ -7,11 +7,14 @@ set -euo pipefail
 #   bash src/simulation/others/whole_chr/simulation_chr22.sh
 #
 # Run from the repository root. The script activates conda env py312.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../../../.." && pwd)}"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate py312
 export PYTHONUNBUFFERED=1
 
 OUT_DIR="${OUT_DIR:-bench/result/chr22_eqtl_mixture}"
+IMG_DIR="${IMG_DIR:-${REPO_ROOT}/bench/result/img}"
 NREP="${NREP:-1}"
 MAX_GENES="${MAX_GENES:-0}"
 MAX_SNPS_PER_GENE="${MAX_SNPS_PER_GENE:-0}"
@@ -36,6 +39,7 @@ python3 src/simulation/others/whole_chr/simulation_chr22.py \
 
 python3 src/simulation/others/whole_chr/visual_chr22_eqtl_simulation.py \
     --base_path "${OUT_DIR}" \
+    --out_dir "${IMG_DIR}" \
     --runname mixture_chr22 \
     --metric all \
     --error_unit "${ERROR_UNIT}" \

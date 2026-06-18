@@ -301,7 +301,7 @@ def build_setting_args(
     setting_args.n2 = n2
     setting_args.nt = nt
     setting_args.pop2_sample_start = n1
-    setting_args.pop2_tissue_start = n2
+    setting_args.pop2_tissue_start = None
     setting_args.propt = propt
     setting_args.pcausal = pcausal
     if should_use_grid_runname(args):
@@ -533,6 +533,26 @@ def standardize_genotype(geno: np.ndarray) -> np.ndarray:
     return (geno - mean) / (std + MIN_FLOAT)
 
 
+def tail_panel_start(
+    n_rows: int, n_singlecell: int, n_tissue: int, panel_name: str
+) -> int:
+    if n_singlecell < 0 or n_tissue < 0:
+        raise ValueError(f"{panel_name} sample sizes must be nonnegative")
+    if n_singlecell > n_rows:
+        raise ValueError(
+            f"single-cell n={n_singlecell} exceeds {panel_name} rows={n_rows}"
+        )
+    if n_tissue > n_rows:
+        raise ValueError(f"tissue n={n_tissue} exceeds {panel_name} rows={n_rows}")
+    start = n_rows - n_tissue
+    if start < n_singlecell:
+        raise ValueError(
+            f"{panel_name} tail tissue panel overlaps prefix single-cell panel: "
+            f"n_singlecell={n_singlecell}, n_tissue={n_tissue}, rows={n_rows}"
+        )
+    return start
+
+
 def make_component_rng(
     seed_base: int | None,
     seed_parts: tuple,
@@ -616,7 +636,7 @@ def generate_data(
 ) -> tuple:
     nsnp = g1.shape[1]
     if tissue_start is None:
-        tissue_start = n2
+        tissue_start = tail_panel_start(g2.shape[0], n2, nt, "population 2")
     if n1 > g1.shape[0]:
         raise ValueError(f"n1={n1} exceeds population 1 genotype rows={g1.shape[0]}")
     if n2 > g2.shape[0]:
@@ -682,7 +702,13 @@ def generate_data(
 
     delta = 5
     pi_rng = make_component_rng(seed_base, seed_parts, "cell_proportion", rng)
-    pi_ind = pi_rng.beta(propt * delta, (1 - propt + MIN_FLOAT) * delta, nt)
+    if tissue_start + nt == g2.shape[0]:
+        pi_all = pi_rng.beta(
+            propt * delta, (1 - propt + MIN_FLOAT) * delta, g2.shape[0]
+        )
+        pi_ind = pi_all[tissue_start : tissue_start + nt]
+    else:
+        pi_ind = pi_rng.beta(propt * delta, (1 - propt + MIN_FLOAT) * delta, nt)
     pi_mean = float(np.mean(pi_ind))
     beta_unknown = np.zeros(nsnp)
     tissue_has_effect = has_tissue_genetic_effect(architecture)
@@ -698,11 +724,16 @@ def generate_data(
     tissue_hsq = h2sq if tissue_has_effect else 0.0
     tissue_noise_var = 1 - (pi_ind**2 + (1 - pi_ind) ** 2) * tissue_hsq
     tissue_noise_rng = make_component_rng(seed_base, seed_parts, "tissue_noise", rng)
+    if tissue_start + nt == g2.shape[0]:
+        tissue_noise = tissue_noise_rng.normal(size=g2.shape[0])[
+            tissue_start : tissue_start + nt
+        ]
+    else:
+        tissue_noise = tissue_noise_rng.normal(size=nt)
     yt = (
         pi_ind * (xt @ beta2)
         + (1 - pi_ind) * (xt @ beta_unknown)
-        + np.sqrt(np.maximum(tissue_noise_var, MIN_FLOAT))
-        * tissue_noise_rng.normal(size=nt)
+        + np.sqrt(np.maximum(tissue_noise_var, MIN_FLOAT)) * tissue_noise
     )
 
     b1_hat, se1_hat = calculate_sumstats(x1, y1)
@@ -1101,47 +1132,44 @@ def run_single_simulation(args: argparse.Namespace) -> None:
     summary_rows: list[dict] = []
 
     pop2_sample_start = getattr(args, "pop2_sample_start", args.n1)
-    pop2_tissue_start = getattr(args, "pop2_tissue_start", args.n2)
-    n_required_pop2 = pop2_tissue_start + args.nt
+    pop2_tissue_start = args.n2
     if one_prefix:
-        total_required = pop2_sample_start + n_required_pop2
-        if pop1_reader.n_samples < total_required:
+        pop2_sc_end = pop2_sample_start + args.n2
+        physical_tissue_start = tail_panel_start(
+            pop1_reader.n_samples, pop2_sc_end, args.nt, "shared PLINK"
+        )
+        if pop1_reader.n_samples < args.n1:
+            raise ValueError(f"pop1 has fewer than n1={args.n1} samples.")
+        if pop2_sample_start < args.n1:
             raise ValueError(
-                f"{pop1_prefix}.fam has {pop1_reader.n_samples} samples, "
-                f"but pop2_sample_start+pop2_tissue_start+nt={total_required}."
+                "pop2_sample_start must be >= n1 when one PLINK prefix is split."
             )
         pop1_samples = np.arange(args.n1)
-        pop2_samples = np.arange(
-            pop2_sample_start, pop2_sample_start + n_required_pop2
+        pop2_samples = np.concatenate(
+            [
+                np.arange(pop2_sample_start, pop2_sc_end),
+                np.arange(physical_tissue_start, pop1_reader.n_samples),
+            ]
         )
     else:
         if pop1_reader.n_samples < args.n1:
             raise ValueError(f"pop1 has fewer than n1={args.n1} samples.")
-        if pop2_reader.n_samples < n_required_pop2:
-            raise ValueError(
-                f"pop2 has fewer than pop2_tissue_start+nt={n_required_pop2} samples."
-            )
+        physical_tissue_start = tail_panel_start(
+            pop2_reader.n_samples, args.n2, args.nt, "population 2"
+        )
         pop1_samples = np.arange(args.n1)
-        pop2_samples = np.arange(n_required_pop2)
+        pop2_samples = np.concatenate(
+            [np.arange(args.n2), np.arange(physical_tissue_start, pop2_reader.n_samples)]
+        )
 
     print(
         f"Running {len(groups)} genes, n1={args.n1}, n2={args.n2}, nt={args.nt}, "
         f"nrep={args.nrep}, one_prefix={one_prefix}"
     )
     for rep in range(args.nrep):
-        setting_seed_parts = (
-            args.h1sq,
-            args.h2sq,
-            args.gc,
-            args.n1,
-            args.n2,
-            args.nt,
-            args.propt,
-            args.pcausal,
-        )
         rep_rng = make_component_rng(
             args.seed,
-            (*setting_seed_parts, rep),
+            (rep,),
             "gene_selection",
             np.random.default_rng(args.seed + rep),
         )
@@ -1190,7 +1218,7 @@ def run_single_simulation(args: argparse.Namespace) -> None:
                 rep_rng,
                 tissue_start=pop2_tissue_start,
                 seed_base=args.seed,
-                seed_parts=(*setting_seed_parts, rep, gene_id),
+                seed_parts=(rep, gene_id),
             )
             if ld_scores is not None:
                 ld1, ld2, ldx = ld_scores.get(

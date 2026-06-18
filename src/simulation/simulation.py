@@ -22,6 +22,7 @@ from simulation_utils import (
     sanitize_ld_scores,
     seed_random_component,
     standardize_genotype,
+    tail_panel_start,
     unknown_cell_effect_scale,
     validate_unit_interval,
 )
@@ -137,8 +138,8 @@ def parse_args():
         default=None,
         help=(
             "Base random seed. When omitted, the current start time is used. "
-            "Each full simulation setting and replicate gets independent "
-            "component-specific random streams derived from this base seed."
+            "Only the global replicate id is used in seed derivation, so the "
+            "same replicate reuses component streams across simulation settings."
         ),
     )
     return parser.parse_args()
@@ -254,6 +255,21 @@ def run_gmm_meta_kernel(
     )
 
 
+def has_cross_omega_signal(omega):
+    omega = np.asarray(omega, dtype=float)
+    return bool(
+        float(omega[0, 0]) > MIN_HERITABILITY
+        and float(omega[1, 1]) > MIN_HERITABILITY
+        and abs(float(omega[0, 1])) > MIN_HERITABILITY
+    )
+
+
+def should_run_true_omega_gmm(h1sq, h2sq, gc, omega):
+    if np.isclose(h1sq, 0.0) or np.isclose(h2sq, 0.0) or np.isclose(gc, 0.0):
+        return False
+    return has_cross_omega_signal(omega)
+
+
 def cal_ld(G1, G2):
     X1 = standardize_genotype(G1, MIN_FLOAT)
     X2 = standardize_genotype(G2, MIN_FLOAT)
@@ -311,7 +327,7 @@ def generate_data(
         propt (float): Proportion of cell type in tissue.
         pcausal (float): Proportion of causal SNPs.
         tissue_start (int | None): Row offset for the population 2 tissue
-            panel. Defaults to n2 for backward compatibility.
+            panel. Defaults to the last nt rows of G2.
         seed_base (int | None): Base seed for component-specific random streams.
             When None, use the caller's current NumPy RNG state.
         seed_parts (tuple): Stable identifiers for the replicate random streams.
@@ -332,7 +348,7 @@ def generate_data(
             - pi_mean (float): Mean individual cell type proportion in tissue.
     """
     if tissue_start is None:
-        tissue_start = n2
+        tissue_start = tail_panel_start(G2.shape[0], n2, nt, "population 2")
     if n1 > G1.shape[0]:
         raise ValueError(f"n1={n1} exceeds population 1 genotype rows={G1.shape[0]}")
     if n2 > G2.shape[0]:
@@ -405,12 +421,25 @@ def generate_data(
     # tissue data
     delta = 5  # control the variance of pi
     seed_random_component(seed_base, seed_parts, "cell_proportion")
-    pi_ind = np.random.beta(
-        (propt + MIN_FLOAT) * delta, (1 - propt + MIN_FLOAT) * delta, nt
-    )
+    if tissue_start + nt == G2.shape[0]:
+        pi_all = np.random.beta(
+            (propt + MIN_FLOAT) * delta,
+            (1 - propt + MIN_FLOAT) * delta,
+            G2.shape[0],
+        )
+        pi_ind = pi_all[tissue_start : tissue_start + nt]
+    else:
+        pi_ind = np.random.beta(
+            (propt + MIN_FLOAT) * delta,
+            (1 - propt + MIN_FLOAT) * delta,
+            nt,
+        )
     pi_mean = np.mean(pi_ind)
     seed_random_component(seed_base, seed_parts, "tissue_noise")
-    tissue_noise = np.random.randn(nt)
+    if tissue_start + nt == G2.shape[0]:
+        tissue_noise = np.random.randn(G2.shape[0])[tissue_start : tissue_start + nt]
+    else:
+        tissue_noise = np.random.randn(nt)
     yt = (
         pi_ind * (Xt @ beta2.T)
         + (1 - pi_ind) * (Xt @ beta_unknown.T)
@@ -651,8 +680,8 @@ def simulation(
 
     else:  # true Omega
         Omega = OmegaCB[:2, :2]
-        run_gmm = not np.isclose(gc, 0.0)
-        run_gmm_tissue = not np.isclose(gc, 0.0)
+        run_gmm = should_run_true_omega_gmm(h1sq, h2sq, gc, Omega)
+        run_gmm_tissue = run_gmm
         pi2_omega_sum = (
             OmegaCB[2, 2]
             - propt**2 * OmegaCB[1, 1]
@@ -763,7 +792,6 @@ def main():
 
     start_time = time.time()
     base_seed = int(args.seed) if args.seed is not None else int(start_time)
-    pop2_tissue_start = None
     max_tissue_end = max(n2) + max(nt)
     if max_tissue_end > G2.shape[0]:
         raise ValueError(
@@ -781,18 +809,7 @@ def main():
                             for proptp in propt:
                                 for pcausalq in pcausal:
                                     for r in range(args.nrep):
-                                        seed_parts = (
-                                            h1sqi,
-                                            h2sqj,
-                                            gck,
-                                            n1l,
-                                            n2m,
-                                            ntn,
-                                            nsnp,
-                                            proptp,
-                                            pcausalq,
-                                            r,
-                                        )
+                                        seed_parts = (r,)
                                         simulation(
                                             args.runname,
                                             G1,
@@ -812,7 +829,7 @@ def main():
                                             args.out_dir,
                                             trueOmega,
                                             r,
-                                            tissue_start=pop2_tissue_start,
+                                            tissue_start=None,
                                             seed_base=base_seed,
                                             seed_parts=seed_parts,
                                         )

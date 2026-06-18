@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from collections.abc import Sequence
 from pathlib import Path
@@ -48,6 +49,18 @@ PLOT_SETTING_COLS = ["h2sq", "n2", "nt", "propt", "method"]
 FIXED_SETTING_COLS = ["h1sq", "gc", "n1", "pcausal"]
 
 
+def set_alpha_yticks(ax, ymin: float, ymax: float) -> None:
+    yticks = [
+        tick
+        for tick in [0, 0.05, 0.10, 0.20, 0.30, 0.40]
+        if ymin <= tick <= ymax
+    ]
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(
+        [f"{tick:g}" if tick == 0 else f"{tick:.2f}" for tick in yticks]
+    )
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_path", default="bench/result/chr22_eqtl_mixture")
@@ -86,7 +99,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default="ci",
         help="Error bar statistic used by seaborn: 95%% CI of the mean or SD.",
     )
-    parser.add_argument("--out_dir", default=None)
+    parser.add_argument("--out_dir", default=os.environ.get("IMG_DIR"))
     parser.add_argument("--ymin", type=float, default=0.0)
     parser.add_argument("--ymax", type=float, default=None)
     return parser.parse_args(argv)
@@ -287,6 +300,8 @@ def plot_metric(
             ymax = max(ymax or 0.0, min(1.0, observed_max * 1.2))
     for ax in axes.flatten():
         ax.set_ylim(ymin, ymax)
+        if metric.startswith("alpha"):
+            set_alpha_yticks(ax, ymin, ymax)
 
     handles = legend_handles or []
     labels = [METHOD_LABELS.get(label, label) for label in (legend_labels or [])]

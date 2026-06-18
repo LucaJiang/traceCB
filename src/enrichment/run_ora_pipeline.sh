@@ -166,9 +166,4 @@ fi
   --workers "${WORKERS}" \
   --top-terms-per-library 4
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/07_ora_two_tier_enrichment.py" \
-  --out-dir "${RESULT_ROOT}/ora/two_tier_enrichment" \
-  --workers "${WORKERS}" \
-  --top-terms-per-library 3
-
 echo "[ORA] done"

@@ -66,8 +66,32 @@ def validate_nonnegative(name, values):
             raise ValueError(f"{name} values must be nonnegative, got {value}")
 
 
+def tail_panel_start(
+    n_rows, n_singlecell, n_tissue, panel_name="tissue", allow_overlap=False
+):
+    """Return the start row for a tail tissue panel, optionally requiring no overlap."""
+    n_rows = int(n_rows)
+    n_singlecell = int(n_singlecell)
+    n_tissue = int(n_tissue)
+    if n_singlecell < 0 or n_tissue < 0:
+        raise ValueError(f"{panel_name} sample sizes must be nonnegative")
+    if n_singlecell > n_rows:
+        raise ValueError(
+            f"single-cell n={n_singlecell} exceeds {panel_name} rows={n_rows}"
+        )
+    if n_tissue > n_rows:
+        raise ValueError(f"tissue n={n_tissue} exceeds {panel_name} rows={n_rows}")
+    tissue_start = n_rows - n_tissue
+    if not allow_overlap and tissue_start < n_singlecell:
+        raise ValueError(
+            f"{panel_name} tail tissue panel overlaps prefix single-cell panel: "
+            f"n_singlecell={n_singlecell}, n_tissue={n_tissue}, rows={n_rows}"
+        )
+    return tissue_start
+
+
 def make_sim_seed(base_seed, *parts):
-    """Create a stable per-replicate seed from data-generating settings."""
+    """Create a stable component seed from a base seed and global replicate parts."""
     tokens = []
     for part in parts:
         if part is None:

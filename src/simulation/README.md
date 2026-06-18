@@ -21,7 +21,7 @@ OUT_DIR=/path/to/results \
 NREP=100 \
 NSNP=2000 \
 OMEGA_MODE=both \
-bash src/simulation/others/run.sh all
+bash src/simulation/others/run_all.sh all
 ```
 
 Use `OMEGA_MODE=estimate` or `OMEGA_MODE=true` to run only one omega mode.
@@ -64,7 +64,7 @@ python3 src/simulation/simulation.py \
   --nt 40 \
   --nsnp 80 \
   --propt 0.2 \
-  --pcausal 0.05 \
+  --pcausal 0.005 \
   --nrep 1 \
   --out_dir bench/result/_smoke_test
 
@@ -87,7 +87,7 @@ inaccurate GMM cell-type proportion, shared-causal-SNP overlap checks, and the
 segmented-null `pop2_a_shared_b` architecture.
 
 ```bash
-bash src/simulation/others/run.sh robustness
+bash src/simulation/others/run_all.sh robustness
 ```
 
 ## Masked-Omega Comparisons

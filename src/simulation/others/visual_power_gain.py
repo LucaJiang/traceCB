@@ -1,6 +1,7 @@
 """Plot two rebuttal power-gain panels from new true-omega simulations."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def parse_args():
     parser.add_argument(
         "--output_prefix",
         type=Path,
-        default=Path("bench/result_power_gain/img/power_gain"),
+        default=Path(os.environ.get("IMG_DIR", "bench/result/img")) / "power_gain",
         help="Output path without extension.",
     )
     parser.add_argument(
@@ -182,7 +183,6 @@ def plot_figure(tracec_summary, tracecb_summary, output_prefix):
 
     output_prefix.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_prefix}.pdf", bbox_inches="tight")
-    fig.savefig(f"{output_prefix}.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -214,7 +214,6 @@ def main():
     plot_figure(tracec_summary, tracecb_summary, output_prefix)
     combined.to_csv(f"{output_prefix}_data.csv", index=False)
     print(f"Saved {output_prefix}.pdf")
-    print(f"Saved {output_prefix}.png")
     print(f"Saved {output_prefix}_data.csv")
 
 

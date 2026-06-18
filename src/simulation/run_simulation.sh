@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Curated small-window simulation.py grid for the traceCB paper.
+# Curated simulation.py grid for the traceCB paper.
 #
 # Usage:
 #   bash src/simulation/run_simulation.sh
@@ -28,21 +28,21 @@ run_simulation_grid() {
     local ymax="$5"
     shift 5
 
-    local omega_args=()
+    local sim_args=(
+        "${PYTHON}" src/simulation/simulation.py
+        --pop1_geno "${POP1_GENO}"
+        --pop2_geno "${POP2_GENO}"
+        --runname "${runname}"
+        "$@"
+        --nsnp "${NSNP}"
+        --out_dir "${OUT_DIR}"
+        --nrep "${NREP}"
+        --seed "${SIMULATION_SEED}"
+    )
     if [[ "${omega_kind}" == "estimate" ]]; then
-        omega_args+=(--estimate_omega)
+        sim_args+=(--estimate_omega)
     fi
-
-    run_cmd "${PYTHON}" src/simulation/simulation.py \
-        --pop1_geno "${POP1_GENO}" \
-        --pop2_geno "${POP2_GENO}" \
-        --runname "${runname}" \
-        "$@" \
-        --nsnp "${NSNP}" \
-        --out_dir "${OUT_DIR}" \
-        --nrep "${NREP}" \
-        --seed "${SIMULATION_SEED}" \
-        "${omega_args[@]}"
+    run_cmd "${sim_args[@]}"
 
     if [[ "${RUN_VISUALS}" == "1" ]]; then
         local visual_args=(
@@ -50,6 +50,7 @@ run_simulation_grid() {
             --metric "${metric}"
             --runname "${runname}"
             --base_path "${OUT_DIR}"
+            --img_dir "${IMG_DIR}"
             --omega "$(omega_filter_arg "${omega_kind}")"
         )
         if [[ -n "${ymin}" ]]; then
@@ -66,21 +67,22 @@ run_all_grids_for_omega() {
     local omega_kind="$1"
     local omega_name
     omega_name="$(omega_label "${omega_kind}")"
+    # set y-axis limits for visualization based on omega_kind
     local nt_ymin="0.16"
-    local nt_ymax="0.38"
-    local h2_ymin="0.12"
+    local nt_ymax="0.36"
+    local h2_ymin="0.14"
     local h2_ymax="0.42"
-    local n1_ymin="0.05"
-    local n1_ymax="0.32"
+    local n1_ymin="0.07"
+    local n1_ymax="0.36"
     if [[ "${omega_kind}" == "true" ]]; then
-        nt_ymin=""
-        nt_ymax="0.88"
-        h2_ymin=""
-        h2_ymax="0.88"
-        n1_ymin=""
-        n1_ymax="0.88"
+        nt_ymin="0.12"
+        nt_ymax="0.58"
+        h2_ymin="0.12"
+        h2_ymax="0.74"
+        n1_ymin="0.05"
+        n1_ymax="0.58"
     fi
-    echo "Running main small-window grids with ${omega_name}"
+    echo "Running main 3 * power+ alpha grids with ${omega_name}"
 
     run_simulation_grid "${omega_kind}" nt_n2_propt power "${nt_ymin}" "${nt_ymax}" \
         --h1sq 0.1 \
@@ -90,7 +92,7 @@ run_all_grids_for_omega() {
         --n2 100 200 400 \
         --nt 1000 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.05
+        --pcausal 0.005
 
     run_simulation_grid "${omega_kind}" h2sq_gc_propt power "${h2_ymin}" "${h2_ymax}" \
         --h1sq 0.1 \
@@ -100,7 +102,7 @@ run_all_grids_for_omega() {
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.05
+        --pcausal 0.005
 
     run_simulation_grid "${omega_kind}" n1_pcausal_propt power "${n1_ymin}" "${n1_ymax}" \
         --h1sq 0.1 \
@@ -110,19 +112,20 @@ run_all_grids_for_omega() {
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.01 0.02 0.05
+        --pcausal 0.005 0.01 0.02
 
     run_simulation_grid "${omega_kind}" alpha_h2sq_pcausal_propt alpha "" 0.48 \
-        --h1sq 0.000000000001 \
+        --h1sq 0 \
         --h2sq 0.1 0.2 \
         --gc 0 \
         --n1 100 \
         --n2 400 \
         --nt 5000 \
         --propt 0.01 0.2 0.4 0.6 0.8 \
-        --pcausal 0.01 0.02 0.05
+        --pcausal 0.005 0.01 0.02
 }
 
-while IFS= read -r omega_kind; do
+OMEGA_KINDS="$(omega_modes)"
+for omega_kind in ${OMEGA_KINDS}; do
     run_all_grids_for_omega "${omega_kind}"
-done < <(omega_modes)
+done

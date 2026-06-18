@@ -8,7 +8,7 @@ This follows the original simulation workflow:
 3. Run original traceC and traceCB with pop1 as the target.
 4. Run two traceCB-style variants by masking one sc input:
    - pop1 sc + pop2 bulk: mask pop2 sc.
-   - pop2 sc + pop2 bulk: mask pop1 sc, but still estimate the pop1 target.
+   - pop2 sc + pop2 bulk: mask pop1 sc.
 """
 
 from __future__ import annotations
@@ -29,7 +29,12 @@ for path in (SRC_DIR, SIMULATION_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from simulation import cal_ld, generate_data, get_genotype  # noqa: E402
+from simulation import (  # noqa: E402
+    cal_ld,
+    generate_data,
+    get_genotype,
+    should_run_true_omega_gmm,
+)
 from simulation_utils import (  # noqa: E402
     sanitize_ld_scores,
     validate_unit_interval,
@@ -176,8 +181,12 @@ def estimate_omega_terms(
     run_tracec = (
         bool(np.all(omega_p < omega_p_threshold)) if use_original_gate else True
     )
-    run_pop1sc_bulk = bool(omega_p[0, 0] < omega_p_threshold)
-    run_pop2sc_bulk = bool(omega_p[1, 1] < omega_p_threshold)
+    if use_original_gate:
+        run_pop1sc_bulk = bool(omega_p[0, 0] < omega_p_threshold)
+        run_pop2sc_bulk = bool(omega_p[1, 1] < omega_p_threshold)
+    else:
+        run_pop1sc_bulk = True
+        run_pop2sc_bulk = True
 
     aux_cov_p = np.nan
     pi2_omega_sum = MIN_HERITABILITY
@@ -332,7 +341,7 @@ def run_pop1_target_methods(
                 dummy_ld,
                 b1_hat[j],
                 se1_hat[j],
-                ld2[j],
+                ld1[j],
                 dummy_cross_ld,
                 bt_hat[j],
                 se_t_hat[j],
@@ -367,7 +376,7 @@ def run_pop1_target_methods(
             )
             z[5, j] = b_pop2sc_bulk / (se_pop2sc_bulk + MIN_FLOAT)
         else:
-            z[5, j] = 0.0
+            z[5, j] = z[1, j]
 
     return z
 
@@ -434,7 +443,6 @@ def main() -> None:
     rows: list[dict] = []
     setting_id = 0
     start = time.time()
-    pop2_tissue_start = None
     max_tissue_end = max(args.n2) + max(args.nt)
     if max_tissue_end > G2.shape[0]:
         raise ValueError(
@@ -458,18 +466,7 @@ def main() -> None:
                                         f"propt={propt}, pcausal={pcausal}"
                                     )
                                     for rep in range(args.nrep):
-                                        seed_parts = (
-                                            h1sq,
-                                            h2sq,
-                                            gc,
-                                            n1,
-                                            n2,
-                                            nt,
-                                            args.nsnp,
-                                            propt,
-                                            pcausal,
-                                            rep,
-                                        )
+                                        seed_parts = (rep,)
                                         (
                                             _omega_true,
                                             b1_hat,
@@ -495,7 +492,7 @@ def main() -> None:
                                             args.nsnp,
                                             propt,
                                             pcausal,
-                                            tissue_start=pop2_tissue_start,
+                                            tissue_start=None,
                                             seed_base=args.seed,
                                             seed_parts=seed_parts,
                                         )
@@ -532,10 +529,21 @@ def main() -> None:
                                             omega, pi2_omega_sum = true_omega_terms(
                                                 _omega_true, propt
                                             )
-                                            run_tracec = True
-                                            run_tracecb = True
-                                            run_pop1sc_bulk = True
-                                            run_pop2sc_bulk = True
+                                            run_true_gmm = should_run_true_omega_gmm(
+                                                h1sq, h2sq, gc, omega
+                                            )
+                                            run_tracec = run_true_gmm
+                                            run_tracecb = run_true_gmm
+                                            if args.use_original_gate:
+                                                run_pop1sc_bulk = not np.isclose(
+                                                    h1sq, 0.0
+                                                )
+                                                run_pop2sc_bulk = not np.isclose(
+                                                    h2sq, 0.0
+                                                )
+                                            else:
+                                                run_pop1sc_bulk = True
+                                                run_pop2sc_bulk = True
                                             omega_cov_p = np.nan
                                             aux_cov_p = np.nan
                                             omega_est_corr = np.nan
@@ -629,6 +637,7 @@ def main() -> None:
             run_tracecb_rate=("run_tracecb", "mean"),
             run_pop1sc_bulk_rate=("run_pop1sc_bulk", "mean"),
             run_pop2sc_bulk_rate=("run_pop2sc_bulk", "mean"),
+            use_original_gate=("use_original_gate", "first"),
             nrep=("rep", "nunique"),
         )
         .reset_index()

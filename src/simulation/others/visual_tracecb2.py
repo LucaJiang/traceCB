@@ -3,7 +3,7 @@
 This is the paired visualizer for ``simulation_tracecb2.py``. It reads
 replicate CSV files from ``<base_path>/<runname>/<setting>/``, writes
 ``result_df_tracecb2.csv`` or ``result_df_tracecb2_trueomega.csv`` in the
-runname directory, and saves paper figures under ``<base_path>/img``.
+runname directory, and saves paper figures under ``--img_dir`` or ``$IMG_DIR``.
 
 The curated plotting commands are at the end of ``run_tracecb2.sh``.
 """
@@ -69,6 +69,18 @@ PARAM_LABELS = {
 }
 
 sns.set_theme(style="darkgrid", palette="muted", color_codes=True)
+
+
+def set_alpha_yticks(ax, ymin, ymax):
+    yticks = [
+        tick
+        for tick in [0, 0.05, 0.10, 0.20, 0.30, 0.40]
+        if ymin <= tick <= ymax
+    ]
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(
+        [f"{tick:g}" if tick == 0 else f"{tick:.2f}" for tick in yticks]
+    )
 
 
 def calculate_metric(gt, pred, metric):
@@ -140,7 +152,7 @@ def get_result_table(result_path, metric, target_id=1):
 
 
 def infer_plot_axes(runname):
-    if runname == "nt1_nt2_propt":
+    if runname.endswith("nt1_nt2_propt"):
         return "nt2", "nt1", "propt"
     parts = runname.split("_")
     if len(parts) < 3:
@@ -184,6 +196,7 @@ def plot(
     ymax=None,
     base_path="bench/result",
     suffix="",
+    img_dir=None,
 ):
     row, col, x = infer_plot_axes(runname)
     y_label = "Type I error" if metric == "alpha" else "Power"
@@ -231,6 +244,7 @@ def plot(
         ax.set_xlabel(label_map[x], labelpad=10)
         ax.grid(True, alpha=0.8)
         if metric == "alpha":
+            set_alpha_yticks(ax, y0, y1)
             ax.axhline(0.05, color="#e63946", linestyle="--", linewidth=1.8)
         ax.set_title(ax.get_title(), pad=12)
 
@@ -264,7 +278,7 @@ def plot(
         wspace=0.02,
         hspace=0.28,
     )
-    img_dir = os.path.join(base_path, "img")
+    img_dir = img_dir or os.path.join(base_path, "img")
     os.makedirs(img_dir, exist_ok=True)
     save_name = os.path.join(img_dir, f"{runname}_{metric}_tracecb2{suffix}.pdf")
     g.savefig(save_name, bbox_inches="tight")
@@ -275,6 +289,11 @@ def plot(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_path", default="bench/result")
+    parser.add_argument(
+        "--img_dir",
+        default=os.environ.get("IMG_DIR"),
+        help="Directory for figure PDFs. Defaults to $IMG_DIR or <base_path>/img.",
+    )
     parser.add_argument("--runname", required=True)
     parser.add_argument("--metric", choices=("power", "alpha"), required=True)
     parser.add_argument("--target", default=1, type=int)
@@ -312,6 +331,7 @@ def main():
         args.ymax,
         args.base_path,
         suffix,
+        args.img_dir,
     )
 
 

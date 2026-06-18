@@ -4,6 +4,7 @@ data/*
 bench/
 tools/
 tests/
+poster/
 .DS_Store
 
 # temporary files

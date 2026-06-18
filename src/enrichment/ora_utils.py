@@ -131,7 +131,9 @@ def gmt_library_id(path: Path) -> str:
     return path.name.removesuffix(".gmt")
 
 
-def library_spec(path: Path, analysis_tier: str | None = None, label: str | None = None) -> LibrarySpec:
+def library_spec(
+    path: Path, analysis_tier: str | None = None, label: str | None = None
+) -> LibrarySpec:
     library = gmt_library_id(path)
     return LibrarySpec(
         path=path,
@@ -165,13 +167,17 @@ def subset_gmt(in_path: Path, out_path: Path, pattern: re.Pattern[str]) -> Path:
     return out_path
 
 
-def prepare_method_gene_table(target_qtdids: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_method_gene_table(
+    target_qtdids: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     _, all_df = load_all_summary()
     gene_symbol_map = build_gene_symbol_map()
 
     df = all_df[all_df["QTDid"].isin(target_qtdids)].copy()
     df["GENE"] = df["GENE"].astype(str).str.split(".").str[0]
-    df["gene_symbol"] = df["GENE"].map(lambda gene: gene_id_to_symbol(gene, gene_symbol_map))
+    df["gene_symbol"] = df["GENE"].map(
+        lambda gene: gene_id_to_symbol(gene, gene_symbol_map)
+    )
     df = df[df["gene_symbol"].notna()].copy()
 
     df["original"] = pd.to_numeric(df["TAR_SeSNP"], errors="coerce").fillna(0) > 0
@@ -190,11 +196,21 @@ def prepare_method_gene_table(target_qtdids: list[str]) -> tuple[pd.DataFrame, p
                 "Study": meta_data["id2name"].get(qtdid, qtdid),
                 "CellType": meta_data["id2celltype"].get(qtdid, "Other"),
                 "Tested_Genes": study_df["gene_symbol"].nunique(),
-                "Original": int(study_df.loc[study_df["original"], "gene_symbol"].nunique()),
-                "traceC_inc": int(study_df.loc[study_df["traceC_increment"], "gene_symbol"].nunique()),
-                "traceCB_inc": int(study_df.loc[study_df["traceCB_increment"], "gene_symbol"].nunique()),
-                "traceC_full": int(study_df.loc[study_df["traceC_full"], "gene_symbol"].nunique()),
-                "traceCB_full": int(study_df.loc[study_df["traceCB_full"], "gene_symbol"].nunique()),
+                "Original": int(
+                    study_df.loc[study_df["original"], "gene_symbol"].nunique()
+                ),
+                "traceC_inc": int(
+                    study_df.loc[study_df["traceC_increment"], "gene_symbol"].nunique()
+                ),
+                "traceCB_inc": int(
+                    study_df.loc[study_df["traceCB_increment"], "gene_symbol"].nunique()
+                ),
+                "traceC_full": int(
+                    study_df.loc[study_df["traceC_full"], "gene_symbol"].nunique()
+                ),
+                "traceCB_full": int(
+                    study_df.loc[study_df["traceCB_full"], "gene_symbol"].nunique()
+                ),
             }
         )
     return df, pd.DataFrame(rows)
@@ -219,7 +235,9 @@ def build_method_ora_gene_sets(study_df: pd.DataFrame, mode: str) -> list[OraGen
                     celltype=meta_data["id2celltype"].get(qtdid, "Other"),
                     query_group=group,
                     query_group_label=GROUP_LABELS.get(group, group),
-                    gene_symbols=unique_sorted(group_df.loc[group_df[group], "gene_symbol"]),
+                    gene_symbols=unique_sorted(
+                        group_df.loc[group_df[group], "gene_symbol"]
+                    ),
                     background_symbols=background,
                     gene_set_mode=mode,
                 )
@@ -233,7 +251,9 @@ ANCESTRY_H2_COLUMNS = {
 }
 
 
-def map_gene_ids_to_symbols(gene_ids: Iterable[object], gene_symbol_map: dict[str, str]) -> tuple[str, ...]:
+def map_gene_ids_to_symbols(
+    gene_ids: Iterable[object], gene_symbol_map: dict[str, str]
+) -> tuple[str, ...]:
     symbols = []
     for gene_id in gene_ids:
         symbol = gene_id_to_symbol(gene_id, gene_symbol_map)
@@ -242,7 +262,9 @@ def map_gene_ids_to_symbols(gene_ids: Iterable[object], gene_symbol_map: dict[st
     return unique_sorted(symbols)
 
 
-def filter_heritability_significant(summary_df: pd.DataFrame, p_threshold: float, ancestries: tuple[str, ...]) -> pd.DataFrame:
+def filter_heritability_significant(
+    summary_df: pd.DataFrame, p_threshold: float, ancestries: tuple[str, ...]
+) -> pd.DataFrame:
     z_threshold = p2z(p_threshold)
     mask = pd.Series(True, index=summary_df.index)
     for ancestry in ancestries:
@@ -275,7 +297,9 @@ def build_significant_ora_gene_sets(
         study = meta_data["id2name"].get(qtdid, qtdid)
         celltype = meta_data["id2celltype"].get(qtdid, "Other")
         for query_group, ancestries in definitions:
-            h2_df = filter_heritability_significant(study_df, h2_p_threshold, ancestries)
+            h2_df = filter_heritability_significant(
+                study_df, h2_p_threshold, ancestries
+            )
             genes = map_gene_ids_to_symbols(h2_df["GENE"], gene_symbol_map)
             gene_sets.append(
                 OraGeneSet(
@@ -506,20 +530,27 @@ def study_order_and_celltypes(df: pd.DataFrame) -> tuple[list[str], dict[str, st
     return studies, celltypes
 
 
-def celltype_ranges(study_order: list[str], study_celltypes: dict[str, str]) -> list[tuple[str, int, int]]:
+def celltype_ranges(
+    study_order: list[str], study_celltypes: dict[str, str]
+) -> list[tuple[str, int, int]]:
     ranges = []
     start = 0
     while start < len(study_order):
         celltype = study_celltypes.get(study_order[start], "Other")
         end = start + 1
-        while end < len(study_order) and study_celltypes.get(study_order[end], "Other") == celltype:
+        while (
+            end < len(study_order)
+            and study_celltypes.get(study_order[end], "Other") == celltype
+        ):
             end += 1
         ranges.append((celltype, start, end))
         start = end
     return ranges
 
 
-def add_celltype_annotations_top(ax, study_order: list[str], study_celltypes: dict[str, str]) -> None:
+def add_celltype_annotations_top(
+    ax, study_order: list[str], study_celltypes: dict[str, str]
+) -> None:
     if len(study_order) <= 1:
         return
     band_transform = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
@@ -584,7 +615,9 @@ def label_line_total(labels: Iterable[object]) -> int:
 
 
 def label_text_width(labels: Iterable[object]) -> int:
-    return max((len(line) for label in labels for line in str(label).splitlines()), default=0)
+    return max(
+        (len(line) for label in labels for line in str(label).splitlines()), default=0
+    )
 
 
 def ora_plot_layout(n_terms: int) -> dict[str, object]:
@@ -609,28 +642,6 @@ def ora_plot_layout(n_terms: int) -> dict[str, object]:
             "marker_sizes": (10, 95),
             "legend_fontsize": 9,
             "legend_title_fontsize": 10,
-        }
-    if n_terms >= 45:
-        return {
-            "row_height": 0.26,
-            "line_height": 0.075,
-            "base_height": 3.3,
-            "y_fontsize": 7.4,
-            "x_fontsize": 9.5,
-            "marker_sizes": (14, 125),
-            "legend_fontsize": 9.5,
-            "legend_title_fontsize": 10.5,
-        }
-    if n_terms >= 20:
-        return {
-            "row_height": 0.33,
-            "line_height": 0.10,
-            "base_height": 3.4,
-            "y_fontsize": 8.5,
-            "x_fontsize": 10,
-            "marker_sizes": (20, 165),
-            "legend_fontsize": 10,
-            "legend_title_fontsize": 11,
         }
     return {
         "row_height": 0.43,
@@ -657,9 +668,7 @@ def pick_top_terms(
         sig_df = group_df[group_df["adjusted_p_value"] <= alpha]
         source_df = sig_df if not sig_df.empty else group_df
         rows.append(
-            source_df.sort_values(["adjusted_p_value", "p_value"])
-            .head(top_n)
-            .copy()
+            source_df.sort_values(["adjusted_p_value", "p_value"]).head(top_n).copy()
         )
     if not rows:
         return pd.DataFrame()
@@ -721,17 +730,24 @@ def plot_ora_dotplots(
         if sub_df.empty:
             continue
         sub_df["display_term"] = sub_df["term"].map(shorten_term)
-        sub_df["neg_log10_fdr"] = -np.log10(sub_df["adjusted_p_value"].clip(lower=MIN_P))
+        sub_df["neg_log10_fdr"] = -np.log10(
+            sub_df["adjusted_p_value"].clip(lower=MIN_P)
+        )
+        sub_df["-log10(FDR)"] = sub_df["neg_log10_fdr"]
+        sub_df["overlap"] = sub_df["overlap_size"]
 
         term_order = (
             sub_df.groupby("display_term")["adjusted_p_value"]
             .min()
             .sort_values(ascending=False)
-            .index
-            .tolist()
+            .index.tolist()
         )
-        sub_df["display_term"] = pd.Categorical(sub_df["display_term"], categories=term_order, ordered=True)
-        sub_df["Study"] = pd.Categorical(sub_df["Study"], categories=study_order, ordered=True)
+        sub_df["display_term"] = pd.Categorical(
+            sub_df["display_term"], categories=term_order, ordered=True
+        )
+        sub_df["Study"] = pd.Categorical(
+            sub_df["Study"], categories=study_order, ordered=True
+        )
         sub_df = sub_df.sort_values(["display_term", "Study"])
 
         total_y_lines = label_line_total(term_order)
@@ -750,8 +766,8 @@ def plot_ora_dotplots(
             data=sub_df,
             x="Study",
             y="display_term",
-            hue="neg_log10_fdr",
-            size="overlap_size",
+            hue="-log10(FDR)",
+            size="overlap",
             sizes=layout["marker_sizes"],
             palette="viridis",
             edgecolor="black",

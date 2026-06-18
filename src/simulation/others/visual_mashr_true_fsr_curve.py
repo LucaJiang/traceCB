@@ -42,6 +42,11 @@ def parse_args():
     parser.add_argument("--nt", type=int, default=5000)
     parser.add_argument("--propt", type=float, default=0.4)
     parser.add_argument(
+        "--img_dir",
+        default=os.environ.get("IMG_DIR"),
+        help="Directory for figure PDFs. Defaults to $IMG_DIR or <base_path>/img.",
+    )
+    parser.add_argument(
         "--thresholds",
         type=float,
         nargs="+",
@@ -231,7 +236,6 @@ def plot_curve(result_df, save_name):
     )
     g.figure.suptitle(title, fontsize=13)
     g.savefig(f"{save_name}.pdf", bbox_inches="tight")
-    g.savefig(f"{save_name}.png", dpi=220, bbox_inches="tight")
     plt.close()
     print(f"Plot saved to {save_name}.pdf")
 
@@ -241,11 +245,12 @@ def main():
     result_path = os.path.join(args.base_path, args.runname)
     setting_dir, params = collect_setting(result_path, args.n2, args.nt, args.propt)
     result_df = compute_curve(setting_dir, params, args.thresholds)
-    os.makedirs(os.path.join(args.base_path, "img"), exist_ok=True)
+    img_dir = args.img_dir or os.path.join(args.base_path, "img")
+    os.makedirs(img_dir, exist_ok=True)
     tag = f"n2_{args.n2}_nt_{args.nt}_propt_{args.propt:g}"
     result_csv = os.path.join(result_path, f"result_df{args.save_suffix}_{tag}.csv")
     result_df.to_csv(result_csv, index=False)
-    save_name = os.path.join(args.base_path, "img", f"{args.runname}{args.save_suffix}_{tag}")
+    save_name = os.path.join(img_dir, f"{args.runname}{args.save_suffix}_{tag}")
     plot_curve(result_df, save_name)
     print(f"Result table saved to {result_csv}")
 
