@@ -33,6 +33,7 @@ for path in (SRC_DIR, SIMULATION_DIR):
         sys.path.insert(0, str(path))
 
 from traceCB.gmm import GMM, GMMtissue, GMMtissueBoth
+from traceCB.ldsc import Run_Cross_LDSC
 from traceCB.utils import MIN_HERITABILITY, z2p
 from simulation import (
     MAX_CORR,
@@ -201,8 +202,12 @@ def run_tracecb2_inference_kernel(
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run traceCB^2 simulation.")
-    parser.add_argument("--pop1_geno", default="data/simulation/EAS_n5000_chr22_loci29.npy")
-    parser.add_argument("--pop2_geno", default="data/simulation/EUR_n20000_chr22_loci29.npy")
+    parser.add_argument(
+        "--pop1_geno", default="data/simulation/EAS_n5000_chr22_loci29.npy"
+    )
+    parser.add_argument(
+        "--pop2_geno", default="data/simulation/EUR_n20000_chr22_loci29.npy"
+    )
     parser.add_argument("--runname", default="nt1_nt2_propt")
     parser.add_argument("--h1sq", default=[0.1], type=float, nargs="+")
     parser.add_argument("--h2sq", default=[0.1], type=float, nargs="+")
@@ -215,6 +220,11 @@ def parse_args():
     parser.add_argument("--nsnp", default=1000, type=int)
     parser.add_argument("--propt", default=[0.1], type=float, nargs="+")
     parser.add_argument("--pcausal", default=[0.1], type=float, nargs="+")
+    parser.add_argument(
+        "--estimate_omega",
+        action="store_true",
+        help="Estimate omega from data, otherwise use true simulated omega.",
+    )
     parser.add_argument("--out_dir", default="bench/result")
     parser.add_argument("--nrep", default=100, type=int)
     parser.add_argument(
@@ -228,6 +238,27 @@ def parse_args():
         ),
     )
     return parser.parse_args()
+
+
+def build_result_path(
+    runname,
+    h1sq,
+    h2sq,
+    gc,
+    n1,
+    n2,
+    nt1,
+    nt2,
+    nsnp,
+    propt,
+    pcausal,
+    true_omega,
+):
+    return (
+        f"{runname}/h1sq_{h1sq}_h2sq_{h2sq}_gc_{gc}_n1_{n1}_n2_{n2}"
+        f"_nt1_{nt1}_nt2_{nt2}_nsnp_{nsnp}_propt_{propt}_pcausal_{pcausal}"
+        f"_omega_{true_omega}"
+    )
 
 
 def sample_causal_ids(nsnp, num_causal):
@@ -401,6 +432,94 @@ def generate_data_tracecb2(
     )
 
 
+def estimate_tracecb2_moments(
+    b1_hat,
+    se1_hat,
+    b2_hat,
+    se2_hat,
+    bt1_hat,
+    se_t1_hat,
+    bt2_hat,
+    se_t2_hat,
+    n1,
+    n2,
+    nt1,
+    nt2,
+    ld1,
+    ld2,
+    ldx,
+    gmm_propt,
+):
+    z1 = b1_hat / (se1_hat + MIN_FLOAT)
+    z2 = b2_hat / (se2_hat + MIN_FLOAT)
+    zt1 = bt1_hat / (se_t1_hat + MIN_FLOAT)
+    zt2 = bt2_hat / (se_t2_hat + MIN_FLOAT)
+    intercept = np.array([1.0, 1.0, 0.0])
+    omega, omega_se = Run_Cross_LDSC(z1, n1, ld1, z2, n2, ld2, ldx, intercept)
+    omega_p = z2p(omega / (omega_se + MIN_FLOAT))
+
+    run_gmm = False
+    run_tracecb = False
+    run_tracecb2 = False
+    pi2_omega_sum = 0.0
+    pi2_omega_sum1 = MIN_HERITABILITY
+    pi2_omega_sum2 = MIN_HERITABILITY
+    pi12_omega_sum12 = 0.0
+
+    p_threshold = 0.10
+    if np.all(omega_p < p_threshold):
+        run_gmm = True
+        aux1, aux1_se = Run_Cross_LDSC(
+            z1, n1, ld1, zt1, nt1, ld1, ld1, intercept
+        )
+        aux2, aux2_se = Run_Cross_LDSC(
+            z2, n2, ld2, zt2, nt2, ld2, ld2, intercept
+        )
+        aux1_p = z2p(aux1 / (aux1_se + MIN_FLOAT))
+        aux2_p = z2p(aux2 / (aux2_se + MIN_FLOAT))
+
+        if np.all(aux2_p < p_threshold):
+            run_tracecb = True
+            pi2_omega_sum = (
+                aux2[1, 1]
+                - gmm_propt**2 * omega[1, 1]
+                - 2 * gmm_propt * (aux2[0, 1] - gmm_propt * omega[1, 1])
+            )
+            pi2_omega_sum = max(float(pi2_omega_sum), MIN_HERITABILITY)
+
+        if np.all(aux1_p < p_threshold) and np.all(aux2_p < p_threshold):
+            run_tracecb2 = True
+            tissue_cross, _tissue_cross_se = Run_Cross_LDSC(
+                zt1, nt1, ld1, zt2, nt2, ld2, ldx, intercept
+            )
+            pi2_omega_sum1 = max(
+                float(aux1[1, 1] - gmm_propt**2 * omega[0, 0]),
+                MIN_HERITABILITY,
+            )
+            pi2_omega_sum2 = max(
+                float(aux2[1, 1] - gmm_propt**2 * omega[1, 1]),
+                MIN_HERITABILITY,
+            )
+            pi12_omega_sum12 = float(tissue_cross[0, 1] - gmm_propt**2 * omega[0, 1])
+            pi12_bound = np.sqrt(pi2_omega_sum1 * pi2_omega_sum2) * MAX_CORR
+            pi12_omega_sum12 = float(
+                np.clip(pi12_omega_sum12, -pi12_bound, pi12_bound)
+            )
+
+    return (
+        omega,
+        omega_se,
+        omega_p,
+        run_gmm,
+        run_tracecb,
+        run_tracecb2,
+        pi2_omega_sum,
+        pi2_omega_sum1,
+        pi2_omega_sum2,
+        pi12_omega_sum12,
+    )
+
+
 def run_one(
     runname,
     G1,
@@ -419,15 +538,25 @@ def run_one(
     propt,
     pcausal,
     out_dir,
+    true_omega,
     id_sim,
     pop2_tissue_start=None,
     seed_base=None,
     seed_parts=(),
 ):
-    path = (
-        f"{runname}/h1sq_{h1sq}_h2sq_{h2sq}_gc_{gc}_n1_{n1}_n2_{n2}"
-        f"_nt1_{nt1}_nt2_{nt2}_nsnp_{nsnp}_propt_{propt}_pcausal_{pcausal}"
-        f"_omega_True"
+    path = build_result_path(
+        runname,
+        h1sq,
+        h2sq,
+        gc,
+        n1,
+        n2,
+        nt1,
+        nt2,
+        nsnp,
+        propt,
+        pcausal,
+        true_omega,
     )
     os.makedirs(os.path.join(out_dir, path), exist_ok=True)
     (
@@ -466,29 +595,60 @@ def run_one(
         seed_parts=seed_parts,
     )
     gmm_propt = propt
-    omega = omega_cb[:2, :2]
-    omega_se = np.full((2, 2), np.nan)
-    omega_p = np.full((2, 2), np.nan)
-    run_gmm = should_run_true_omega_gmm(h1sq, h2sq, gc, omega)
-    run_tracecb = run_gmm
-    run_tracecb2 = run_gmm
-    pi2_omega_sum = (
-        omega_cb[2, 2]
-        - gmm_propt**2 * omega_cb[1, 1]
-        - 2 * gmm_propt * (omega_cb[1, 2] - gmm_propt * omega_cb[1, 1])
-    )
-    pi2_omega_sum = max(float(pi2_omega_sum), MIN_HERITABILITY)
-    pi2_omega_sum1 = max(
-        float(omega_cb2[1, 1] - gmm_propt**2 * omega[0, 0]),
-        MIN_HERITABILITY,
-    )
-    pi2_omega_sum2 = max(
-        float(omega_cb2[3, 3] - gmm_propt**2 * omega[1, 1]),
-        MIN_HERITABILITY,
-    )
-    pi12_omega_sum12 = float(omega_cb2[1, 3] - gmm_propt**2 * omega[0, 1])
-    pi12_bound = np.sqrt(pi2_omega_sum1 * pi2_omega_sum2) * MAX_CORR
-    pi12_omega_sum12 = float(np.clip(pi12_omega_sum12, -pi12_bound, pi12_bound))
+    if true_omega:
+        omega = omega_cb[:2, :2]
+        omega_se = np.full((2, 2), np.nan)
+        omega_p = np.full((2, 2), np.nan)
+        run_gmm = should_run_true_omega_gmm(h1sq, h2sq, gc, omega)
+        run_tracecb = run_gmm
+        run_tracecb2 = run_gmm
+        pi2_omega_sum = (
+            omega_cb[2, 2]
+            - gmm_propt**2 * omega_cb[1, 1]
+            - 2 * gmm_propt * (omega_cb[1, 2] - gmm_propt * omega_cb[1, 1])
+        )
+        pi2_omega_sum = max(float(pi2_omega_sum), MIN_HERITABILITY)
+        pi2_omega_sum1 = max(
+            float(omega_cb2[1, 1] - gmm_propt**2 * omega[0, 0]),
+            MIN_HERITABILITY,
+        )
+        pi2_omega_sum2 = max(
+            float(omega_cb2[3, 3] - gmm_propt**2 * omega[1, 1]),
+            MIN_HERITABILITY,
+        )
+        pi12_omega_sum12 = float(omega_cb2[1, 3] - gmm_propt**2 * omega[0, 1])
+        pi12_bound = np.sqrt(pi2_omega_sum1 * pi2_omega_sum2) * MAX_CORR
+        pi12_omega_sum12 = float(np.clip(pi12_omega_sum12, -pi12_bound, pi12_bound))
+    else:
+        (
+            omega,
+            omega_se,
+            omega_p,
+            run_gmm,
+            run_tracecb,
+            run_tracecb2,
+            pi2_omega_sum,
+            pi2_omega_sum1,
+            pi2_omega_sum2,
+            pi12_omega_sum12,
+        ) = estimate_tracecb2_moments(
+            b1_hat,
+            se1_hat,
+            b2_hat,
+            se2_hat,
+            bt1_hat,
+            se_t1_hat,
+            bt2_hat,
+            se_t2_hat,
+            n1,
+            n2,
+            nt1,
+            nt2,
+            ld1,
+            ld2,
+            ldx,
+            gmm_propt,
+        )
 
     (
         pop1_beta,
@@ -638,6 +798,7 @@ def main():
     validate_unit_interval("--h2sq", args.h2sq)
     validate_unit_interval("--propt", args.propt)
     validate_unit_interval("--pcausal", args.pcausal)
+    trueOmega = not args.estimate_omega
 
     total = (
         len(args.h1sq)
@@ -700,6 +861,7 @@ def main():
                                                 propt,
                                                 pcausal,
                                                 args.out_dir,
+                                                trueOmega,
                                                 rep,
                                                 pop2_tissue_start=None,
                                                 seed_base=base_seed,

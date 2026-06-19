@@ -36,6 +36,9 @@ run_tracecb2_grid() {
         --nrep "${NREP}"
         --seed "${TRACECB2_SEED}"
     )
+    if [[ "${_omega_kind}" == "estimate" ]]; then
+        sim_args+=(--estimate_omega)
+    fi
     run_cmd "${sim_args[@]}"
 }
 

@@ -188,6 +188,10 @@ def auto_ylim(df, metric, row, col, x, ymin=None, ymax=None):
     return y0, y1
 
 
+def build_plot_path(img_dir, runname, metric, suffix=""):
+    return os.path.join(img_dir, f"{runname}_{metric}{suffix}.pdf")
+
+
 def plot(
     result_df,
     runname,
@@ -280,7 +284,7 @@ def plot(
     )
     img_dir = img_dir or os.path.join(base_path, "img")
     os.makedirs(img_dir, exist_ok=True)
-    save_name = os.path.join(img_dir, f"{runname}_{metric}_tracecb2{suffix}.pdf")
+    save_name = build_plot_path(img_dir, runname, metric, suffix)
     g.savefig(save_name, bbox_inches="tight")
     plt.close()
     print(f"Plot saved to {save_name}")
