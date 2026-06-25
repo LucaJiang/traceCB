@@ -719,7 +719,7 @@ def generate_data(
         )
         unknown_ids = unknown_id_rng.choice(np.arange(nsnp), num_causal, replace=False)
         beta_unknown[unknown_ids] = unknown_effect_rng.normal(
-            loc=0.0, scale=h2sq / causal_mass, size=num_causal
+            loc=0.0, scale=math.sqrt(h2sq / causal_mass), size=num_causal
         )
     tissue_hsq = h2sq if tissue_has_effect else 0.0
     tissue_noise_var = 1 - (pi_ind**2 + (1 - pi_ind) ** 2) * tissue_hsq

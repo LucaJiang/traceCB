@@ -33,7 +33,7 @@ ct_proportion_df = ct_proportion_df.set_index("Mixture")
 print(ct_proportion_df)
 print("Average cell type proportions:")
 for ct in map_dict.keys():
-    print(f"{ct}: {ct_proportion_df[ct].mean():.8f}")
+    print(f"{ct}: {ct_proportion_df[ct].mean():.10f}")
 
 
 # %%
