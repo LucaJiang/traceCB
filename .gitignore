@@ -5,6 +5,7 @@ bench/
 tools/
 tests/
 poster/
+output/
 .DS_Store
 
 # temporary files

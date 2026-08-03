@@ -13,10 +13,9 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 
-DEFAULT_RESULT_DIR = Path(
-    "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea"
-)
-METADATA_PATH = Path("/home/wjiang49/traceCB/src/visual/metadata.json")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_RESULT_DIR = REPO_ROOT / "output" / "sldsc_gsea_eur_release_matched"
+METADATA_PATH = REPO_ROOT / "src" / "visual" / "metadata.json"
 
 INCREMENTAL_ORDER = ("Original", "traceC increment", "traceCB increment")
 ANNOTATION_SHORT_LABELS = {
@@ -207,11 +206,11 @@ def plot_incremental_enrichment(frame: pd.DataFrame, out_dir: Path) -> None:
         annot=plot_annotations,
         fmt="",
         cmap="viridis",
-        vmin=0.5,
-        vmax=max(2.0, float(np.nanmax(plot_values.to_numpy(dtype=float)))),
+        vmin=0.9,
+        vmax=1.3,
         linewidths=0.45,
         linecolor="white",
-        cbar_kws={"label": "Enrichment", "shrink": 0.70},
+        cbar_kws={"label": "Enrichment", "shrink": 0.70, "extend": "both"},
         annot_kws={"fontsize": 7.5},
         ax=ax,
     )
@@ -230,14 +229,19 @@ def write_readme(out_dir: Path) -> None:
     body = """# S-LDSC GSEA Visualization
 
 Files in this directory summarize eGene-interval SNP S-LDSC enrichment screens.
-Each custom annotation was run separately as `baselineLD + one custom
-annotation`, not as a three-column custom joint model.
+The eGene sets and cis intervals are EAS/BBJ-derived. Their binary annotations
+and custom LD scores were regenerated on 1000 Genomes Phase 3 EUR SNPs. Each
+custom annotation was run separately as `EUR baseline-LD v2.2 + one custom
+annotation`, not as a three-column custom joint model. EUR HapMap3 non-MHC
+weights and EUR allele frequencies were used.
 
 - `incremental_enrichment_heatmap.*`: study-specific annotations from
   original eGenes, traceC-increment eGenes, and traceCB-increment eGenes. SNPs
   are annotated if they overlap the selected eGene cis intervals. Drug allergy
   is omitted from this preview figure. The bottom row is the study-wise average
-  enrichment for each trait/annotation column.
+  enrichment for each trait/annotation column. The color scale is fixed at
+  0.9--1.3 for cross-panel comparison; the colorbar extensions mark clipped
+  values, while cell labels retain the estimates.
 """
     (out_dir / "README.md").write_text(body)
 

@@ -12,6 +12,9 @@ This repository contains code for the **traceCB** paper, featuring the main algo
 
 - `src/traceCB`: The main source code for the Python package.
 - `src/coloc`: Scripts for colocalization analysis.
+- `src/enrichment`: Reproducible enrichment workflows, including the
+  ancestry-matched EUR S-LDSC rerun and its provenance checks; see
+  [`src/enrichment/README.md`](src/enrichment/README.md).
 - `src/visual`: Visualization scripts for GMM results.
 - `shell`: Shell scripts for running the pipeline steps (preprocessing, LDSC, GMM, etc.).
 - `docs`: Documentation and tutorials.

@@ -17,12 +17,14 @@ export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
 
-RESULT_DIR="${RESULT_DIR:-/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea}"
-LDSC_DIR="${LDSC_DIR:-/home/group1/wjiang49/software/ldsc}"
-BFILE_PREFIX="${BFILE_PREFIX:-/home/group1/wjiang49/data/1000G/1000G_EAS_EUR/EAS/1000G.EAS.QC.}"
-PRINT_SNPS="${PRINT_SNPS:-/home/group1/wjiang49/data/1000G/hm3_no_MHC.list.txt}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+RESULT_DIR="${RESULT_DIR:-${REPO_ROOT}/output/sldsc_gsea_eur_release_matched}"
+LDSC_DIR="${LDSC_DIR:?Set LDSC_DIR to an LDSC source checkout}"
+BFILE_PREFIX="${BFILE_PREFIX:-${RESULT_DIR}/reference/1000G_EUR_Phase3_plink/1000G.EUR.QC.}"
+PRINT_SNPS="${PRINT_SNPS:-${RESULT_DIR}/reference/hm3_no_MHC.list.txt}"
 MAX_JOBS="${MAX_JOBS:-72}"
-OVERWRITE="${OVERWRITE:-0}"
+OVERWRITE="${OVERWRITE:-1}"
 MANIFEST="${RESULT_DIR}/metadata/annotation_manifest.tsv"
 LOG_DIR="${RESULT_DIR}/logs"
 
@@ -33,20 +35,28 @@ if [[ ! -f "${MANIFEST}" ]]; then
 fi
 
 FAILURES=0
+ACTIVE_JOBS=0
+
+if [[ ! "${MAX_JOBS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "[error] MAX_JOBS must be a positive integer: ${MAX_JOBS}" >&2
+  exit 1
+fi
 
 wait_for_slot() {
-  while [[ "$(jobs -r -p | wc -l)" -ge "${MAX_JOBS}" ]]; do
+  if (( ACTIVE_JOBS >= MAX_JOBS )); then
     if ! wait -n; then
       FAILURES=1
     fi
-  done
+    ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
+  fi
 }
 
 wait_for_all() {
-  while [[ "$(jobs -r -p | wc -l)" -gt 0 ]]; do
+  while (( ACTIVE_JOBS > 0 )); do
     if ! wait -n; then
       FAILURES=1
     fi
+    ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
   done
 }
 
@@ -84,6 +94,7 @@ import csv
 import sys
 
 seen = set()
+print("AnnotID\tAnnotPrefix")
 with open(sys.argv[1], newline="") as handle:
     reader = csv.DictReader(handle, delimiter="\t")
     for row in reader:
@@ -94,12 +105,16 @@ with open(sys.argv[1], newline="") as handle:
         print(f"{row['AnnotID']}\t{row['AnnotPrefix']}")
 PY
 
-while IFS=$'\t' read -r annot_id prefix; do
-  for chrom in {1..22}; do
-    wait_for_slot
-    run_one "${annot_id}" "${prefix}" "${chrom}" &
+{
+  IFS= read -r _header
+  while IFS=$'\t' read -r annot_id prefix; do
+    for chrom in {1..22}; do
+      wait_for_slot
+      run_one "${annot_id}" "${prefix}" "${chrom}" &
+      ACTIVE_JOBS=$((ACTIVE_JOBS + 1))
+    done
   done
-done < "${RESULT_DIR}/metadata/annotation_prefixes.tsv"
+} < "${RESULT_DIR}/metadata/annotation_prefixes.tsv"
 
 wait_for_all
 if [[ "${FAILURES}" != "0" ]]; then

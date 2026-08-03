@@ -3,7 +3,7 @@
 
 This pipeline does not directly annotate the discovered eSNP rsID lists. It
 first defines method-specific eGene sets from each study's GMM summary table,
-then marks every EAS 1000G reference SNP as 1 if its physical position falls
+then marks every EUR 1000G reference SNP as 1 if its physical position falls
 inside the tested cis interval of any selected eGene.
 
 Each custom annotation is written as a separate one-column thin `.annot.gz`
@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,13 +25,10 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_RESULT_DIR = Path(
-    "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea"
-)
-DEFAULT_STUDY_DIR = Path("/home/group1/wjiang49/data/traceCB/EAS_eQTLGen")
-DEFAULT_BIM_PREFIX = Path(
-    "/home/group1/wjiang49/data/1000G/1000G_EAS_EUR/EAS/1000G.EAS.QC."
-)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_DIR = Path(__file__).with_name("config")
+DEFAULT_RESULT_DIR = REPO_ROOT / "output" / "sldsc_gsea_eur_release_matched"
+DEFAULT_TRAIT_CONFIG = CONFIG_DIR / "traits.tsv"
 
 STUDIES = (
     "QTD000021",
@@ -57,64 +56,6 @@ STUDY_LABELS = {
     "QTD000115": "NK | Gilchrist(247)",
 }
 
-TRAITS = (
-    {
-        "Trait": "ukbb_self_report_asthma",
-        "TraitLabel": "Asthma",
-        "TraitGroup": "Positive immune/metabolic traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/ukbb_immune_hm3/"
-            "ukbb_self_report_asthma.sumstats.gz"
-        ),
-    },
-    {
-        "Trait": "ukb_self_report_diabetes",
-        "TraitLabel": "Diabetes",
-        "TraitGroup": "Positive immune/metabolic traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/ukbb_extra_immune_hm3/"
-            "ukb_self_report_diabetes.sumstats.gz"
-        ),
-    },
-    {
-        "Trait": "ukbb_drug_allergy_history",
-        "TraitLabel": "Drug allergy",
-        "TraitGroup": "Positive immune/metabolic traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/ukbb_immune_hm3/"
-            "ukbb_drug_allergy_history.sumstats.gz"
-        ),
-    },
-    {
-        "Trait": "ukb_hypertension_phecode",
-        "TraitLabel": "Hypertension",
-        "TraitGroup": "Positive immune/metabolic traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/"
-            "ukbb_nondiabetes_disease_hm3/ukb_hypertension_phecode.sumstats.gz"
-        ),
-    },
-    {
-        "Trait": "ukb_chronotype",
-        "TraitLabel": "Chronotype",
-        "TraitGroup": "Negative control traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/"
-            "ukbb_negative_control_hm3/ukb_chronotype.sumstats.gz"
-        ),
-    },
-    {
-        "Trait": "ukb_age_completed_education",
-        "TraitLabel": "Age completed education",
-        "TraitGroup": "Negative control traits",
-        "SumstatsPath": (
-            "/home/group1/wjiang49/data/EUR_GWAS/pan_ukb/"
-            "ukbb_negative_control_hm3/ukb_age_completed_education.sumstats.gz"
-        ),
-    },
-)
-
-
 @dataclass(frozen=True)
 class AnnotationSpec:
     annot_id: str
@@ -129,8 +70,16 @@ class AnnotationSpec:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--result-dir", type=Path, default=DEFAULT_RESULT_DIR)
-    parser.add_argument("--study-dir", type=Path, default=DEFAULT_STUDY_DIR)
-    parser.add_argument("--bim-prefix", type=Path, default=DEFAULT_BIM_PREFIX)
+    parser.add_argument("--study-dir", type=Path, required=True)
+    parser.add_argument("--gwas-root", type=Path)
+    parser.add_argument(
+        "--trait-config", type=Path, default=DEFAULT_TRAIT_CONFIG
+    )
+    parser.add_argument(
+        "--bim-prefix",
+        type=Path,
+        help="EUR PLINK prefix; defaults to RESULT_DIR/reference/.../1000G.EUR.QC.",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 
@@ -232,6 +181,7 @@ def build_annotation_specs(study_dir: Path) -> list[AnnotationSpec]:
     study_intervals: dict[str, dict[str, dict[int, tuple[int, int]]]] = {}
 
     for study in STUDIES:
+        print(f"[intervals] {study}", flush=True)
         summary = read_summary(study_dir, study)
         gene_sets = egenes_from_summary(summary)
         study_gene_sets[(study, "original")] = gene_sets["original"]
@@ -318,17 +268,57 @@ def annotate_positions(positions: np.ndarray, intervals: tuple[tuple[int, int], 
     return (open_count > 0).astype(np.uint8)
 
 
-def write_trait_manifest(result_dir: Path) -> None:
+def write_trait_manifest(
+    result_dir: Path, trait_config: Path, gwas_root: Path | None
+) -> None:
     path = result_dir / "metadata" / "trait_manifest.tsv"
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = []
-    for index, trait in enumerate(TRAITS):
-        sumstats_path = Path(str(trait["SumstatsPath"]))
+    traits = pd.read_csv(trait_config, sep="\t", dtype=str)
+    required = {
+        "Trait",
+        "TraitLabel",
+        "TraitGroup",
+        "GWASAncestry",
+        "GenomeBuild",
+        "GWASSource",
+        "SumstatsRelativePath",
+    }
+    missing = required.difference(traits.columns)
+    if missing:
+        raise ValueError(f"{trait_config} missing columns: {sorted(missing)}")
+    if traits["Trait"].duplicated().any():
+        raise ValueError(f"Duplicate trait IDs in {trait_config}")
+
+    rows: list[dict[str, object]] = []
+    for index, trait in traits.iterrows():
+        sumstats_path = Path(trait["SumstatsRelativePath"])
+        if not sumstats_path.is_absolute():
+            if gwas_root is None:
+                raise ValueError(
+                    "--gwas-root is required when trait paths are relative"
+                )
+            sumstats_path = gwas_root / sumstats_path
+        sumstats_path = sumstats_path.resolve()
         if not sumstats_path.exists():
             raise FileNotFoundError(sumstats_path)
-        rows.append({"TraitOrder": index, **trait})
+        row = {
+            "TraitOrder": index,
+            **{column: trait[column] for column in required - {"SumstatsRelativePath"}},
+            "SumstatsPath": str(sumstats_path),
+        }
+        rows.append(row)
     with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()), delimiter="\t")
+        fieldnames = [
+            "TraitOrder",
+            "Trait",
+            "TraitLabel",
+            "TraitGroup",
+            "GWASAncestry",
+            "GenomeBuild",
+            "GWASSource",
+            "SumstatsPath",
+        ]
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, delimiter="\t")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -344,6 +334,7 @@ def write_annotation_files(
     bim_by_chr = {chrom: read_bim(bim_prefix, chrom) for chrom in range(1, 23)}
 
     for spec in specs:
+        print(f"[annotation] {spec.annot_id}", flush=True)
         out_dir = annot_root / spec.annot_id
         out_dir.mkdir(parents=True, exist_ok=True)
         annotated_snps: list[str] = []
@@ -370,6 +361,17 @@ def write_annotation_files(
             set_path.write_text("\n".join(sorted(set(annotated_snps))) + "\n")
 
         interval_count = sum(len(v) for v in spec.intervals_by_chr.values())
+        definition_payload = {
+            "AnnotID": spec.annot_id,
+            "Genes": sorted(spec.genes),
+            "IntervalsByChromosome": {
+                str(chrom): [list(interval) for interval in intervals]
+                for chrom, intervals in sorted(spec.intervals_by_chr.items())
+            },
+        }
+        definition_sha256 = hashlib.sha256(
+            json.dumps(definition_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
         manifest_rows.append(
             {
                 "AnnotID": spec.annot_id,
@@ -384,7 +386,11 @@ def write_annotation_files(
                 "AnnotationLabel": spec.label,
                 "InputGenes": len(spec.genes),
                 "InputIntervals": interval_count,
+                "DefinitionSHA256": definition_sha256,
                 "InputSNPs": annotated_count,
+                "AnnotationDerivation": "EAS/BBJ-derived eGene cis intervals",
+                "SNPReferencePopulation": "EUR",
+                "GenomeBuild": "GRCh37",
                 "AnnotPrefix": str(annot_root / spec.annot_id / f"{spec.annot_id}."),
             }
         )
@@ -395,6 +401,34 @@ def write_annotation_files(
         writer = csv.DictWriter(handle, fieldnames=list(manifest_rows[0].keys()), delimiter="\t")
         writer.writeheader()
         writer.writerows(manifest_rows)
+
+    gene_set_path = result_dir / "metadata" / "annotation_egene_sets.tsv.gz"
+    with gzip.open(gene_set_path, "wt", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["AnnotID", "Gene"], delimiter="\t")
+        writer.writeheader()
+        for spec in specs:
+            for gene in sorted(spec.genes):
+                writer.writerow({"AnnotID": spec.annot_id, "Gene": gene})
+
+    interval_path = result_dir / "metadata" / "annotation_cis_intervals.tsv.gz"
+    with gzip.open(interval_path, "wt", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["AnnotID", "CHR", "Start", "End"],
+            delimiter="\t",
+        )
+        writer.writeheader()
+        for spec in specs:
+            for chrom, intervals in sorted(spec.intervals_by_chr.items()):
+                for start, end in intervals:
+                    writer.writerow(
+                        {
+                            "AnnotID": spec.annot_id,
+                            "CHR": chrom,
+                            "Start": start,
+                            "End": end,
+                        }
+                    )
 
 
 def write_readme(result_dir: Path) -> None:
@@ -414,12 +448,18 @@ Definition:
    matching the plotting/GSEA utilities used elsewhere in the project.
 2. For every selected eGene, its cis interval is the min and max `POS` among
    tested SNPs in the corresponding study's `INFO/chr*.csv`.
-3. A 1000G EAS reference SNP is annotated as 1 if its BIM position overlaps at
+3. The eGene sets and cis-interval definitions are EAS/BBJ-derived and are not
+   changed by the ancestry matching of the S-LDSC reference stack.
+4. A 1000 Genomes Phase 3 EUR reference SNP is annotated as 1 if its GRCh37 BIM position overlaps at
    least one selected eGene interval; all other reference SNPs are 0.
 
-Each custom annotation is run separately as `baselineLD + one custom
-annotation` with `--overlap-annot`. This avoids estimating original,
+Each custom annotation is run separately as `EUR baseline-LD v2.2 + one
+custom annotation` with `--overlap-annot`. This avoids estimating original,
 traceC_increment, and traceCB_increment in the same custom joint model.
+
+All LD scores, regression weights, allele frequencies, and regression SNPs
+used downstream are EUR ancestry-matched. The baseline model is the 97-category
+1000 Genomes Phase 3 EUR baseline-LD model v2.2.
 
 Annotation families:
 
@@ -435,12 +475,22 @@ Annotation families:
 
 def main() -> None:
     args = parse_args()
-    args.result_dir.mkdir(parents=True, exist_ok=True)
-    specs = build_annotation_specs(args.study_dir)
-    write_trait_manifest(args.result_dir)
-    write_annotation_files(args.result_dir, specs, args.bim_prefix, args.overwrite)
-    write_readme(args.result_dir)
-    print(f"[done] wrote {len(specs)} single-column annotations under {args.result_dir}", flush=True)
+    result_dir = args.result_dir.resolve()
+    study_dir = args.study_dir.resolve()
+    result_dir.mkdir(parents=True, exist_ok=True)
+    bim_prefix = args.bim_prefix or (
+        result_dir
+        / "reference/1000G_EUR_Phase3_plink/1000G.EUR.QC."
+    )
+    bim_prefix = bim_prefix.resolve()
+    specs = build_annotation_specs(study_dir)
+    write_trait_manifest(result_dir, args.trait_config, args.gwas_root)
+    write_annotation_files(result_dir, specs, bim_prefix, args.overwrite)
+    write_readme(result_dir)
+    print(
+        f"[done] wrote {len(specs)} single-column annotations under {result_dir}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

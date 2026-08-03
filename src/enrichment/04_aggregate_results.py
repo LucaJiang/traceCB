@@ -10,8 +10,10 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_RESULT_DIR = Path(
-    "/home/group1/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea"
+DEFAULT_RESULT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "output"
+    / "sldsc_gsea_eur_release_matched"
 )
 
 STUDY_ORDER = {
@@ -62,6 +64,17 @@ def numeric(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     for column in columns:
         out[column] = pd.to_numeric(out[column], errors="coerce")
     return out
+
+
+def bh_adjust(values: pd.Series) -> pd.Series:
+    p = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
+    out = np.full_like(p, np.nan)
+    valid = np.flatnonzero(np.isfinite(p))
+    order = valid[np.argsort(p[valid])]
+    ranked = p[order] * len(valid) / np.arange(1, len(valid) + 1)
+    ranked = np.minimum.accumulate(ranked[::-1])[::-1]
+    out[order] = np.minimum(ranked, 1.0)
+    return pd.Series(out, index=values.index)
 
 
 def main() -> None:
@@ -144,6 +157,7 @@ def main() -> None:
     result = result.sort_values(
         ["Model", "TraitOrder", "StudyOrder", "AnnotationOrder"], kind="stable"
     ).reset_index(drop=True)
+    result["Enrichment_FDR"] = bh_adjust(result["Enrichment_p"])
     result.to_csv(out_dir / "master_sldsc_gsea_results.csv", index=False)
     result[result["Model"] == "incremental"].to_csv(
         out_dir / "incremental_sldsc_results.csv", index=False
@@ -160,6 +174,7 @@ def main() -> None:
             median_enrichment=("Enrichment", "median"),
             mean_tau_z=("Tau_Z_score", "mean"),
             n_nominal_enrichment_p_lt_0_05=("Enrichment_p", lambda x: int((x < 0.05).sum())),
+            n_enrichment_fdr_lt_0_05=("Enrichment_FDR", lambda x: int((x < 0.05).sum())),
             mean_prop_snps=("Prop._SNPs", "mean"),
         )
         .reset_index()
