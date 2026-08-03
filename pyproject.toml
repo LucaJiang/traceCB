@@ -30,6 +30,7 @@ keywords = [
 dependencies = [
     "numpy",
     "pandas",
+    "polars",
     "numba",
     "scipy",
     "pyarrow",

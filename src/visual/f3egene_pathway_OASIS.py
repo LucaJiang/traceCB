@@ -8,6 +8,7 @@ import matplotlib.colors as mcolors
 
 # config, gene list obtain from onek1k paper
 save_path += "/pathway"
+os.makedirs(save_path, exist_ok=True)
 Nuclear_gene_list = [
     "ACTA2",
     "AHI1",
@@ -110,6 +111,13 @@ manual_annot_gene_dict = {
     "PHF5A": "ENSG00000100410",
     "ZNF652": "ENSG00000198740",
 }
+
+gene_converter = geneid2name()
+gene_name_to_id = {
+    gene: manual_annot_gene_dict.get(gene, gene_converter.get_gene_id(gene))
+    for genes in pathways_gene_dict.values()
+    for gene in genes
+}
 # %%
 # target_pathway = "Nuclear, Cytoplasm or ER"
 # target_pathway = "Membrane or Surface"
@@ -125,7 +133,9 @@ for target_pathway in pathways_gene_dict.keys():
             index=pathway_genes,
             columns=["geneid"] + list(OASIS_celltype_dict.keys()),
         )
-        result_df["geneid"] = result_df["geneid"].astype(str)
+        # Resolve IDs independently of OASIS significance so genes absent from
+        # OASIS can still be found in our results and displayed with a black x.
+        result_df["geneid"] = result_df.index.map(gene_name_to_id)
         for celltype, aliases in OASIS_celltype_dict.items():
             for alias in aliases:
                 file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
@@ -139,15 +149,32 @@ for target_pathway in pathways_gene_dict.keys():
                         gene_pval = df[df["gene"] == gene]["pval_nominal"].min()
                         if gene_pval < egene_pval_threshold:
                             result_df.at[gene, celltype] = 1
-                            result_df.at[gene, "geneid"] = df[df["gene"] == gene][
-                                "phenotype_id"
-                            ].values[0]
                         # else:
                         #     print(f"{gene} in {alias} of {celltype} not significant: pval {gene_pval}")
         return result_df
 
+    def get_oasis_gene_availability():
+        """Mark genes present in each matching OASIS cell-type summary."""
+        result_df = pd.DataFrame(
+            0,
+            index=pathway_genes,
+            columns=list(OASIS_celltype_dict.keys()),
+        )
+        for celltype, aliases in OASIS_celltype_dict.items():
+            available_genes = set()
+            for alias in aliases:
+                file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+                if not os.path.exists(file_path):
+                    print(f"File not found: {file_path}")
+                    continue
+                df = pd.read_csv(file_path, sep="\t", usecols=["gene"])
+                available_genes.update(df.loc[df["gene"].isin(pathway_genes), "gene"])
+            result_df.loc[result_df.index.isin(available_genes), celltype] = 1
+        return result_df
+
     oasis_egene_df_1e5 = get_egene_OASIS(egene_pval_threshold=1e-5)
     oasis_egene_df_5e3 = get_egene_OASIS(egene_pval_threshold=5e-3)
+    oasis_gene_available_df = get_oasis_gene_availability()
     for i, row in oasis_egene_df_1e5.iterrows():
         gene = row.name
         if gene in manual_annot_gene_dict:
@@ -208,6 +235,9 @@ for target_pathway in pathways_gene_dict.keys():
 
     # 2. 创建一个与 gene_qtd_df 形状相同的复制标记 DataFrame
     replicate_df = pd.DataFrame(0, index=gene_qtd_df.index, columns=gene_qtd_df.columns)
+    replicate_available_df = pd.DataFrame(
+        0, index=gene_qtd_df.index, columns=gene_qtd_df.columns
+    )
     for study_name in replicate_df.columns:
         study_id = name2id[study_name]
         cell_type = meta_data["id2celltype"][study_id]
@@ -215,11 +245,13 @@ for target_pathway in pathways_gene_dict.keys():
         replicate_df[study_name] = oasis_egene_df_5e3[cell_type]
         # 如果oasis_egene_df_1e5中该基因在该细胞类型中显著，则标记为2
         replicate_df.loc[oasis_egene_df_1e5[cell_type] > 0, study_name] = 2
+        replicate_available_df[study_name] = oasis_gene_available_df[cell_type]
 
     # 3. 准备绘图参数
     colors_list = ["#edede9"] + list(meta_data["Colors"].values())
     # colors_list[3] = "#64c2f4"
-    symbol_color = "#982536"
+    replicate_symbol_color = "#982536"
+    missing_symbol_color = "#000000"
     title = f"eGenes of {target_pathway}"
     cmap = mcolors.ListedColormap(colors_list)
     bounds = [-0.5, 0.5, 1.5, 2.5, 3.5]
@@ -230,11 +262,6 @@ for target_pathway in pathways_gene_dict.keys():
     cell_size = 0.5
     plt.figure(figsize=(num_qtds * cell_size + 3, num_genes * cell_size + 1))
 
-    # Assign markers: "+" for replicated in OASIS (replicate_df == 1), "*" for highly significant replication (replicate_df == 2).
-    # The second assignment overwrites "+" with "*" where both conditions are met, giving "*" higher priority.
-    markers = np.where((replicate_df == 1) & (gene_qtd_df > 0), "+", "")
-    markers = np.where((replicate_df == 2) & (gene_qtd_df > 0), "++", markers)
-
     ax = sns.heatmap(
         gene_qtd_df,
         cmap=cmap,
@@ -243,10 +270,49 @@ for target_pathway in pathways_gene_dict.keys():
         linewidths=6,
         square=True,
         linecolor="white",
-        annot=markers,
-        fmt="",
-        annot_kws={"size": 8, "color": symbol_color, "ha": "center", "weight": 800},
     )
+
+    # Missing-in-OASIS markers take priority over replication symbols.
+    for y, gene in enumerate(gene_qtd_df.index):
+        for x, study_name in enumerate(gene_qtd_df.columns):
+            if gene_qtd_df.iat[y, x] <= 0:
+                continue
+            if replicate_available_df.iat[y, x] == 0:
+                ax.text(
+                    x + 0.5,
+                    y + 0.5,
+                    "x",
+                    ha="center",
+                    va="center",
+                    color=missing_symbol_color,
+                    fontsize=10,
+                    fontweight=800,
+                )
+            elif replicate_df.iat[y, x] == 2:
+                ax.text(
+                    x + 0.5,
+                    y + 0.5,
+                    "++",
+                    ha="center",
+                    va="center",
+                    color=replicate_symbol_color,
+                    fontsize=8,
+                    fontweight=800,
+                )
+            elif replicate_df.iat[y, x] == 1:
+                ax.text(
+                    x + 0.5,
+                    y + 0.5,
+                    "+",
+                    ha="center",
+                    va="center",
+                    color=replicate_symbol_color,
+                    fontsize=8,
+                    fontweight=800,
+                )
+
+    plotted_missing = ((gene_qtd_df > 0) & (replicate_available_df == 0)).sum().sum()
+    print(f"{target_pathway}: {plotted_missing} plotted cells absent from OASIS")
 
     # 定义细胞类型分组的范围
     celltype_ranges = {
@@ -292,9 +358,10 @@ for target_pathway in pathways_gene_dict.keys():
 
     # 5. 创建自定义图例
     class SymbolPatch(Patch):
-        def __init__(self, symbol="", **kwargs):
+        def __init__(self, symbol="", symbol_color="#000000", **kwargs):
             super().__init__(**kwargs)
             self.symbol = symbol
+            self.symbol_color = symbol_color
 
     class SquareSymbolHandler(HandlerPatch):
         def create_artists(
@@ -332,7 +399,7 @@ for target_pathway in pathways_gene_dict.keys():
                     orig_handle.symbol,
                     ha="center",
                     va="center",
-                    color=symbol_color,  # 与 annot_kws 中的 color 一致
+                    color=orig_handle.symbol_color,
                     fontsize=12,  # 与 annot_kws 中的 size 一致
                     fontweight=800,  # 与 annot_kws 中的 weight 一致
                     transform=trans,
@@ -341,7 +408,7 @@ for target_pathway in pathways_gene_dict.keys():
 
             return artists
 
-    # 使用与热图中 markers 相同的符号 ("+" 和 "●")
+    # 使用与热图中相同的 replication 和 missing-data 符号。
     legend_elements = [
         SymbolPatch(facecolor=colors_list[1], label=f"Identified by BBJ"),
         SymbolPatch(
@@ -357,12 +424,21 @@ for target_pathway in pathways_gene_dict.keys():
             facecolor="white",
             edgecolor="white",
             label="Replicated in OASIS (p<5e-3)",
+            symbol_color=replicate_symbol_color,
         ),
         SymbolPatch(
             symbol="++",
             facecolor="white",
             edgecolor="white",
             label="Replicated in OASIS (p<1e-5)",
+            symbol_color=replicate_symbol_color,
+        ),
+        SymbolPatch(
+            symbol="x",
+            facecolor="white",
+            edgecolor="white",
+            label="Not present in OASIS replicate summary",
+            symbol_color=missing_symbol_color,
         ),
     ]
 
