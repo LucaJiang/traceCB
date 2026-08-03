@@ -18,7 +18,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from gseapy.parser import read_gmt
+from matplotlib import colors as mcolors
 from matplotlib import transforms as mtransforms
+from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
@@ -655,6 +658,54 @@ def ora_plot_layout(n_terms: int) -> dict[str, object]:
     }
 
 
+def scale_marker_areas(
+    values: np.ndarray,
+    marker_sizes: tuple[float, float],
+    value_range: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Map overlap counts linearly onto scatter-marker areas (points squared)."""
+    values = np.asarray(values, dtype=float)
+    min_area, max_area = (float(value) for value in marker_sizes)
+    if value_range is None:
+        value_min = float(np.nanmin(values))
+        value_max = float(np.nanmax(values))
+    else:
+        value_min, value_max = (float(value) for value in value_range)
+    if math.isclose(value_min, value_max):
+        return np.full_like(values, (min_area + max_area) / 2, dtype=float)
+    return min_area + (values - value_min) * (max_area - min_area) / (
+        value_max - value_min
+    )
+
+
+def representative_overlap_values(values: np.ndarray) -> list[int]:
+    """Return up to three readable reference counts for a marker-size legend."""
+    values = np.asarray(values, dtype=float)
+    value_min = float(np.nanmin(values))
+    value_max = float(np.nanmax(values))
+    if math.isclose(value_min, value_max):
+        return [int(round(value_min))]
+
+    locator = MaxNLocator(
+        nbins=6,
+        integer=True,
+        steps=[1, 2, 2.5, 5, 10],
+    )
+    ticks = sorted(
+        {
+            int(round(tick))
+            for tick in locator.tick_values(value_min, value_max)
+            if value_min <= tick <= value_max
+        }
+    )
+    if not ticks:
+        ticks = [int(round(value_min)), int(round(value_max))]
+    if len(ticks) > 3:
+        positions = np.linspace(0, len(ticks) - 1, num=3).round().astype(int)
+        ticks = [ticks[position] for position in positions]
+    return list(dict.fromkeys(ticks))
+
+
 def pick_top_terms(
     df: pd.DataFrame,
     group_cols: list[str],
@@ -708,7 +759,10 @@ def plot_ora_dotplots(
     df = ora_df.copy()
     df["adjusted_p_value"] = pd.to_numeric(df["adjusted_p_value"], errors="coerce")
     df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
-    df = df[df["adjusted_p_value"].notna()].copy()
+    df["overlap_size"] = pd.to_numeric(df["overlap_size"], errors="coerce")
+    df = df[
+        df["adjusted_p_value"].notna() & df["overlap_size"].notna()
+    ].copy()
     if df.empty:
         return []
 
@@ -733,8 +787,6 @@ def plot_ora_dotplots(
         sub_df["neg_log10_fdr"] = -np.log10(
             sub_df["adjusted_p_value"].clip(lower=MIN_P)
         )
-        sub_df["-log10(FDR)"] = sub_df["neg_log10_fdr"]
-        sub_df["overlap"] = sub_df["overlap_size"]
 
         term_order = (
             sub_df.groupby("display_term")["adjusted_p_value"]
@@ -762,17 +814,29 @@ def plot_ora_dotplots(
         width = max(15.5, 1.03 * len(study_order) + 0.06 * max_study_width + 6.3)
 
         fig, ax = plt.subplots(figsize=(width, height))
-        sns.scatterplot(
-            data=sub_df,
-            x="Study",
-            y="display_term",
-            hue="-log10(FDR)",
-            size="overlap",
-            sizes=layout["marker_sizes"],
-            palette="viridis",
+        fdr_scores = sub_df["neg_log10_fdr"].to_numpy(dtype=float)
+        overlap_counts = sub_df["overlap_size"].to_numpy(dtype=float)
+        marker_areas = scale_marker_areas(
+            overlap_counts,
+            layout["marker_sizes"],
+        )
+        fdr_min = float(np.nanmin(fdr_scores))
+        fdr_max = float(np.nanmax(fdr_scores))
+        if math.isclose(fdr_min, fdr_max):
+            fdr_min -= 0.5
+            fdr_max += 0.5
+        color_norm = mcolors.Normalize(vmin=fdr_min, vmax=fdr_max)
+        study_positions = {study: i for i, study in enumerate(study_order)}
+        term_positions = {term: i for i, term in enumerate(term_order)}
+        scatter = ax.scatter(
+            sub_df["Study"].map(study_positions).to_numpy(dtype=float),
+            sub_df["display_term"].map(term_positions).to_numpy(dtype=float),
+            c=fdr_scores,
+            s=marker_areas,
+            cmap="viridis",
+            norm=color_norm,
             edgecolor="black",
             linewidth=0.25,
-            ax=ax,
             zorder=2,
         )
         add_celltype_annotations_top(ax, study_order, study_celltypes)
@@ -790,16 +854,57 @@ def plot_ora_dotplots(
         ax.set_yticklabels(term_order)
         ax.set_ylim(len(term_order) - 0.5, -0.5)
         ax.set_xlim(-0.5, len(study_order) - 0.5)
-        legend = ax.legend(
-            loc="center left",
-            bbox_to_anchor=(1.02, 0.5),
+
+        colorbar_ax = fig.add_axes([0.82, 0.58, 0.014, 0.18])
+        colorbar = fig.colorbar(scatter, cax=colorbar_ax)
+        colorbar.set_label(
+            r"$-\log_{10}(P_{\mathrm{adj}})$",
+            fontsize=layout["legend_title_fontsize"],
+            labelpad=8,
+        )
+        colorbar.ax.set_title(
+            "FDR-adjusted\n$P$ value",
+            fontsize=layout["legend_title_fontsize"],
+            pad=7,
+        )
+        colorbar.ax.tick_params(labelsize=layout["legend_fontsize"])
+
+        overlap_values = representative_overlap_values(overlap_counts)
+        overlap_areas = scale_marker_areas(
+            np.asarray(overlap_values, dtype=float),
+            layout["marker_sizes"],
+            value_range=(
+                float(np.nanmin(overlap_counts)),
+                float(np.nanmax(overlap_counts)),
+            ),
+        )
+        size_handles = [
+            Line2D(
+                [],
+                [],
+                linestyle="none",
+                marker="o",
+                markersize=math.sqrt(area),
+                markerfacecolor="#6f6f6f",
+                markeredgecolor="black",
+                markeredgewidth=0.25,
+            )
+            for area in overlap_areas
+        ]
+        ax.legend(
+            handles=size_handles,
+            labels=[str(value) for value in overlap_values],
+            title="Overlapping genes, $n$",
+            loc="upper left",
+            bbox_to_anchor=(1.04, 0.52),
             frameon=False,
             fontsize=layout["legend_fontsize"],
             title_fontsize=layout["legend_title_fontsize"],
+            borderaxespad=0,
+            handletextpad=1.0,
+            labelspacing=0.8,
         )
-        if legend is not None:
-            legend.set_title("-log10(FDR) / overlap")
-        fig.subplots_adjust(top=0.84, right=0.80, bottom=0.18, left=0.34)
+        fig.subplots_adjust(top=0.84, right=0.78, bottom=0.18, left=0.34)
 
         suffix = "_".join(sanitize_filename(v) for v in key)
         out_path = out_dir / f"{filename_prefix}_{suffix}.pdf"
