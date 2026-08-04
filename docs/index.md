@@ -1,6 +1,9 @@
-# Welcome to traceCB
+# traceCB
 
-**traceCB** is a Python package for **Tra**ns-ancestry **c**ell-type-specific **e**QTL effects mapping by integrating s**C**RNA-seq and **B**ulk data.
+**traceCB** maps trans-ancestry cell-type-specific eQTL effects by integrating
+single-cell and bulk-tissue summary statistics. This documentation covers the
+installable Python package, full-data workflow, tutorial, simulations, and
+manuscript analyses distributed with the repository.
 
 [![traceCB Workflow](img/traceCB.jpg)](img/traceCB.jpg)
 
@@ -8,8 +11,8 @@
     traceCB enables researchers to:
     
     * **Integrate** single-cell and bulk eQTL data for trans-ancestry ct-eQTL mapping
-    * **Estimator** Method of Moments for efficient computation
-    * **Perform** powerful while maintaining type I error control
+    * **Estimate** effects efficiently with a generalized method-of-moments model
+    * **Increase** discovery power while maintaining type I error control
 
 ---
 
@@ -27,7 +30,7 @@
 
 -   :material-speedometer: **Efficiency**
     ---
-    optimized numeric computing kernel using `numba` ensures high-performance analysis on large datasets.
+    Optimized numerical kernels using `numba` support large datasets.
 
 </div>
 
@@ -35,27 +38,46 @@
 
 ### Installation
 
-Prerequisites: Python >= 3.10
+Python 3.10 or newer is required. The repository is developed and tested with
+the Python 3.12 reference environment in `environment.yml`.
 
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
 cd traceCB
-pip install -e .
+conda env create -f environment.yml
+conda activate py312
 ```
 
-### Documentation
+For a library-only installation, use `pip install -e .` in an existing
+supported Python environment.
+
+In a lightweight or custom environment, install `.[tutorial]` to run the local
+notebook, or `.[enrichment,figures]` for the manuscript analysis scripts.
+
+### Repository organization
+
+* `src/traceCB/`: installable model implementation.
+* `scripts/`: preprocessing, LD-score, GMM, and colocalization entry points.
+* `src/preprocess/` and `src/coloc/`: workflow implementations.
+* `src/simulation/`: main, supplementary, and chromosome 22 simulations.
+* `src/enrichment/`: S-LDSC and pathway-enrichment analyses.
+* `src/figures/`: manuscript figure scripts.
+* `tests/`: unit and command-line contract tests.
+
+### Guides
 
 Explore our documentation to learn how to use traceCB:
 
-* [Pipeline Workflow](pipeline.md) - Detailed steps for data preprocessing.
-* [API Reference](api_reference.md) - Documentation for core functions.
-* [Tutorial](https://github.com/LucaJiang/traceCB/blob/master/docs/tutorial/run_traceCB.ipynb) - Jupyter notebook example.
+* [Pipeline workflow](pipeline.md) — input sources, formats, preprocessing, and full-data execution.
+* [API reference](api_reference.md) — core model functions.
+* [Tutorial](tutorial.md) — local and Google Colab walkthroughs.
+* [Simulation guide](https://github.com/lucajiang/traceCB/blob/master/src/simulation/README.md) — manuscript simulation entry points.
+* [Enrichment guide](https://github.com/lucajiang/traceCB/blob/master/src/enrichment/README.md) — S-LDSC and pathway analyses.
 
 ## Citation
 
-If you use **traceCB** in your research, please cite our paper:
-
-> *Citation pending...*
+If you use **traceCB** in your research, please cite the accompanying paper.
+Citation details will be added when the paper record is available.
 
 ## Support
 

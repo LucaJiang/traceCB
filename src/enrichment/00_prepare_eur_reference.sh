@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-RESULT_DIR="${RESULT_DIR:-${REPO_ROOT}/output/sldsc_gsea_eur_release_matched}"
+RESULT_DIR="${RESULT_DIR:-${TRACECB_ENRICHMENT_DIR:-${REPO_ROOT}/results/enrichment}}"
 REFERENCE_DIR="${REFERENCE_DIR:-${RESULT_DIR}/reference}"
 BASELINE_ARCHIVE="${REFERENCE_DIR}/1000G_Phase3_baselineLD_v2.2_ldscores.tgz"
 BASELINE_DIR="${REFERENCE_DIR}/1000G_Phase3_baselineLD_v2.2_ldscores"

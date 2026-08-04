@@ -1,109 +1,103 @@
-# traceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data
+# traceCB
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-[![Open Tutorial In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)
+[![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue.svg)](LICENSE)
+[![Open Tutorial In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb)
 
-This repository contains code for the **traceCB** paper, featuring the main algorithm and a complete pipeline for trans-ancestry cell-type-specific eQTL mapping.
+traceCB maps trans-ancestry cell-type-specific eQTL effects by integrating
+single-cell and bulk-tissue summary statistics. This repository contains the
+Python package, full-data workflows, simulations, and manuscript analyses.
 
-![traceCB_workflow](docs/img/traceCB.jpg)
+![traceCB workflow](docs/img/traceCB.jpg)
 
-## Repository Structure
+## Repository layout
 
-- `src/traceCB`: The main source code for the Python package.
-- `src/coloc`: Scripts for colocalization analysis.
-- `src/enrichment`: Reproducible enrichment workflows, including the
-  ancestry-matched EUR S-LDSC rerun and its provenance checks; see
+- `src/traceCB/`: installable traceCB package.
+- `scripts/`: full-data preprocessing, LD-score, traceCB, and colocalization workflows.
+- `src/simulation/`: main, supplementary, and chromosome 22 simulations.
+- `src/enrichment/`: reproducible ancestry-matched S-LDSC and
+  pathway-enrichment analyses; see
   [`src/enrichment/README.md`](src/enrichment/README.md).
-- `src/visual`: Visualization scripts for GMM results.
-- `shell`: Shell scripts for running the pipeline steps (preprocessing, LDSC, GMM, etc.).
-- `docs`: Documentation and tutorials.
-- `data`: Folder for storing input/output data (see `docs/pipeline.md` for structure).
+- `src/figures/`: manuscript figure scripts and shared metadata.
+- `src/preprocess/` and `src/coloc/`: workflow implementations used by `scripts/`.
+- `tests/`: unit and CLI contract tests.
+- `data/toy_example/`: small public inputs for the tutorial.
+
+Large input data and generated results are intentionally excluded from Git.
+By default, workflows read from `data/` and write to `results/`; both locations
+can be overridden with environment variables documented in `scripts/config.sh`.
 
 ## Installation
 
-### Prerequisites
-- Python >= 3.10
-- `numba`, `pyarrow`, `scipy`
-
-### Install from source
-
-Clone the repository and install the package using pip:
+Python 3.10 or newer is required. For repository-level reproduction, create the
+validated Python 3.12 reference environment from the tracked specification:
 
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
 cd traceCB
+conda env create -f environment.yml
+conda activate py312
 ```
 
-**Activate your preferred Python environment** (recommended, required python 3.10 or above):
-```bash
-conda activate <your_env_name>
-```
+For a lightweight library-only installation, use `pip install -e .` in any
+supported Python environment.
 
-Or, create a new environment:
-```bash
-conda create -n traceCB_env python=3.12
-conda activate traceCB_env
-```
-
-Then install the dependencies and this package:
-```bash
-pip install -e .
-```
-
-Installation in editable mode (`-e`) allows you to import the `traceCB` module in your scripts while keeping the ability to modify the source code if needed.
-
-## Tutorial
-
-A step-by-step tutorial notebook is provided at `docs/tutorial/run_traceCB.ipynb` and [colab](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing). This tutorial guides you through running the traceCB algorithm on a single gene example.
-
-It is highly recommended to run this tutorial first to understand the input data format and model outputs.
-
-## Usage Pipeline
-
-For full-scale analysis, we provide a structured shell-script pipeline. Detailed preprocessing steps are described in [Pipeline Documentation](https://lucajiang.github.io/traceCB/pipeline/).
-
-### 1. Configuration
-
-1. Install [s-ldxr](https://github.com/huwenboshi/s-ldxr) and [plink1.9](https://www.cog-genomics.org/plink/).
-2. Prepare python environment for `s-ldxr` which requires `pysnptools` and `statsmodels` addtionally.
-    ```bash
-    pip install pysnptools
-    pip install statsmodels
-    ```
-    Prepare R environment if you need to run COLOC. Otherwise, omit the r_env option in next step.
-3. Modify `shell/setting.sh` to specify your paths and parameters according to your environment.
-
-### 2. Run Pipeline Steps
-The analysis is divided into sequential modules:
+When using a lightweight or custom environment, add the corresponding optional
+dependencies for the local notebook and manuscript analyses:
 
 ```bash
-# 1. Merge and align GWAS summary statistics
-source shell/run_merge.sh
-
-# 2. Calculate LD scores (s-ldxr)
-source shell/run_ld.sh
-
-# 3. Run Generalized Method of Moments (GMM)
-source shell/run_gmm.sh
-
-# 4. Colocalization Analysis (Optional)
-source shell/run_coloc.sh
+pip install -e '.[tutorial]'            # local Jupyter tutorial
+pip install -e '.[enrichment,figures]'  # enrichment and figure scripts
 ```
 
-### 3. Visualization
-Scripts for visualization are provided in `src/visual/`.
+## Quick start
+
+The tutorial notebooks are available at
+[`docs/tutorial/run_traceCB.ipynb`](docs/tutorial/run_traceCB.ipynb) and on
+[Google Colab](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb).
+They use the tracked files in `data/toy_example/` and demonstrate the model on a
+single gene.
+
+## Full-data workflow
+
+External inputs such as population-specific eQTLs, tissue eQTLs, and 1000
+Genomes reference panels are not redistributed here. Set their locations in the
+environment or edit the repository-relative defaults in `scripts/config.sh`.
+The BBJ cell-type eQTL data used for the EAS analysis are available from
+[Human Database of Japan: hum0099-v1](https://humandbs.dbcls.jp/en/hum0099-v1).
+See the [pipeline guide](https://lucajiang.github.io/traceCB/pipeline/) for all
+data sources, expected input formats, and preprocessing commands.
+
+```bash
+# Optional examples
+export TRACECB_DATA_ROOT=/path/to/input-data
+export TRACECB_OUTPUT_ROOT=/path/to/results
+export SLDXR_DIR=/path/to/s-ldxr
+export PLINK_BIN=/path/to/plink
+
+bash scripts/prepare_inputs.sh
+bash scripts/run_ld_scores.sh
+bash scripts/run_gmm.sh
+bash scripts/run_colocalization.sh  # optional
+```
+
+See the [simulation guide](src/simulation/README.md) for manuscript simulation
+entry points and the [enrichment guide](src/enrichment/README.md) for the S-LDSC
+and pathway-enrichment analyses. Figure-specific dependencies and invocation
+patterns are listed in the [figure guide](src/figures/README.md).
+
+## Tests
+
+```bash
+pip install -e '.[test]'
+conda run -n py312 pytest -q
+```
 
 ## Citation
 
-If you use **traceCB** in your research, please cite our paper:
-
-> *Citation pending...*
+If you use traceCB, please cite the accompanying paper. Citation details will be
+added when the paper record is available.
 
 ## License
 
-This project is licensed under the GPL-3 License - see the LICENSE file for details.
-
-## Contact
-
-For any questions or issues, please contact [wx.jiang@my.cityu.edu.hk](mailto:wx.jiang@my.cityu.edu.hk) or open an issue on GitHub.
+traceCB is distributed under the [GPL-3.0 license](LICENSE).

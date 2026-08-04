@@ -18,6 +18,7 @@ import csv
 import gzip
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +28,15 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = Path(__file__).with_name("config")
-DEFAULT_RESULT_DIR = REPO_ROOT / "output" / "sldsc_gsea_eur_release_matched"
+DEFAULT_RESULT_DIR = Path(
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
+)
+DEFAULT_STUDY_DIR = Path(
+    os.environ.get("TRACECB_STUDY_DIR", REPO_ROOT / "results/EAS_eQTLGen")
+)
+DEFAULT_GWAS_ROOT = Path(
+    os.environ.get("TRACECB_GWAS_DIR", REPO_ROOT / "data/gwas")
+)
 DEFAULT_TRAIT_CONFIG = CONFIG_DIR / "traits.tsv"
 
 STUDIES = (
@@ -70,8 +79,8 @@ class AnnotationSpec:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--result-dir", type=Path, default=DEFAULT_RESULT_DIR)
-    parser.add_argument("--study-dir", type=Path, required=True)
-    parser.add_argument("--gwas-root", type=Path)
+    parser.add_argument("--study-dir", type=Path, default=DEFAULT_STUDY_DIR)
+    parser.add_argument("--gwas-root", type=Path, default=DEFAULT_GWAS_ROOT)
     parser.add_argument(
         "--trait-config", type=Path, default=DEFAULT_TRAIT_CONFIG
     )

@@ -108,13 +108,39 @@ def run_gmm_kernel(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studyid", help="eqtlCatalogue study id", type=str)
-    parser.add_argument("-t", "--celltype", help="cell type name", type=str)
+    parser = argparse.ArgumentParser(description="Run traceCB for one or more chromosomes.")
     parser.add_argument(
-        "-c", "--chromosome", nargs="+", help="chromosome number", type=int
+        "-s",
+        "--study",
+        dest="studyid",
+        help="eQTL Catalogue study ID",
+        type=str,
+        required=True,
     )
-    parser.add_argument("-d", "--main_dir", help="main directory", type=str)
+    parser.add_argument(
+        "-t",
+        "--cell-type",
+        dest="celltype",
+        help="cell type name",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "-c",
+        "--chromosome",
+        nargs="+",
+        help="chromosome number",
+        type=int,
+        required=True,
+    )
+    parser.add_argument(
+        "-d",
+        "--data-dir",
+        dest="main_dir",
+        help="prepared input directory",
+        type=str,
+        required=True,
+    )
     return parser.parse_args()
 
 
@@ -525,12 +551,7 @@ def main(args, chr_num):
 
 if __name__ == "__main__":
     args = parse_args()
-    if isinstance(args.chromosome, int):
-        chr_list = [int(args.chromosome)]
-    elif args.chromosome is None:
-        chr_list = []  # Or handle error
-    else:
-        chr_list = [int(i) for i in args.chromosome]
+    chr_list = [int(i) for i in args.chromosome]
 
     start_time = time.time()
     print(

@@ -1,6 +1,8 @@
-# HowTO: Run traceCB pipeline
+# Full-data pipeline
 
-This guide details the steps to preprocess data, execute the traceCB GMM model, and visualize the results.
+This guide describes how to obtain and format the external inputs, run the
+traceCB GMM model, and generate downstream colocalization and figures. Run all
+commands from the repository root.
 
 All logs will be saved to your specified `log_path`. Please review the log files carefully for any warnings or errors.
 
@@ -27,7 +29,7 @@ Data Sources:
 *   **eQTLCatalogue**: [Tabix Index](https://github.com/eQTL-Catalogue/eQTL-Catalogue-resources/blob/master/tabix/tabix_ftp_paths.tsv)
 *   **GTEx**: [Google Cloud](https://console.cloud.google.com/storage/browser/gtex-resources/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_eQTL_all_associations;tab=objects?inv=1&invt=Ab037A&prefix=&forceOnObjectsSortingFiltering=true) or [Portal](https://www.gtexportal.org/home/downloads/adult-gtex/qtl)
 *   **eQTLGen**: [Official Site](https://www.eqtlgen.org/phase1.html)
-*   **BBJ**: [Official Site](http://jenger.riken.jp/en/result)
+*   **BBJ cell-type eQTLs**: [Human Database of Japan: hum0099-v1](https://humandbs.dbcls.jp/en/hum0099-v1)
 *   **1000G**: [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [S-LDSC reference files](https://zenodo.org/records/10515792)
 *   **PopCell (AFR)**: [Nature 2023](https://doi.org/10.1038/s41586-023-06422-9). *Restricted Access* - [Apply Here](https://dataset.owey.io/doi/10.48802/owey.e4qn-9190).
 
@@ -36,7 +38,7 @@ Software:
 *   **S-LDXR**: [GitHub Algo](https://github.com/huwenboshi/s-ldxr/tree/master)
 *   **Plink1.9**: [Official Site](https://www.cog-genomics.org/plink/1.9/)
 *   **Cibersortx**: [Official Site](https://cibersortx.stanford.edu/) used for cell type proportion estimation from GTEx data.
-*   **COLOC**: [CRAN Package](https://cran.r-project.org/web/packages/coloc/index.html) used for colocalization analysis (optional).
+*   **COLOC**: [CRAN Package](https://cran.r-project.org/web/packages/coloc/index.html) used for colocalization analysis (optional). The R workflow requires `arrow`, `coloc`, `data.table`, `dplyr`, `LDlinkR`, `readr`, and `stringr`.
 
 ### Format Data by Chromosome
 
@@ -46,7 +48,7 @@ To optimize Python loading times, we split and format the data by chromosome.
 
     To process **GTEx Whole Blood** data:
     
-    `shell/GTEx_Preprocess.sh`
+    `scripts/preprocess_gtex.sh`
 
     **Input Format** (`GTEx_Analysis_v8_QTLs-GTEx_Analysis_v8_eQTL_all_associations-Whole_Blood.allpairs.txt.gz`)
     
@@ -64,7 +66,9 @@ To optimize Python loading times, we split and format the data by chromosome.
 
     To process **BBJ cell type** data:
     
-    `shell/BBJ_Preprocess.sh`
+    ```bash
+    bash scripts/preprocess_bbj.sh <cell-type>
+    ```
     
     **Input Format** (`chr22_cis_eqtl_mapping_nofilt_nomulti_with_alleles.txt.gz`)
 
@@ -82,7 +86,7 @@ To optimize Python loading times, we split and format the data by chromosome.
 
     To process **eQTLCatalogue** data:
     
-    `shell/eQTLCatalogue_Preprocess.sh`
+    `scripts/preprocess_eqtl_catalogue.sh`
 
     **Input Format** (`QTD000031.all.tsv.gz`)
 
@@ -121,7 +125,7 @@ You can directly use the preprocessed 1000G reference files for `EUR` and `EAS` 
 
 Alternatively, download the 1000G Phase 3 data from [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [s-ldxc Resource](https://zenodo.org/records/7768714). 
 
-Then run `shell/1000G_preprocess.sh` to filter samples by population (`EAS`, `EUR`, `AFR`), perform QC, and split by chromosome.
+Then run `scripts/preprocess_1000g.sh` to filter samples by population (`EAS`, `EUR`, `AFR`), perform QC, and split by chromosome.
 
 ### Cell Type Information & Proportion
 
@@ -156,14 +160,14 @@ CD4+T_cells,10.401165801186464
 
 ### Alignment
 
-Run `src/preprocess/MergeChr.py` via `shell/run_merge.sh` to align all input data files. 
+Run `src/preprocess/harmonize_inputs.py` via `scripts/prepare_inputs.sh` to align all input data files.
 
-*   Results will be saved to `save_path_main`.
+*   Results are saved to `results/<population>_<tissue-source>` by default.
 *   The cell type proportion file will strictly accompany the aligned data.
 
 **Directory Structure**:
 ```
-<save_path_main>/EAS_GTEx/QTD000021/
+results/EAS_GTEx/QTD000021/
 ├── AUX_Monocytes/
 ├── INFO/
 ├── TAR_Monocytes/
@@ -173,7 +177,7 @@ Run `src/preprocess/MergeChr.py` via `shell/run_merge.sh` to align all input dat
 ### Annotation & LD Scores
 
 #### 1. Annotate LD
-Run `src/preprocess/create_ld_annot.py` via `shell/run_ld.sh`. This step prepares 1000G data for `s-ldxr`.
+Run `src/preprocess/build_ld_annotations.py` via `scripts/run_ld_scores.sh`. This step prepares 1000G data for `s-ldxr`.
 
 !!! note Dependency
     Requires `pysnptools` and `statsmodels` to run s-ldxr. Ensure these are installed in your Python environment.
@@ -184,14 +188,14 @@ Run `src/preprocess/create_ld_annot.py` via `shell/run_ld.sh`. This step prepare
 
 **Output**:
 ```text
-<save_path_main>/EAS_GTEx/QTD000021/LDSC/LD_annotation:
+results/EAS_GTEx/QTD000021/LDSC/LD_annotation:
 1.print_snps.txt
 1.annot.gz
 ...
 ```
 
 #### 2. Run s-ldxr
-Use `shell/run_ld.sh` to calculate gene-level LD scores.
+Use `scripts/run_ld_scores.sh` to calculate gene-level LD scores.
 
 !!! failure Common Error
     ```text
@@ -214,7 +218,7 @@ After preprocessing, your study folder should follow this structure:
 └── Tissue
 ```
 
-Execute `shell/run_gmm.sh` (wraps `src/traceCB/run_gmm.py`) to run the GMM model.
+Execute `scripts/run_gmm.sh` (wraps `src/traceCB/run_gmm.py`) to run the GMM model.
 
 ### Output Files
 
@@ -243,31 +247,38 @@ Contains heritability estimates ($h^2$) and effective sample sizes ($N_{eff}$).
 
 ### Prerequisites
 
-*   [LDlinkR API Token](https://cran.r-project.org/web/packages/LDlinkR/vignettes/LDlinkR.html) (Required for `src/coloc/run_ldlink.R`)
+*   [LDlinkR API Token](https://cran.r-project.org/web/packages/LDlinkR/vignettes/LDlinkR.html), provided as `LDLINK_TOKEN`
 *   **Bedtools**: `closestBed` binary
 *   **References**: hg19/GRCh37 cytoband, Gene Annotation BED
 
-### 1. Leading SNP Annotation
-Run `src/coloc/find_leadingSNP.py`:
+### 1. Lead-variant annotation
+Run `src/coloc/prepare_loci.py`:
 
 ```bash
-python src/coloc/find_leadingSNP.py \
-  --gwas_sumstats_path <PATH> \
-  --save_path <OUTPUT> \
-  --save_prefix <PREFIX>
+LDLINK_TOKEN=<TOKEN> python src/coloc/prepare_loci.py \
+  --gwas <GWAS_SUMSTATS> \
+  --gwas-format standard \
+  --cytobands <CYTOBAND_TSV> \
+  --genes <GENE_BED> \
+  --output-dir <OUTPUT_DIR> \
+  --output-prefix <PREFIX>
 ```
 
 **Key Outputs:**
 *   `{prefix}_loci.csv`: Final result merging SNP positions with closest Ensembl gene IDs.
 
 ### 2. Run COLOC
-Use `shell/run_coloc.sh` to execute the colocalization analysis for each study.
+Use `scripts/run_colocalization.sh` to execute the colocalization analysis for each study.
 
 ## Visualization
 
-Visualization scripts are located in `src/visual/`.
+Visualization scripts are located in `src/figures/`.
 
-*   **Logic**: `src/visual/utils.py` selects which study to plot.
-*   **Style**: `src/visual/meta_data.json` defines colors, labels, and plot settings.
+Install their Python dependencies with `pip install -e '.[figures]'` and see
+`src/figures/README.md` for R dependencies and invocation examples.
 
-To reproduce Figure 3 or Figure 5 from our paper, ensure the correct study is selected in `utils.py`.
+*   **Logic**: `src/figures/utils.py` selects which study to plot.
+*   **Style**: `src/figures/metadata.json` defines colors, labels, and plot settings.
+
+Use `TRACECB_STUDY_DIR` and `TRACECB_FIGURE_DIR` to select inputs and outputs
+without editing the figure scripts.

@@ -41,9 +41,19 @@ dependencies = [
     "kaleido",
 ]
 
+[project.optional-dependencies]
+enrichment = ["gseapy"]
+figures = ["adjustText", "matplotlib-venn", "pypdfium2", "Pillow"]
+tutorial = ["ipykernel", "nbconvert", "notebook"]
+test = ["pytest"]
+ci = ["pytest", "ipykernel", "nbconvert"]
+docs = ["mkdocs-material"]
+
 [project.urls]
 "Homepage" = "https://github.com/lucajiang/traceCB"
 "Bug Tracker" = "https://github.com/lucajiang/traceCB/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["traceCB*"]
+namespaces = false

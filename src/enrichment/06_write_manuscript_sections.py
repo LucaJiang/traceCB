@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 
-DEFAULT_RESULT_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "output"
-    / "sldsc_gsea_eur_release_matched"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_RESULT_DIR = Path(
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
 )
 
 

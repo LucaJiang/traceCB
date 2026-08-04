@@ -3,8 +3,14 @@
 This directory contains the reproducible EUR-reference rerun of the
 eGene-interval stratified LD score regression (S-LDSC) analysis. Generated
 reference files, annotations, logs, and results are written under
-`output/sldsc_gsea_eur_release_matched/` by default and are intentionally not
+`results/enrichment/` by default and are intentionally not
 tracked by Git.
+
+Install the optional Python dependencies before running the enrichment steps:
+
+```bash
+pip install -e '.[enrichment]'
+```
 
 ## Scientific definition
 
@@ -59,11 +65,11 @@ terms and for the Pan-UK Biobank data-use requirements.
 ## Configuration and command
 
 The tracked trait configuration is `config/traits.tsv`. Its summary-statistic
-paths are relative to `GWAS_ROOT`. The pipeline requires:
+paths are relative to `GWAS_ROOT`. The pipeline accepts:
 
 - `STUDY_DIR`: directory containing the 10 `QTD*` study folders
 - `GWAS_ROOT`: directory containing the Pan-UK Biobank sumstats subdirectories
-- `LDSC_DIR`: checkout containing `ldsc.py`
+- `LDSC_DIR`: checkout containing `ldsc.py` (defaults to `external/ldsc`)
 - an LDSC-compatible environment (the stage scripts activate a Conda
   environment named `ldsc` unless `SKIP_CONDA_ACTIVATE=1`)
 
@@ -74,15 +80,28 @@ STUDY_DIR=/path/to/EAS_eQTLGen \
 GWAS_ROOT=/path/to/pan_ukb \
 LDSC_DIR=/path/to/ldsc \
 PYTHON_BIN=python \
-RESULT_DIR="$PWD/output/sldsc_gsea_eur_release_matched" \
-LDSC_L2_MAX_JOBS=72 \
-LDSC_H2_MAX_JOBS=72 \
-OVERWRITE=1 \
+RESULT_DIR="$PWD/results/enrichment" \
+LDSC_L2_MAX_JOBS=8 \
+LDSC_H2_MAX_JOBS=8 \
+OVERWRITE=0 \
 bash src/enrichment/run_all_sldsc_gsea.sh
 ```
 
 Use a new, explicitly EUR-labelled result directory for a clean rerun. Set
 `OVERWRITE=0` to reuse complete outputs already present in that directory.
+
+Run the separate ORA workflow with:
+
+```bash
+RESULT_ROOT=results/enrichment \
+GMT_DIR=data/gmt \
+WORKERS=8 \
+bash src/enrichment/run_ora_pipeline.sh
+```
+
+Existing GMT files are reused by default. Set `PREPARE_GMT_ONLY=1` to prepare
+them without running ORA, `SKIP_GMT_PREP=1` to skip preparation, or
+`FORCE_GMT=1` to rebuild them.
 
 ## Pipeline stages
 

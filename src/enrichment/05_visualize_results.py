@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,8 +15,10 @@ from matplotlib import pyplot as plt
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_RESULT_DIR = REPO_ROOT / "output" / "sldsc_gsea_eur_release_matched"
-METADATA_PATH = REPO_ROOT / "src" / "visual" / "metadata.json"
+DEFAULT_RESULT_DIR = Path(
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
+)
+METADATA_PATH = REPO_ROOT / "src/figures/metadata.json"
 
 INCREMENTAL_ORDER = ("Original", "traceC increment", "traceCB increment")
 ANNOTATION_SHORT_LABELS = {

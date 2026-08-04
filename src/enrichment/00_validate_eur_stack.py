@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -25,7 +26,9 @@ STUDIES = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_RESULT_DIR = REPO_ROOT / "output" / "sldsc_gsea_eur_release_matched"
+DEFAULT_RESULT_DIR = Path(
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
+)
 DEFAULT_EXPECTED_DEFINITIONS = (
     Path(__file__).with_name("config") / "annotation_definition_checksums.tsv"
 )

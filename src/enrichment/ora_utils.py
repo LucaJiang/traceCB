@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import sys
 import textwrap
@@ -30,13 +31,16 @@ SRC_DIR = Path(__file__).resolve().parents[1]
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from visual.utils import geneid2name, load_all_summary, meta_data, p2z  # noqa: E402
+from figures.utils import geneid2name, load_all_summary, meta_data, p2z  # noqa: E402
 
 MIN_P = 1e-300
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RESULT_ROOT = Path(
-    "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea"
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
 )
-DEFAULT_GMT_DIR = Path("/home/wjiang49/group/wjiang49/data/gsea_gmt")
+DEFAULT_GMT_DIR = Path(
+    os.environ.get("TRACECB_GMT_DIR", REPO_ROOT / "data/gmt")
+)
 
 CELLTYPE_ORDER = tuple(dict.fromkeys(meta_data.get("Celltypes", []))) + ("Other",)
 CELLTYPE_RANK = {celltype: i for i, celltype in enumerate(CELLTYPE_ORDER)}
