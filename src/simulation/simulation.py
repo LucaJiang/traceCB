@@ -15,10 +15,14 @@ from numba import njit, prange
 from traceCB.ldsc import Run_Cross_LDSC
 from traceCB.gmm import GMM, GMMtissue
 from traceCB.utils import z2p, MIN_HERITABILITY
-from others.simulation_common import (
+from simulation_utils import (
     calculate_pi2_omega_sum_const,
     flatten_float_seq,
+    load_genotype_window,
     sanitize_ld_scores,
+    seed_random_component,
+    standardize_genotype,
+    tail_panel_start,
     unknown_cell_effect_scale,
     validate_unit_interval,
 )
@@ -134,44 +138,179 @@ def parse_args():
         default=None,
         help=(
             "Base random seed. When omitted, the current start time is used. "
-            "Each replicate seed is derived from this base seed and the "
-            "data-generating setting."
+            "Only the global replicate id is used in seed derivation, so the "
+            "same replicate reuses component streams across simulation settings."
         ),
     )
     return parser.parse_args()
 
 
-get_genotype = lambda geno_file, Nsnp: np.load(geno_file, mmap_mode="r")[
-    :, SNP_START : Nsnp + SNP_START
-]
+def get_genotype(geno_file, Nsnp):
+    return load_genotype_window(geno_file, Nsnp, SNP_START)
 
 
-@njit(nogil=True, parallel=True)
+@njit(nogil=True, parallel=True, cache=True)
+def run_gmm_meta_kernel(
+    nsnp,
+    run_gmm,
+    run_gmm_tissue,
+    Omega,
+    pi2_omega_sum,
+    celltype_proportion,
+    b1_hat,
+    se1_hat,
+    ld1,
+    b2_hat,
+    se2_hat,
+    ld2,
+    ldx,
+    bt_hat,
+    se_t_hat,
+):
+    pop1_beta = np.empty((nsnp, 3))
+    pop2_beta = np.empty((nsnp, 3))
+    pop1_se = np.empty((nsnp, 3))
+    pop2_se = np.empty((nsnp, 3))
+    meta_beta = np.empty(nsnp)
+    meta_se = np.empty(nsnp)
+    meta_tissue_beta = np.empty(nsnp)
+    meta_tissue_se = np.empty(nsnp)
+    eye2 = np.eye(2)
+    eye3 = np.eye(3)
+
+    for j in prange(nsnp):
+        pop1_beta[j, 0] = b1_hat[j]
+        pop1_se[j, 0] = se1_hat[j]
+        pop2_beta[j, 0] = b2_hat[j]
+        pop2_se[j, 0] = se2_hat[j]
+
+        if run_gmm:
+            (
+                pop1_beta[j, 1],
+                pop1_se[j, 1],
+                pop2_beta[j, 1],
+                pop2_se[j, 1],
+            ) = GMM(
+                Omega,
+                eye2,
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+            )
+        else:
+            pop1_beta[j, 1] = b1_hat[j]
+            pop1_se[j, 1] = se1_hat[j]
+            pop2_beta[j, 1] = b2_hat[j]
+            pop2_se[j, 1] = se2_hat[j]
+
+        if run_gmm_tissue:
+            (
+                pop1_beta[j, 2],
+                pop1_se[j, 2],
+                pop2_beta[j, 2],
+                pop2_se[j, 2],
+            ) = GMMtissue(
+                Omega,
+                eye3,
+                b1_hat[j],
+                se1_hat[j],
+                ld1[j],
+                b2_hat[j],
+                se2_hat[j],
+                ld2[j],
+                ldx[j],
+                bt_hat[j],
+                se_t_hat[j],
+                pi2_omega_sum,
+                celltype_proportion,
+            )
+        else:
+            pop1_beta[j, 2] = pop1_beta[j, 1]
+            pop1_se[j, 2] = pop1_se[j, 1]
+            pop2_beta[j, 2] = pop2_beta[j, 1]
+            pop2_se[j, 2] = pop2_se[j, 1]
+
+        meta_beta[j], meta_se[j] = re2_meta(
+            np.array([b1_hat[j], b2_hat[j]]),
+            np.array([se1_hat[j], se2_hat[j]]),
+        )
+        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
+            np.array([b1_hat[j], b2_hat[j], bt_hat[j]]),
+            np.array([se1_hat[j], se2_hat[j], se_t_hat[j]]),
+        )
+
+    return (
+        pop1_beta,
+        pop1_se,
+        pop2_beta,
+        pop2_se,
+        meta_beta,
+        meta_se,
+        meta_tissue_beta,
+        meta_tissue_se,
+    )
+
+
+def has_cross_omega_signal(omega):
+    omega = np.asarray(omega, dtype=float)
+    return bool(
+        float(omega[0, 0]) > MIN_HERITABILITY
+        and float(omega[1, 1]) > MIN_HERITABILITY
+        and abs(float(omega[0, 1])) > MIN_HERITABILITY
+    )
+
+
+def should_run_true_omega_gmm(h1sq, h2sq, gc, omega):
+    if np.isclose(h1sq, 0.0) or np.isclose(h2sq, 0.0) or np.isclose(gc, 0.0):
+        return False
+    return has_cross_omega_signal(omega)
+
+
 def cal_ld(G1, G2):
-    cor1 = np.corrcoef(G1, rowvar=False)
-    cor2 = np.corrcoef(G2, rowvar=False)
-    ld1 = np.sum(cor1**2, axis=0)
-    ld2 = np.sum(cor2**2, axis=0)
+    X1 = standardize_genotype(G1, MIN_FLOAT)
+    X2 = standardize_genotype(G2, MIN_FLOAT)
+    cor1 = (X1.T @ X1) / X1.shape[0]
+    cor2 = (X2.T @ X2) / X2.shape[0]
+    cor1 = np.clip(cor1, -1.0, 1.0)
+    cor2 = np.clip(cor2, -1.0, 1.0)
+    np.fill_diagonal(cor1, 1.0)
+    np.fill_diagonal(cor2, 1.0)
+    ld1 = np.sum(cor1 * cor1, axis=0)
+    ld2 = np.sum(cor2 * cor2, axis=0)
     ldx = np.sum(cor1 * cor2, axis=0)
     return ld1, ld2, ldx
 
 
-@njit(nogil=True, parallel=True)
 def calculate_sumstats(X, y, n):
-    nsnp = X.shape[1]
-    b_hat = np.zeros(nsnp)
-    se_hat = np.zeros(nsnp)
-
-    for j in range(nsnp):
-        x_inner = np.dot(X[:, j], X[:, j]) + MIN_FLOAT
-        b_hat[j] = np.dot(X[:, j], y) / x_inner
-        e = y - X[:, j] * b_hat[j]
-        se_hat[j] = np.sqrt(np.dot(e, e) / (n * x_inner))
-
+    x_inner = np.sum(X * X, axis=0) + MIN_FLOAT
+    xy = X.T @ y
+    b_hat = xy / x_inner
+    y_inner = float(y @ y)
+    sse = y_inner - 2 * b_hat * xy + b_hat * b_hat * x_inner
+    se_hat = np.sqrt(np.maximum(sse, MIN_FLOAT) / (n * x_inner))
     return b_hat, se_hat
 
 
-def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
+def generate_data(
+    G1,
+    G2,
+    h1sq,
+    h2sq,
+    gc,
+    n1,
+    n2,
+    nt,
+    nsnp,
+    propt,
+    pcausal,
+    tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
+):
     """
     Generate data for simulation.
 
@@ -187,6 +326,11 @@ def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
         nsnp (int): Number of SNPs.
         propt (float): Proportion of cell type in tissue.
         pcausal (float): Proportion of causal SNPs.
+        tissue_start (int | None): Row offset for the population 2 tissue
+            panel. Defaults to the last nt rows of G2.
+        seed_base (int | None): Base seed for component-specific random streams.
+            When None, use the caller's current NumPy RNG state.
+        seed_parts (tuple): Stable identifiers for the replicate random streams.
 
     Returns:
         tuple: A tuple containing:
@@ -203,48 +347,57 @@ def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
             - causal_ids (np.ndarray): Indices of causal SNPs.
             - pi_mean (float): Mean individual cell type proportion in tissue.
     """
-    Omega_causal = np.array(
-        [[h1sq, np.sqrt(h1sq * h2sq) * gc], [np.sqrt(h1sq * h2sq) * gc, h2sq]]
-    )
-    # print("Omega:", Omega_causal / nsnp)
+    if tissue_start is None:
+        tissue_start = tail_panel_start(G2.shape[0], n2, nt, "population 2")
+    if n1 > G1.shape[0]:
+        raise ValueError(f"n1={n1} exceeds population 1 genotype rows={G1.shape[0]}")
+    if n2 > G2.shape[0]:
+        raise ValueError(f"n2={n2} exceeds population 2 genotype rows={G2.shape[0]}")
+    if tissue_start < n2:
+        raise ValueError(
+            f"tissue_start={tissue_start} must be >= n2={n2} to keep panels disjoint"
+        )
+    if tissue_start + nt > G2.shape[0]:
+        raise ValueError(
+            f"tissue_start + nt = {tissue_start + nt} exceeds "
+            f"population 2 genotype rows={G2.shape[0]}"
+        )
+
     G1c = G1[:n1, :]
-    X1 = (G1c - np.mean(G1c, axis=0)) / (np.std(G1c, axis=0) + MIN_FLOAT)
+    X1 = standardize_genotype(G1c, MIN_FLOAT)
     G2c = G2[:n2, :]
-    X2 = (G2c - np.mean(G2c, axis=0)) / (np.std(G2c, axis=0) + MIN_FLOAT)
-    G2t = G2[n2 : n2 + nt, :]
-    Xt = (G2t - np.mean(G2t, axis=0)) / (np.std(G2t, axis=0) + MIN_FLOAT)
+    X2 = standardize_genotype(G2c, MIN_FLOAT)
+    G2t = G2[tissue_start : tissue_start + nt, :]
+    Xt = standardize_genotype(G2t, MIN_FLOAT)
     # cell type data
     num_causal = int(pcausal * nsnp)
     beta1 = np.zeros(nsnp)
     beta2 = np.zeros(nsnp)
     causal_ids = np.array([], dtype=int)
     if num_causal > 0:
-        causal_ids = np.random.choice(np.arange(nsnp), num_causal, replace=False)
-        beta_causal = np.random.multivariate_normal(
-            mean=np.zeros(2), cov=Omega_causal / (pcausal * nsnp), size=num_causal
-        )  # (M, <c11, c12>)
-        beta1[causal_ids] = beta_causal[:, 0]
-        beta2[causal_ids] = beta_causal[:, 1]
-    y1 = X1 @ beta1.T + np.sqrt(1 - h1sq) * np.random.randn(n1)
-    y2 = X2 @ beta2.T + np.sqrt(1 - h2sq) * np.random.randn(n2)
-
-    # tissue data
-    delta = 5  # control the variance of pi
-    pi_ind = np.random.beta(
-        (propt + MIN_FLOAT) * delta, (1 - propt + MIN_FLOAT) * delta, nt
-    )
-    pi_mean = np.mean(pi_ind)
+        seed_random_component(seed_base, seed_parts, "causal_ids")
+        causal_ids = np.random.permutation(nsnp)[:num_causal]
+        seed_random_component(seed_base, seed_parts, "causal_effects")
+        shared_z = np.random.randn(num_causal)
+        pop2_unique_z = np.random.randn(num_causal)
+        effect_denom = pcausal * nsnp
+        beta1_causal = np.sqrt(h1sq / effect_denom) * shared_z
+        beta2_causal = np.sqrt(h2sq / effect_denom) * (
+            gc * shared_z + np.sqrt(np.maximum(1 - gc**2, 0.0)) * pop2_unique_z
+        )
+        beta1[causal_ids] = beta1_causal
+        beta2[causal_ids] = beta2_causal
     ## define unknown cell type
     beta_unknown = np.zeros(nsnp)
     num_unknown_celltype = 1
-    for _ in range(num_unknown_celltype):
+    for celltype_id in range(num_unknown_celltype):
         num_unknown_causal = int(pcausal * nsnp)
         if num_unknown_causal <= 0:
             continue
-        causal_unknown_id = np.random.choice(
-            np.arange(nsnp), num_unknown_causal, replace=False
-        )
+        seed_random_component(seed_base, seed_parts, f"unknown_ids_{celltype_id}")
+        causal_unknown_id = np.random.permutation(nsnp)[:num_unknown_causal]
         # causal_unknown_id = causal_ids  #! share causal SNPs
+        seed_random_component(seed_base, seed_parts, f"unknown_effects_{celltype_id}")
         beta_causal_unknown = np.random.normal(
             loc=0,
             scale=unknown_cell_effect_scale(
@@ -260,13 +413,40 @@ def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
         # beta_unknown[causal_ids] += (
         #     beta_causal[:, 1] / 2
         # )  #! share effect with known cell type
+    seed_random_component(seed_base, seed_parts, "pop1_noise")
+    y1 = X1 @ beta1.T + np.sqrt(1 - h1sq) * np.random.randn(n1)
+    seed_random_component(seed_base, seed_parts, "pop2_noise")
+    y2 = X2 @ beta2.T + np.sqrt(1 - h2sq) * np.random.randn(n2)
+
+    # tissue data
+    delta = 5  # control the variance of pi
+    seed_random_component(seed_base, seed_parts, "cell_proportion")
+    if tissue_start + nt == G2.shape[0]:
+        pi_all = np.random.beta(
+            (propt + MIN_FLOAT) * delta,
+            (1 - propt + MIN_FLOAT) * delta,
+            G2.shape[0],
+        )
+        pi_ind = pi_all[tissue_start : tissue_start + nt]
+    else:
+        pi_ind = np.random.beta(
+            (propt + MIN_FLOAT) * delta,
+            (1 - propt + MIN_FLOAT) * delta,
+            nt,
+        )
+    pi_mean = np.mean(pi_ind)
+    seed_random_component(seed_base, seed_parts, "tissue_noise")
+    if tissue_start + nt == G2.shape[0]:
+        tissue_noise = np.random.randn(G2.shape[0])[tissue_start : tissue_start + nt]
+    else:
+        tissue_noise = np.random.randn(nt)
     yt = (
         pi_ind * (Xt @ beta2.T)
         + (1 - pi_ind) * (Xt @ beta_unknown.T)
         + np.sqrt(
             np.maximum(1 - (pi_ind**2 + (1 - pi_ind) ** 2) * h2sq, MIN_FLOAT)
         )
-        * np.random.randn(nt)
+        * tissue_noise
     )
 
     # sumstats
@@ -303,7 +483,7 @@ def generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal):
     )
 
 
-@njit(nogil=True)
+@njit(nogil=True, cache=True)
 def re2_meta(betas, ses, converge_tol=1e-6, max_iter=100):
     """
     Calculate RE2 meta-analysis for multiple populations using random-effects model with iterative tau**2 estimation
@@ -394,6 +574,9 @@ def simulation(
     out_dir,
     true_omega,
     id_sim,
+    tissue_start=None,
+    seed_base=None,
+    seed_parts=(),
 ):
     """
     Run simulation for GMM, save results to out_dir
@@ -410,6 +593,8 @@ def simulation(
     out_dir: output directory
     true_omega: true covariance matrix
     id_sim: simulation id
+    tissue_start: row offset for the population 2 tissue panel
+    seed_base, seed_parts: common-random-number seed controls
     :return
     None
     """
@@ -429,7 +614,22 @@ def simulation(
         sigt,
         causal_ids,
         pi_mean,
-    ) = generate_data(G1, G2, h1sq, h2sq, gc, n1, n2, nt, nsnp, propt, pcausal)
+    ) = generate_data(
+        G1,
+        G2,
+        h1sq,
+        h2sq,
+        gc,
+        n1,
+        n2,
+        nt,
+        nsnp,
+        propt,
+        pcausal,
+        tissue_start=tissue_start,
+        seed_base=seed_base,
+        seed_parts=seed_parts,
+    )
     pi2_omega_sum_const = calculate_pi2_omega_sum_const(propt)
     Omega = np.zeros((2, 2))
     if not true_omega:  # estimate omega
@@ -480,81 +680,42 @@ def simulation(
 
     else:  # true Omega
         Omega = OmegaCB[:2, :2]
-        run_gmm = True
-        run_gmm_tissue = True
+        run_gmm = should_run_true_omega_gmm(h1sq, h2sq, gc, Omega)
+        run_gmm_tissue = run_gmm
         pi2_omega_sum = (
             OmegaCB[2, 2]
             - propt**2 * OmegaCB[1, 1]
             - pi2_omega_sum_const * (OmegaCB[1, 2] - propt * OmegaCB[1, 1])
         )
-    # GMM
-    pop1_beta = np.zeros((nsnp, 3))  # sumstat, cross, tissue
-    pop2_beta = np.zeros((nsnp, 3))
-    pop1_se = np.zeros((nsnp, 3))
-    pop2_se = np.zeros((nsnp, 3))
-    pop1_beta[:, 0] = b1_hat
-    pop1_se[:, 0] = se1_hat
-    pop2_beta[:, 0] = b2_hat
-    pop2_se[:, 0] = se2_hat
-
-    if run_gmm:
-        for j in prange(nsnp):
-            pop1_beta[j, 1], pop1_se[j, 1], pop2_beta[j, 1], pop2_se[j, 1] = GMM(
-                Omega,
-                np.eye(2),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-            )
-    else:  # no run gmm, keep sumstat results
-        pop1_beta[:, 1] = b1_hat
-        pop1_se[:, 1] = se1_hat
-        pop2_beta[:, 1] = b2_hat
-        pop2_se[:, 1] = se2_hat
-    if run_gmm_tissue:
-        for j in prange(nsnp):
-            pop1_beta[j, 2], pop1_se[j, 2], pop2_beta[j, 2], pop2_se[j, 2] = GMMtissue(
-                Omega,
-                np.eye(3),
-                b1_hat[j],
-                se1_hat[j],
-                ld1[j],
-                b2_hat[j],
-                se2_hat[j],
-                ld2[j],
-                ldx[j],
-                bt_hat[j],
-                se_t_hat[j],
-                pi2_omega_sum,
-                propt,
-            )
-    else:  # no run gmm, keep sumstat results
-        pop1_beta[:, 2] = pop1_beta[:, 1]
-        pop1_se[:, 2] = pop1_se[:, 1]
-        pop2_beta[:, 2] = pop2_beta[:, 1]
-        pop2_se[:, 2] = pop2_se[:, 1]
+    (
+        pop1_beta,
+        pop1_se,
+        pop2_beta,
+        pop2_se,
+        meta_beta,
+        meta_se,
+        meta_tissue_beta,
+        meta_tissue_se,
+    ) = run_gmm_meta_kernel(
+        nsnp,
+        run_gmm,
+        run_gmm_tissue,
+        Omega,
+        pi2_omega_sum,
+        propt,
+        b1_hat,
+        se1_hat,
+        ld1,
+        b2_hat,
+        se2_hat,
+        ld2,
+        ldx,
+        bt_hat,
+        se_t_hat,
+    )
 
     pop1_z = pop1_beta / (pop1_se + MIN_FLOAT)
     pop2_z = pop2_beta / (pop2_se + MIN_FLOAT)
-    ## meta-analysis
-    meta_beta = np.zeros((nsnp,))
-    meta_se = np.zeros((nsnp,))
-    meta_tissue_beta = np.zeros((nsnp,))
-    meta_tissue_se = np.zeros((nsnp,))
-    for j in prange(nsnp):
-        ## meta-analysis
-        meta_beta[j], meta_se[j] = re2_meta(
-            np.array([b1_hat[j], b2_hat[j]]),
-            np.array([se1_hat[j], se2_hat[j]]),
-        )
-        meta_tissue_beta[j], meta_tissue_se[j] = re2_meta(
-            np.array([b1_hat[j], b2_hat[j], bt_hat[j]]),
-            np.array([se1_hat[j], se2_hat[j], se_t_hat[j]]),
-        )
     # save results
     all_results_columns = [
         "causal",
@@ -631,29 +792,24 @@ def main():
 
     start_time = time.time()
     base_seed = int(args.seed) if args.seed is not None else int(start_time)
+    max_tissue_end = max(n2) + max(nt)
+    if max_tissue_end > G2.shape[0]:
+        raise ValueError(
+            f"required n2/nt sample rows = {max_tissue_end} exceeds population 2 "
+            f"genotype rows={G2.shape[0]}"
+        )
     print("Simulation start at ", time.ctime())
     print("Simulation base seed: ", base_seed)
-    for i, h1sqi in enumerate(h1sq):
-        for j, h2sqj in enumerate(h2sq):
-            for k, gck in enumerate(gc):
-                for l, n1l in enumerate(n1):
-                    for m, n2m in enumerate(n2):
-                        for n, ntn in enumerate(nt):
-                            for p, proptp in enumerate(propt):
-                                for q, pcausalq in enumerate(pcausal):
+    for h1sqi in h1sq:
+        for h2sqj in h2sq:
+            for gck in gc:
+                for n1l in n1:
+                    for n2m in n2:
+                        for ntn in nt:
+                            for proptp in propt:
+                                for pcausalq in pcausal:
                                     for r in range(args.nrep):
-                                        np.random.seed(
-                                            base_seed
-                                            + i
-                                            + j
-                                            + k
-                                            + l
-                                            + m
-                                            + n
-                                            + p
-                                            + q
-                                            + r
-                                        )
+                                        seed_parts = (r,)
                                         simulation(
                                             args.runname,
                                             G1,
@@ -673,6 +829,9 @@ def main():
                                             args.out_dir,
                                             trueOmega,
                                             r,
+                                            tissue_start=None,
+                                            seed_base=base_seed,
+                                            seed_parts=seed_parts,
                                         )
                                     have_run += 1
                                     if have_run % 5 == 0:

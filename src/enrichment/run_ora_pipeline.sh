@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PYTHON_BIN="${PYTHON_BIN:-/opt/anaconda3/envs/py312/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RESULT_ROOT="${RESULT_ROOT:-/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea}"
-GMT_DIR="${GMT_DIR:-/home/wjiang49/group/wjiang49/data/gsea_gmt}"
-WORKERS="${WORKERS:-24}"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+RESULT_ROOT="${RESULT_ROOT:-${REPO_ROOT}/results/enrichment}"
+GMT_DIR="${GMT_DIR:-${REPO_ROOT}/data/gmt}"
+WORKERS="${WORKERS:-8}"
 SKIP_GMT_PREP="${SKIP_GMT_PREP:-0}"
 PREPARE_GMT_ONLY="${PREPARE_GMT_ONLY:-0}"
 FORCE_GMT="${FORCE_GMT:-0}"
@@ -161,14 +162,9 @@ if [[ "${PREPARE_GMT_ONLY}" == "1" ]]; then
   exit 0
 fi
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/06_ora_significant_pathways.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/ora_significant_pathways.py" \
   --out-dir "${RESULT_ROOT}/ora/significant_pathways" \
   --workers "${WORKERS}" \
   --top-terms-per-library 4
-
-"${PYTHON_BIN}" "${SCRIPT_DIR}/07_ora_two_tier_enrichment.py" \
-  --out-dir "${RESULT_ROOT}/ora/two_tier_enrichment" \
-  --workers "${WORKERS}" \
-  --top-terms-per-library 3
 
 echo "[ORA] done"

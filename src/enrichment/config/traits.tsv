@@ -1,0 +1,7 @@
+Trait	TraitLabel	TraitGroup	GWASAncestry	GenomeBuild	GWASSource	SumstatsRelativePath
+ukbb_self_report_asthma	Asthma	Positive immune/metabolic traits	EUR	GRCh37	Pan-UK Biobank	ukbb_immune_hm3/ukbb_self_report_asthma.sumstats.gz
+ukb_self_report_diabetes	Diabetes	Positive immune/metabolic traits	EUR	GRCh37	Pan-UK Biobank	ukbb_extra_immune_hm3/ukb_self_report_diabetes.sumstats.gz
+ukbb_drug_allergy_history	Drug allergy	Positive immune/metabolic traits	EUR	GRCh37	Pan-UK Biobank	ukbb_immune_hm3/ukbb_drug_allergy_history.sumstats.gz
+ukb_hypertension_phecode	Hypertension	Positive immune/metabolic traits	EUR	GRCh37	Pan-UK Biobank	ukbb_nondiabetes_disease_hm3/ukb_hypertension_phecode.sumstats.gz
+ukb_chronotype	Chronotype	Negative control traits	EUR	GRCh37	Pan-UK Biobank	ukbb_negative_control_hm3/ukb_chronotype.sumstats.gz
+ukb_age_completed_education	Age completed education	Negative control traits	EUR	GRCh37	Pan-UK Biobank	ukbb_negative_control_hm3/ukb_age_completed_education.sumstats.gz

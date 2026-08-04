@@ -4,7 +4,7 @@ from numba import njit
 import numpy as np
 
 
-@njit(nogil=True)
+@njit(nogil=True, cache=True)
 def GMM(
     Omega: np.ndarray,
     C: np.ndarray,
@@ -81,7 +81,7 @@ def GMM(
     return beta1_blue, se1_blue, beta2_blue, se2_blue
 
 
-@njit(nogil=True)
+@njit(nogil=True, cache=True)
 def GMMtissue(
     Omega: np.ndarray,
     C: np.ndarray,
@@ -172,7 +172,7 @@ def GMMtissue(
     return beta1_blue, se1_blue, beta2_blue, se2_blue
 
 
-@njit(nogil=True)
+@njit(nogil=True, cache=True)
 def GMMtissueBoth(
     Omega: np.ndarray,
     C: np.ndarray,

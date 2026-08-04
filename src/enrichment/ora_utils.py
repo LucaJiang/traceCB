@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import sys
 import textwrap
@@ -18,7 +19,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from gseapy.parser import read_gmt
+from matplotlib import colors as mcolors
 from matplotlib import transforms as mtransforms
+from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
@@ -27,13 +31,16 @@ SRC_DIR = Path(__file__).resolve().parents[1]
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from visual.utils import geneid2name, load_all_summary, meta_data, p2z  # noqa: E402
+from figures.utils import geneid2name, load_all_summary, meta_data, p2z  # noqa: E402
 
 MIN_P = 1e-300
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RESULT_ROOT = Path(
-    "/home/wjiang49/group/wjiang49/data/traceCB/EAS_eQTLGen/results/sldsc_gsea"
+    os.environ.get("TRACECB_ENRICHMENT_DIR", REPO_ROOT / "results/enrichment")
 )
-DEFAULT_GMT_DIR = Path("/home/wjiang49/group/wjiang49/data/gsea_gmt")
+DEFAULT_GMT_DIR = Path(
+    os.environ.get("TRACECB_GMT_DIR", REPO_ROOT / "data/gmt")
+)
 
 CELLTYPE_ORDER = tuple(dict.fromkeys(meta_data.get("Celltypes", []))) + ("Other",)
 CELLTYPE_RANK = {celltype: i for i, celltype in enumerate(CELLTYPE_ORDER)}
@@ -131,7 +138,9 @@ def gmt_library_id(path: Path) -> str:
     return path.name.removesuffix(".gmt")
 
 
-def library_spec(path: Path, analysis_tier: str | None = None, label: str | None = None) -> LibrarySpec:
+def library_spec(
+    path: Path, analysis_tier: str | None = None, label: str | None = None
+) -> LibrarySpec:
     library = gmt_library_id(path)
     return LibrarySpec(
         path=path,
@@ -165,13 +174,17 @@ def subset_gmt(in_path: Path, out_path: Path, pattern: re.Pattern[str]) -> Path:
     return out_path
 
 
-def prepare_method_gene_table(target_qtdids: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_method_gene_table(
+    target_qtdids: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     _, all_df = load_all_summary()
     gene_symbol_map = build_gene_symbol_map()
 
     df = all_df[all_df["QTDid"].isin(target_qtdids)].copy()
     df["GENE"] = df["GENE"].astype(str).str.split(".").str[0]
-    df["gene_symbol"] = df["GENE"].map(lambda gene: gene_id_to_symbol(gene, gene_symbol_map))
+    df["gene_symbol"] = df["GENE"].map(
+        lambda gene: gene_id_to_symbol(gene, gene_symbol_map)
+    )
     df = df[df["gene_symbol"].notna()].copy()
 
     df["original"] = pd.to_numeric(df["TAR_SeSNP"], errors="coerce").fillna(0) > 0
@@ -190,11 +203,21 @@ def prepare_method_gene_table(target_qtdids: list[str]) -> tuple[pd.DataFrame, p
                 "Study": meta_data["id2name"].get(qtdid, qtdid),
                 "CellType": meta_data["id2celltype"].get(qtdid, "Other"),
                 "Tested_Genes": study_df["gene_symbol"].nunique(),
-                "Original": int(study_df.loc[study_df["original"], "gene_symbol"].nunique()),
-                "traceC_inc": int(study_df.loc[study_df["traceC_increment"], "gene_symbol"].nunique()),
-                "traceCB_inc": int(study_df.loc[study_df["traceCB_increment"], "gene_symbol"].nunique()),
-                "traceC_full": int(study_df.loc[study_df["traceC_full"], "gene_symbol"].nunique()),
-                "traceCB_full": int(study_df.loc[study_df["traceCB_full"], "gene_symbol"].nunique()),
+                "Original": int(
+                    study_df.loc[study_df["original"], "gene_symbol"].nunique()
+                ),
+                "traceC_inc": int(
+                    study_df.loc[study_df["traceC_increment"], "gene_symbol"].nunique()
+                ),
+                "traceCB_inc": int(
+                    study_df.loc[study_df["traceCB_increment"], "gene_symbol"].nunique()
+                ),
+                "traceC_full": int(
+                    study_df.loc[study_df["traceC_full"], "gene_symbol"].nunique()
+                ),
+                "traceCB_full": int(
+                    study_df.loc[study_df["traceCB_full"], "gene_symbol"].nunique()
+                ),
             }
         )
     return df, pd.DataFrame(rows)
@@ -219,7 +242,9 @@ def build_method_ora_gene_sets(study_df: pd.DataFrame, mode: str) -> list[OraGen
                     celltype=meta_data["id2celltype"].get(qtdid, "Other"),
                     query_group=group,
                     query_group_label=GROUP_LABELS.get(group, group),
-                    gene_symbols=unique_sorted(group_df.loc[group_df[group], "gene_symbol"]),
+                    gene_symbols=unique_sorted(
+                        group_df.loc[group_df[group], "gene_symbol"]
+                    ),
                     background_symbols=background,
                     gene_set_mode=mode,
                 )
@@ -233,7 +258,9 @@ ANCESTRY_H2_COLUMNS = {
 }
 
 
-def map_gene_ids_to_symbols(gene_ids: Iterable[object], gene_symbol_map: dict[str, str]) -> tuple[str, ...]:
+def map_gene_ids_to_symbols(
+    gene_ids: Iterable[object], gene_symbol_map: dict[str, str]
+) -> tuple[str, ...]:
     symbols = []
     for gene_id in gene_ids:
         symbol = gene_id_to_symbol(gene_id, gene_symbol_map)
@@ -242,7 +269,9 @@ def map_gene_ids_to_symbols(gene_ids: Iterable[object], gene_symbol_map: dict[st
     return unique_sorted(symbols)
 
 
-def filter_heritability_significant(summary_df: pd.DataFrame, p_threshold: float, ancestries: tuple[str, ...]) -> pd.DataFrame:
+def filter_heritability_significant(
+    summary_df: pd.DataFrame, p_threshold: float, ancestries: tuple[str, ...]
+) -> pd.DataFrame:
     z_threshold = p2z(p_threshold)
     mask = pd.Series(True, index=summary_df.index)
     for ancestry in ancestries:
@@ -275,7 +304,9 @@ def build_significant_ora_gene_sets(
         study = meta_data["id2name"].get(qtdid, qtdid)
         celltype = meta_data["id2celltype"].get(qtdid, "Other")
         for query_group, ancestries in definitions:
-            h2_df = filter_heritability_significant(study_df, h2_p_threshold, ancestries)
+            h2_df = filter_heritability_significant(
+                study_df, h2_p_threshold, ancestries
+            )
             genes = map_gene_ids_to_symbols(h2_df["GENE"], gene_symbol_map)
             gene_sets.append(
                 OraGeneSet(
@@ -506,20 +537,27 @@ def study_order_and_celltypes(df: pd.DataFrame) -> tuple[list[str], dict[str, st
     return studies, celltypes
 
 
-def celltype_ranges(study_order: list[str], study_celltypes: dict[str, str]) -> list[tuple[str, int, int]]:
+def celltype_ranges(
+    study_order: list[str], study_celltypes: dict[str, str]
+) -> list[tuple[str, int, int]]:
     ranges = []
     start = 0
     while start < len(study_order):
         celltype = study_celltypes.get(study_order[start], "Other")
         end = start + 1
-        while end < len(study_order) and study_celltypes.get(study_order[end], "Other") == celltype:
+        while (
+            end < len(study_order)
+            and study_celltypes.get(study_order[end], "Other") == celltype
+        ):
             end += 1
         ranges.append((celltype, start, end))
         start = end
     return ranges
 
 
-def add_celltype_annotations_top(ax, study_order: list[str], study_celltypes: dict[str, str]) -> None:
+def add_celltype_annotations_top(
+    ax, study_order: list[str], study_celltypes: dict[str, str]
+) -> None:
     if len(study_order) <= 1:
         return
     band_transform = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
@@ -584,7 +622,9 @@ def label_line_total(labels: Iterable[object]) -> int:
 
 
 def label_text_width(labels: Iterable[object]) -> int:
-    return max((len(line) for label in labels for line in str(label).splitlines()), default=0)
+    return max(
+        (len(line) for label in labels for line in str(label).splitlines()), default=0
+    )
 
 
 def ora_plot_layout(n_terms: int) -> dict[str, object]:
@@ -610,28 +650,6 @@ def ora_plot_layout(n_terms: int) -> dict[str, object]:
             "legend_fontsize": 9,
             "legend_title_fontsize": 10,
         }
-    if n_terms >= 45:
-        return {
-            "row_height": 0.26,
-            "line_height": 0.075,
-            "base_height": 3.3,
-            "y_fontsize": 7.4,
-            "x_fontsize": 9.5,
-            "marker_sizes": (14, 125),
-            "legend_fontsize": 9.5,
-            "legend_title_fontsize": 10.5,
-        }
-    if n_terms >= 20:
-        return {
-            "row_height": 0.33,
-            "line_height": 0.10,
-            "base_height": 3.4,
-            "y_fontsize": 8.5,
-            "x_fontsize": 10,
-            "marker_sizes": (20, 165),
-            "legend_fontsize": 10,
-            "legend_title_fontsize": 11,
-        }
     return {
         "row_height": 0.43,
         "line_height": 0.13,
@@ -642,6 +660,54 @@ def ora_plot_layout(n_terms: int) -> dict[str, object]:
         "legend_fontsize": 10,
         "legend_title_fontsize": 11,
     }
+
+
+def scale_marker_areas(
+    values: np.ndarray,
+    marker_sizes: tuple[float, float],
+    value_range: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Map overlap counts linearly onto scatter-marker areas (points squared)."""
+    values = np.asarray(values, dtype=float)
+    min_area, max_area = (float(value) for value in marker_sizes)
+    if value_range is None:
+        value_min = float(np.nanmin(values))
+        value_max = float(np.nanmax(values))
+    else:
+        value_min, value_max = (float(value) for value in value_range)
+    if math.isclose(value_min, value_max):
+        return np.full_like(values, (min_area + max_area) / 2, dtype=float)
+    return min_area + (values - value_min) * (max_area - min_area) / (
+        value_max - value_min
+    )
+
+
+def representative_overlap_values(values: np.ndarray) -> list[int]:
+    """Return up to three readable reference counts for a marker-size legend."""
+    values = np.asarray(values, dtype=float)
+    value_min = float(np.nanmin(values))
+    value_max = float(np.nanmax(values))
+    if math.isclose(value_min, value_max):
+        return [int(round(value_min))]
+
+    locator = MaxNLocator(
+        nbins=6,
+        integer=True,
+        steps=[1, 2, 2.5, 5, 10],
+    )
+    ticks = sorted(
+        {
+            int(round(tick))
+            for tick in locator.tick_values(value_min, value_max)
+            if value_min <= tick <= value_max
+        }
+    )
+    if not ticks:
+        ticks = [int(round(value_min)), int(round(value_max))]
+    if len(ticks) > 3:
+        positions = np.linspace(0, len(ticks) - 1, num=3).round().astype(int)
+        ticks = [ticks[position] for position in positions]
+    return list(dict.fromkeys(ticks))
 
 
 def pick_top_terms(
@@ -657,9 +723,7 @@ def pick_top_terms(
         sig_df = group_df[group_df["adjusted_p_value"] <= alpha]
         source_df = sig_df if not sig_df.empty else group_df
         rows.append(
-            source_df.sort_values(["adjusted_p_value", "p_value"])
-            .head(top_n)
-            .copy()
+            source_df.sort_values(["adjusted_p_value", "p_value"]).head(top_n).copy()
         )
     if not rows:
         return pd.DataFrame()
@@ -699,7 +763,10 @@ def plot_ora_dotplots(
     df = ora_df.copy()
     df["adjusted_p_value"] = pd.to_numeric(df["adjusted_p_value"], errors="coerce")
     df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
-    df = df[df["adjusted_p_value"].notna()].copy()
+    df["overlap_size"] = pd.to_numeric(df["overlap_size"], errors="coerce")
+    df = df[
+        df["adjusted_p_value"].notna() & df["overlap_size"].notna()
+    ].copy()
     if df.empty:
         return []
 
@@ -721,17 +788,22 @@ def plot_ora_dotplots(
         if sub_df.empty:
             continue
         sub_df["display_term"] = sub_df["term"].map(shorten_term)
-        sub_df["neg_log10_fdr"] = -np.log10(sub_df["adjusted_p_value"].clip(lower=MIN_P))
+        sub_df["neg_log10_fdr"] = -np.log10(
+            sub_df["adjusted_p_value"].clip(lower=MIN_P)
+        )
 
         term_order = (
             sub_df.groupby("display_term")["adjusted_p_value"]
             .min()
             .sort_values(ascending=False)
-            .index
-            .tolist()
+            .index.tolist()
         )
-        sub_df["display_term"] = pd.Categorical(sub_df["display_term"], categories=term_order, ordered=True)
-        sub_df["Study"] = pd.Categorical(sub_df["Study"], categories=study_order, ordered=True)
+        sub_df["display_term"] = pd.Categorical(
+            sub_df["display_term"], categories=term_order, ordered=True
+        )
+        sub_df["Study"] = pd.Categorical(
+            sub_df["Study"], categories=study_order, ordered=True
+        )
         sub_df = sub_df.sort_values(["display_term", "Study"])
 
         total_y_lines = label_line_total(term_order)
@@ -746,17 +818,29 @@ def plot_ora_dotplots(
         width = max(15.5, 1.03 * len(study_order) + 0.06 * max_study_width + 6.3)
 
         fig, ax = plt.subplots(figsize=(width, height))
-        sns.scatterplot(
-            data=sub_df,
-            x="Study",
-            y="display_term",
-            hue="neg_log10_fdr",
-            size="overlap_size",
-            sizes=layout["marker_sizes"],
-            palette="viridis",
+        fdr_scores = sub_df["neg_log10_fdr"].to_numpy(dtype=float)
+        overlap_counts = sub_df["overlap_size"].to_numpy(dtype=float)
+        marker_areas = scale_marker_areas(
+            overlap_counts,
+            layout["marker_sizes"],
+        )
+        fdr_min = float(np.nanmin(fdr_scores))
+        fdr_max = float(np.nanmax(fdr_scores))
+        if math.isclose(fdr_min, fdr_max):
+            fdr_min -= 0.5
+            fdr_max += 0.5
+        color_norm = mcolors.Normalize(vmin=fdr_min, vmax=fdr_max)
+        study_positions = {study: i for i, study in enumerate(study_order)}
+        term_positions = {term: i for i, term in enumerate(term_order)}
+        scatter = ax.scatter(
+            sub_df["Study"].map(study_positions).to_numpy(dtype=float),
+            sub_df["display_term"].map(term_positions).to_numpy(dtype=float),
+            c=fdr_scores,
+            s=marker_areas,
+            cmap="viridis",
+            norm=color_norm,
             edgecolor="black",
             linewidth=0.25,
-            ax=ax,
             zorder=2,
         )
         add_celltype_annotations_top(ax, study_order, study_celltypes)
@@ -774,16 +858,57 @@ def plot_ora_dotplots(
         ax.set_yticklabels(term_order)
         ax.set_ylim(len(term_order) - 0.5, -0.5)
         ax.set_xlim(-0.5, len(study_order) - 0.5)
-        legend = ax.legend(
-            loc="center left",
-            bbox_to_anchor=(1.02, 0.5),
+
+        colorbar_ax = fig.add_axes([0.82, 0.58, 0.014, 0.18])
+        colorbar = fig.colorbar(scatter, cax=colorbar_ax)
+        colorbar.set_label(
+            r"$-\log_{10}(P_{\mathrm{adj}})$",
+            fontsize=layout["legend_title_fontsize"],
+            labelpad=8,
+        )
+        colorbar.ax.set_title(
+            "FDR-adjusted\n$P$ value",
+            fontsize=layout["legend_title_fontsize"],
+            pad=7,
+        )
+        colorbar.ax.tick_params(labelsize=layout["legend_fontsize"])
+
+        overlap_values = representative_overlap_values(overlap_counts)
+        overlap_areas = scale_marker_areas(
+            np.asarray(overlap_values, dtype=float),
+            layout["marker_sizes"],
+            value_range=(
+                float(np.nanmin(overlap_counts)),
+                float(np.nanmax(overlap_counts)),
+            ),
+        )
+        size_handles = [
+            Line2D(
+                [],
+                [],
+                linestyle="none",
+                marker="o",
+                markersize=math.sqrt(area),
+                markerfacecolor="#6f6f6f",
+                markeredgecolor="black",
+                markeredgewidth=0.25,
+            )
+            for area in overlap_areas
+        ]
+        ax.legend(
+            handles=size_handles,
+            labels=[str(value) for value in overlap_values],
+            title="Overlapping genes, $n$",
+            loc="upper left",
+            bbox_to_anchor=(1.04, 0.52),
             frameon=False,
             fontsize=layout["legend_fontsize"],
             title_fontsize=layout["legend_title_fontsize"],
+            borderaxespad=0,
+            handletextpad=1.0,
+            labelspacing=0.8,
         )
-        if legend is not None:
-            legend.set_title("-log10(FDR) / overlap")
-        fig.subplots_adjust(top=0.84, right=0.80, bottom=0.18, left=0.34)
+        fig.subplots_adjust(top=0.84, right=0.78, bottom=0.18, left=0.34)
 
         suffix = "_".join(sanitize_filename(v) for v in key)
         out_path = out_dir / f"{filename_prefix}_{suffix}.pdf"

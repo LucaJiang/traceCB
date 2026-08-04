@@ -12,7 +12,7 @@ This tutorial provides a hands-on guide to applying `traceCB` using a sample dat
 
 For immediate exploration without configuring a local environment, use our Google Colab notebook. Click the link below to open the tutorial directly in Colab, and use the **Run All** option to execute the entire notebook to see the results.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)[https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing](https://colab.research.google.com/drive/1kfmlbzRdgyQ1BjkBe10x82tuKNGL5xqt?usp=sharing)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb)
 
 <figure markdown>
   ![Colab Snapshot](img/colab.png){ width="600" }
@@ -23,6 +23,6 @@ For immediate exploration without configuring a local environment, use our Googl
 
 For researchers preferring a local setup, the tutorial is available as a Jupyter Notebook.
 
-1.  **Install traceCB**: Ensure you have installed the package and its dependencies (refer to the [Installation Guide](index.md#installation)).
+1.  **Install traceCB**: Run `pip install -e '.[tutorial]'` in the repository root (see the [Installation Guide](index.md#installation)).
 2.  **Open the Notebook**: Navigate to the tutorial notebook at `docs/tutorial/run_traceCB.ipynb` and open it with Jupyter Notebook or VS Code (or any compatible IDE).
 3.  **Run Locally**: Execute the file to reproduce the analysis.
