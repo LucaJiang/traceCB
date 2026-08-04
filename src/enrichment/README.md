@@ -107,23 +107,23 @@ them without running ORA, `SKIP_GMT_PREP=1` to skip preparation, or
 
 - `00_prepare_eur_reference.sh`: downloads, verifies, and stages the EUR
   reference stack.
-- `00_build_compatible_hm3_list.py`: builds the exact common HapMap3 non-MHC
+- `01_build_compatible_hm3_list.py`: builds the exact common HapMap3 non-MHC
   SNP list.
-- `01_prepare_annotations.py`: creates the 33 thin EUR-SNP annotations and
+- `02_prepare_annotations.py`: creates the 33 thin EUR-SNP annotations and
   auditable gene/interval manifests.
-- `00_validate_eur_stack.py`: checks ancestry/build provenance, full annotation
+- `03_validate_eur_stack.py`: checks ancestry/build provenance, full annotation
   definition hashes, identifiers, coordinates, and reference compatibility.
-- `02_compute_ldscores.sh`: computes 33 x 22 = 726 custom LD-score files.
-- `00_filter_baseline_to_regression_snps.py`: makes the row-restricted
+- `04_compute_ldscores.sh`: computes 33 x 22 = 726 custom LD-score files.
+- `05_filter_baseline_to_regression_snps.py`: makes the row-restricted
   baseline-LD copy required by the exact common SNP order.
-- `00_validate_custom_ldscores.py`: checks all 726 files and every SNP row.
-- `03_run_h2.sh`: runs the 198 univariate S-LDSC models.
-- `04_aggregate_results.py`: validates and aggregates the result tables and
+- `06_validate_custom_ldscores.py`: checks all 726 files and every SNP row.
+- `07_run_h2.sh`: runs the 198 univariate S-LDSC models.
+- `08_aggregate_results.py`: validates and aggregates the result tables and
   applies global BH correction.
-- `05_visualize_results.py`: writes the enrichment heatmap. Its fixed 0.9--1.3
+- `09_visualize_results.py`: writes the enrichment heatmap. Its fixed 0.9--1.3
   color scale uses colorbar extensions for clipped cells; printed cell values
   retain the estimates.
-- `06_write_manuscript_sections.py`: writes a data-driven manuscript draft
+- `10_write_manuscript_sections.py`: writes a data-driven manuscript draft
   after checking the validation report and FDR values. It never modifies the
   analysis tables.
 

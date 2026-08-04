@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visualize S-LDSC enrichment results for the sldsc_gsea panel."""
+"""Step 09: visualize S-LDSC enrichment results for the sldsc_gsea panel."""
 
 from __future__ import annotations
 

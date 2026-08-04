@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate S-LDSC results for the sldsc_gsea panel."""
+"""Step 08: aggregate S-LDSC results for the sldsc_gsea panel."""
 
 from __future__ import annotations
 

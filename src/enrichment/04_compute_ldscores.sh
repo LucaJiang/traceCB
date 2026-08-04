@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Step 04: compute the custom LD scores.
 set -euo pipefail
 
 if [[ "${SKIP_CONDA_ACTIVATE:-0}" == "1" ]]; then

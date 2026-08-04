@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate newly computed custom EUR LD-score files before S-LDSC regression."""
+"""Step 06: validate custom EUR LD-score files before S-LDSC regression."""
 
 from __future__ import annotations
 

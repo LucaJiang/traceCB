@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Step 07: run the univariate S-LDSC models.
 set -euo pipefail
 
 if [[ "${SKIP_CONDA_ACTIVATE:-0}" == "1" ]]; then

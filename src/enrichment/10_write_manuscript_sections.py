@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write data-driven manuscript text for the EUR-reference S-LDSC rerun."""
+"""Step 10: write data-driven manuscript text for the EUR S-LDSC rerun."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def main() -> None:
     expected_fdr = bh_adjust(frame["Enrichment_p"])
     if "Enrichment_FDR" not in frame:
         raise ValueError(
-            f"{result_path} has no Enrichment_FDR column; rerun 04_aggregate_results.py"
+            f"{result_path} has no Enrichment_FDR column; rerun 08_aggregate_results.py"
         )
     observed_fdr = pd.to_numeric(frame["Enrichment_FDR"], errors="coerce")
     if not np.allclose(

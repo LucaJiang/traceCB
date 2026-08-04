@@ -60,9 +60,9 @@ PREPARE_ARGS=(
 if [[ "${OVERWRITE}" == "1" ]]; then
   PREPARE_ARGS+=("--overwrite")
 fi
-"${PYTHON_BIN}" "${SCRIPT_DIR}/01_prepare_annotations.py" "${PREPARE_ARGS[@]}"
+"${PYTHON_BIN}" "${SCRIPT_DIR}/02_prepare_annotations.py" "${PREPARE_ARGS[@]}"
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/00_validate_eur_stack.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/03_validate_eur_stack.py" \
   --result-dir "${RESULT_DIR}" \
   --study-dir "${STUDY_DIR}" \
   --bfile-prefix "${BFILE_PREFIX}" \
@@ -74,15 +74,15 @@ OVERWRITE="${OVERWRITE}" \
 BFILE_PREFIX="${BFILE_PREFIX}" \
 PRINT_SNPS="${PRINT_SNPS}" \
 LDSC_DIR="${LDSC_DIR}" \
-bash "${SCRIPT_DIR}/02_compute_ldscores.sh"
+bash "${SCRIPT_DIR}/04_compute_ldscores.sh"
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/00_filter_baseline_to_regression_snps.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/05_filter_baseline_to_regression_snps.py" \
   --source-prefix "${RESULT_DIR}/reference/1000G_Phase3_baselineLD_v2.2_ldscores/baselineLD." \
   --output-prefix "${BASELINE_LD_PREFIX}" \
   --regression-snps "${PRINT_SNPS}" \
   --custom-prefix "${RESULT_DIR}/annotations/ldscores/incremental_QTD000021_original/incremental_QTD000021_original."
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/00_validate_custom_ldscores.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/06_validate_custom_ldscores.py" \
   --result-dir "${RESULT_DIR}"
 
 RESULT_DIR="${RESULT_DIR}" \
@@ -92,11 +92,11 @@ BASELINE_LD_PREFIX="${BASELINE_LD_PREFIX}" \
 WEIGHTS_LD_PREFIX="${WEIGHTS_LD_PREFIX}" \
 FRQ_PREFIX="${FRQ_PREFIX}" \
 LDSC_DIR="${LDSC_DIR}" \
-bash "${SCRIPT_DIR}/03_run_h2.sh"
+bash "${SCRIPT_DIR}/07_run_h2.sh"
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/04_aggregate_results.py" --result-dir "${RESULT_DIR}"
-"${PYTHON_BIN}" "${SCRIPT_DIR}/05_visualize_results.py" --result-dir "${RESULT_DIR}"
-"${PYTHON_BIN}" "${SCRIPT_DIR}/06_write_manuscript_sections.py" --result-dir "${RESULT_DIR}"
+"${PYTHON_BIN}" "${SCRIPT_DIR}/08_aggregate_results.py" --result-dir "${RESULT_DIR}"
+"${PYTHON_BIN}" "${SCRIPT_DIR}/09_visualize_results.py" --result-dir "${RESULT_DIR}"
+"${PYTHON_BIN}" "${SCRIPT_DIR}/10_write_manuscript_sections.py" --result-dir "${RESULT_DIR}"
 
 echo "[check] LD score files: $(find "${RESULT_DIR}/annotations/ldscores" -name '*.l2.ldscore.gz' | wc -l)"
 echo "[check] h2 result files: $(find "${RESULT_DIR}/results/raw" -name '*.results' | wc -l)"

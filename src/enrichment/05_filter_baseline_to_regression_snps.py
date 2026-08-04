@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Filter EUR baseline-LD v2.2 rows to the exact custom-LD regression SNPs."""
+"""Step 05: filter baseline-LD rows to the exact custom-LD regression SNPs."""
 
 from __future__ import annotations
 

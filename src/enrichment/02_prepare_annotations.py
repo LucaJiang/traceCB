@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare eGene-interval SNP annotations for S-LDSC.
+"""Step 02: prepare eGene-interval SNP annotations for S-LDSC.
 
 This pipeline does not directly annotate the discovered eSNP rsID lists. It
 first defines method-specific eGene sets from each study's GMM summary table,

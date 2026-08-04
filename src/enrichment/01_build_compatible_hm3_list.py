@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an exact HapMap3 non-MHC intersection for the local EUR S-LDSC stack."""
+"""Step 01: build the exact HapMap3 non-MHC intersection for the EUR stack."""
 
 from __future__ import annotations
 

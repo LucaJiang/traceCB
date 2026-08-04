@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate ancestry, build, identifiers, and cache isolation for the EUR S-LDSC rerun."""
+"""Step 03: validate ancestry, build, identifiers, and EUR cache isolation."""
 
 from __future__ import annotations
 

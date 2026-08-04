@@ -95,8 +95,19 @@ conda run -n py312 pytest -q
 
 ## Citation
 
-If you use traceCB, please cite the accompanying paper. Citation details will be
-added when the paper record is available.
+If you use traceCB, please cite the paper:
+
+```txt
+@article{jiang2026tracecb,
+  title={{traceCB}: Trans-ancestry cell-type-specific {eQTLs} mapping by integrating {scRNA-seq} and bulk data},
+  author={Jiang, Wenxin and Xiao, Jiashun and Cai, Mingxuan},
+  journal={bioRxiv},
+  year={2026},
+  doi={10.64898/2026.06.20.733502},
+  url={https://doi.org/10.64898/2026.06.20.733502},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
 
 ## License
 

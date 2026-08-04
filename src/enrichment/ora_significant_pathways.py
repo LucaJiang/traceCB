@@ -1,4 +1,4 @@
-"""Run GSEApy ORA for heritability- and correlation-significant genes."""
+"""Run the separate ORA workflow for significant genes (not an S-LDSC stage)."""
 
 from __future__ import annotations
 

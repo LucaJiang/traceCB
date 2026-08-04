@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Step 00: prepare the EUR reference stack.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -91,7 +92,7 @@ fi
 ensure_download \
   "HapMap3 non-MHC SNP list" "${HM3_SOURCE}" "${HM3_URL}" "${HM3_MD5}"
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/00_build_compatible_hm3_list.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/01_build_compatible_hm3_list.py" \
   --source-list "${HM3_SOURCE}" \
   --bfile-prefix "${BFILE_PREFIX}" \
   --baseline-prefix "${BASELINE_DIR}/baselineLD." \

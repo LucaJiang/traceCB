@@ -162,7 +162,7 @@ if [[ "${PREPARE_GMT_ONLY}" == "1" ]]; then
   exit 0
 fi
 
-"${PYTHON_BIN}" "${SCRIPT_DIR}/06_ora_significant_pathways.py" \
+"${PYTHON_BIN}" "${SCRIPT_DIR}/ora_significant_pathways.py" \
   --out-dir "${RESULT_ROOT}/ora/significant_pathways" \
   --workers "${WORKERS}" \
   --top-terms-per-library 4
