@@ -1,7 +1,7 @@
 # traceCB
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue.svg)](LICENSE)
+[![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue.svg)](https://github.com/LucaJiang/traceCB/blob/master/LICENSE)
 [![bioRxiv](https://img.shields.io/badge/bioRxiv-10.64898%2F2026.06.20.733502-b31b1b.svg)](https://doi.org/10.64898/2026.06.20.733502)
 [![Open Tutorial In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb)
 
@@ -9,7 +9,7 @@ traceCB maps trans-ancestry cell-type-specific eQTL effects by integrating
 single-cell and bulk-tissue summary statistics. This repository contains the
 Python package, full-data workflows, simulations, and manuscript analyses.
 
-![traceCB workflow](docs/img/traceCB.jpg)
+![traceCB workflow](https://raw.githubusercontent.com/LucaJiang/traceCB/master/docs/img/traceCB.jpg)
 
 ## Repository layout
 
@@ -18,7 +18,7 @@ Python package, full-data workflows, simulations, and manuscript analyses.
 - `src/simulation/`: main, supplementary, and chromosome 22 simulations.
 - `src/enrichment/`: reproducible ancestry-matched S-LDSC and
   pathway-enrichment analyses; see
-  [`src/enrichment/README.md`](src/enrichment/README.md).
+  [`src/enrichment/README.md`](https://github.com/LucaJiang/traceCB/blob/master/src/enrichment/README.md).
 - `src/figures/`: manuscript figure scripts and shared metadata.
 - `src/preprocess/` and `src/coloc/`: workflow implementations used by `scripts/`.
 - `tests/`: unit and CLI contract tests.
@@ -40,8 +40,10 @@ conda env create -f environment.yml
 conda activate py312
 ```
 
-For a lightweight library-only installation, use `pip install -e .` in any
-supported Python environment.
+For a library-only installation from the source directory, use `pip install .`
+in a supported Python environment, or `pip install -e .` for development.
+The wheel installs only the Python library. The source archive additionally
+includes the tests, workflows, documentation, and public tutorial inputs.
 
 When using a lightweight or custom environment, add the corresponding optional
 dependencies for the local notebook and manuscript analyses:
@@ -49,17 +51,22 @@ dependencies for the local notebook and manuscript analyses:
 ```bash
 pip install -e '.[tutorial]'            # local Jupyter tutorial
 pip install -e '.[enrichment,figures]'  # enrichment and figure scripts
+pip install -e '.[simulation]'         # simulation and plotting scripts
 ```
 
 ## Quick start
 
 The tutorial notebooks are available at
-[`docs/tutorial/run_traceCB.ipynb`](docs/tutorial/run_traceCB.ipynb) and on
+[`docs/tutorial/run_traceCB.ipynb`](https://github.com/LucaJiang/traceCB/blob/master/docs/tutorial/run_traceCB.ipynb) and on
 [Google Colab](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb).
 They use the tracked files in `data/toy_example/` and demonstrate the model on a
 single gene.
 
 ## Full-data workflow
+
+The shell workflows require a Unix-like environment, Conda, and the external
+PLINK, S-LDXR, and R tools listed in the pipeline guide. These tools and the
+full study datasets are separate from the Python wheel.
 
 External inputs such as population-specific eQTLs, tissue eQTLs, and 1000
 Genomes reference panels are not redistributed here. Set their locations in the
@@ -82,10 +89,10 @@ bash scripts/run_gmm.sh
 bash scripts/run_colocalization.sh  # optional
 ```
 
-See the [simulation guide](src/simulation/README.md) for manuscript simulation
-entry points and the [enrichment guide](src/enrichment/README.md) for the S-LDSC
+See the [simulation guide](https://github.com/LucaJiang/traceCB/blob/master/src/simulation/README.md) for manuscript simulation
+entry points and the [enrichment guide](https://github.com/LucaJiang/traceCB/blob/master/src/enrichment/README.md) for the S-LDSC
 and pathway-enrichment analyses. Figure-specific dependencies and invocation
-patterns are listed in the [figure guide](src/figures/README.md).
+patterns are listed in the [figure guide](https://github.com/LucaJiang/traceCB/blob/master/src/figures/README.md).
 
 ## Tests
 
@@ -110,20 +117,20 @@ If you use traceCB, please cite the paper:
 }
 ```
 
-Machine-readable citation metadata are available in [`CITATION.cff`](CITATION.cff).
+Machine-readable citation metadata are available in [`CITATION.cff`](https://github.com/LucaJiang/traceCB/blob/master/CITATION.cff).
 
 ## Code and Data Availability
 
 The source code, automated tests, documentation, and processed tutorial example
 are maintained in this repository. Checksums for the tutorial inputs are stored
-in [`data/toy_example/SHA256SUMS`](data/toy_example/SHA256SUMS).
+in [`data/toy_example/SHA256SUMS`](https://github.com/LucaJiang/traceCB/blob/master/data/toy_example/SHA256SUMS).
 
 The full study datasets are not redistributed. Their source repositories,
 reference builds, access restrictions, and preprocessing formats are documented
-in [`docs/pipeline.md`](docs/pipeline.md). The EUR S-LDSC workflow additionally
+in [`docs/pipeline.md`](https://github.com/LucaJiang/traceCB/blob/master/docs/pipeline.md). The EUR S-LDSC workflow additionally
 records reference checksums and run provenance in
-[`src/enrichment/README.md`](src/enrichment/README.md).
+[`src/enrichment/README.md`](https://github.com/LucaJiang/traceCB/blob/master/src/enrichment/README.md).
 
 ## License
 
-traceCB is distributed under the [GPL-3.0 license](LICENSE).
+traceCB is distributed under the [GPL-3.0 license](https://github.com/LucaJiang/traceCB/blob/master/LICENSE).

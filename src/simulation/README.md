@@ -7,6 +7,8 @@ env `py312`.
 conda activate py312
 ```
 
+In a custom Python environment, install `pip install -e ".[simulation]"` first.
+
 The simulation outputs are written under `bench/result` by default. For smoke
 tests or temporary reruns, set `OUT_DIR` or pass `--out_dir` to a temporary
 folder and delete it after inspection. Shell entry points also accept

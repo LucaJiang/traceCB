@@ -22,11 +22,11 @@ manuscript analyses distributed with the repository.
 
 -   :material-dna: **Integration**
     ---
-    Seamlessly combines single-cell precision with bulk data scale for enhanced biological insights.
+    Combines cell-type eQTL summary statistics with bulk-tissue information.
 
 -   :material-earth: **Trans-ancestry**
     ---
-    Leverages genetic diversity across populations to identify robust and causal signals.
+    Shares information across populations to improve cell-type eQTL estimation.
 
 -   :material-speedometer: **Efficiency**
     ---

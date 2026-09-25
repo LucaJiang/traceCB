@@ -23,7 +23,7 @@ def GMM(
     Omega : np.ndarray
         (2, 2) per-snp covariance matrix
     C : np.ndarray
-        (2, 2) genetic drift matrix estimated from the LDSC
+        (2, 2) sampling-error scaling matrix from LDSC intercepts
     beta1 : float
         beta for snp j in population 1
     se1 : float
@@ -103,7 +103,7 @@ def GMMtissue(
     Omega : np.ndarray
         (2, 2) per-snp covariance matrix
     C : np.ndarray
-        (3, 3) genetic drift matrix estimated from the LDSC
+        (3, 3) sampling-error scaling matrix from LDSC intercepts
     beta1 : float
         beta for snp j in population 1
     se1 : float
@@ -200,7 +200,7 @@ def GMMtissueBoth(
     Omega : np.ndarray
         (2, 2) per-snp covariance matrix
     C : np.ndarray
-        (4, 4) genetic drift matrix estimated from the LDSC
+        (4, 4) sampling-error scaling matrix from LDSC intercepts
     beta1 : float
         beta for snp j in population 1
     se1 : float

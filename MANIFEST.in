@@ -1,0 +1,7 @@
+include LICENSE README.md CITATION.cff CONTRIBUTING.md environment.yml mkdocs.yml
+include docs/*.md docs/img/*.png docs/img/*.jpg docs/tutorial/*.ipynb
+include data/toy_example/*.csv data/toy_example/README.md data/toy_example/SHA256SUMS
+include scripts/*.sh
+recursive-include src *.py *.R *.sh *.md *.json *.tsv
+include tests/test_*.py tests/README.md
+global-exclude *.py[cod] *.nbc *.nbi .DS_Store

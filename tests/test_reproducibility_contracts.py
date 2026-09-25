@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+
 try:
     import tomllib
 except ModuleNotFoundError:  # Python 3.10
@@ -16,6 +17,34 @@ from traceCB.ldsc import Run_Cross_LDSC
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOY_DIR = REPO_ROOT / "data" / "toy_example"
 PREPARE_LOCI_PATH = REPO_ROOT / "src" / "coloc" / "prepare_loci.py"
+
+
+def synthetic_ldsc_inputs():
+    rng = np.random.default_rng(42)
+    ld = np.linspace(1.0, 5.0, 300)
+    n = np.full(300, 1000.0)
+    z1 = rng.normal(size=300) * np.sqrt(1 + 0.0004 * n * ld)
+    z2 = 0.3 * z1 + rng.normal(size=300) * np.sqrt(1 + 0.0003 * n * ld)
+    return z1, z2, n, ld
+
+
+def test_ldsc_does_not_mutate_caller_intercepts():
+    z1, z2, n, ld = synthetic_ldsc_inputs()
+    intercepts = np.array([1.0, np.nan, np.nan])
+    original = intercepts.copy()
+    Run_Cross_LDSC(z1, n, ld, z2, n, ld, ld, intercepts)
+    np.testing.assert_array_equal(intercepts, original)
+
+
+def test_ldsc_default_intercepts_are_independent_between_fits():
+    z1, z2, n, ld = synthetic_ldsc_inputs()
+    Run_Cross_LDSC(z1, n, ld, z2, n, ld, ld)
+    observed = Run_Cross_LDSC(z1 * 1.5, n, ld, z2 * 0.8, n, ld, ld)
+    expected = Run_Cross_LDSC(
+        z1 * 1.5, n, ld, z2 * 0.8, n, ld, ld, np.full(3, np.nan)
+    )
+    for result, independent_result in zip(observed, expected):
+        np.testing.assert_allclose(result, independent_result, rtol=1e-12)
 
 
 def load_prepare_loci_module():

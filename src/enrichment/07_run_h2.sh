@@ -4,11 +4,9 @@ set -euo pipefail
 
 if [[ "${SKIP_CONDA_ACTIVATE:-0}" == "1" ]]; then
   :
-elif [[ -f /opt/anaconda3/etc/profile.d/conda.sh ]]; then
-  source /opt/anaconda3/etc/profile.d/conda.sh
-  conda activate ldsc
 else
-  source activate ldsc
+  source "$(conda info --base)/etc/profile.d/conda.sh"
+  conda activate "${LDSC_ENV:-ldsc}"
 fi
 
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"

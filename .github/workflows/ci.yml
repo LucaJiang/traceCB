@@ -22,17 +22,27 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[ci]"
+      - run: python -m pip install "build>=1.2,<2" "twine>=6,<8"
       - run: python -m build
-      - run: python -m pytest -q
-      - name: Execute tutorial notebook
+      - run: python -m twine check --strict dist/*
+      - name: Install wheel and test the source archive
+        run: |
+          wheel=$(find dist -name '*.whl' -print -quit)
+          python -m pip install "${wheel}[ci,test]"
+          python -m pip check
+          mkdir -p "$RUNNER_TEMP/tracecb-source"
+          tar -xzf dist/tracecb-*.tar.gz --strip-components=1 -C "$RUNNER_TEMP/tracecb-source"
+          cd "$RUNNER_TEMP/tracecb-source"
+          sha256sum --check data/toy_example/SHA256SUMS
+          python -m pytest -q
+      - name: Execute tutorial notebooks
         if: matrix.python-version == '3.12'
-        run: >-
-          jupyter nbconvert --to notebook --execute
-          docs/tutorial/run_traceCB.ipynb
-          --output run_traceCB_ci.ipynb
-          --output-dir /tmp
-          --ExecutePreprocessor.timeout=600
+        run: |
+          cd "$RUNNER_TEMP/tracecb-source"
+          for notebook in docs/tutorial/run_traceCB*.ipynb; do
+            jupyter nbconvert --to notebook --execute "$notebook" \
+              --output-dir "$RUNNER_TEMP" --ExecutePreprocessor.timeout=600
+          done
 
   docs:
     runs-on: ubuntu-latest

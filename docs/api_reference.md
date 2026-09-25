@@ -1,6 +1,18 @@
 # API Reference
 
-This page provides detailed documentation for the core functions in the `traceCB` package.
+The functions below operate on already aligned summary statistics. Use the
+same SNP order, allele orientation, and genome build across populations and LD
+scores. Pass finite NumPy arrays; sample sizes and standard errors must be
+positive. These functions do not perform allele harmonization or file loading.
+
+```python
+from traceCB import GMM, GMMtissue, Run_Cross_LDSC
+from traceCB.ldsc import Run_Single_LDSC
+```
+
+The GMM routines use Numba and compile on their first call. The command-line
+runner is available as `python -m traceCB.run_gmm --help`; full-data preparation
+is described in the [pipeline guide](pipeline.md).
 
 - [API Reference](#api-reference)
   - [traceCB.gmm](#tracecbgmm)
@@ -36,7 +48,7 @@ def GMM(
 **Parameters**
 
 - **Omega** (`np.ndarray`): A (2, 2) per-SNP covariance matrix.
-- **C** (`np.ndarray`): A (2, 2) genetic drift matrix estimated from LDSC.
+- **C** (`np.ndarray`): A (2, 2) sampling-error scaling matrix, for example from LDSC intercepts.
 - **beta1** (`float`): Effect size (beta) for the SNP in population 1.
 - **se1** (`float`): Standard error for the SNP in population 1.
 - **ld1** (`float`): LD score between the SNP and the rest of the SNPs in the target gene in population 1.
@@ -56,7 +68,7 @@ def GMM(
 
 ### `GMMtissue`
 
-Apply cross-population GMM incorporating tissue-specific information (e.g., from scRNA-seq derived eQTLs).
+Apply cross-population GMM using an additional bulk-tissue eQTL estimate from population 2.
 
 ```python
 def GMMtissue(
@@ -79,7 +91,7 @@ def GMMtissue(
 **Parameters**
 
 - **Omega** (`np.ndarray`): A (2, 2) per-SNP covariance matrix.
-- **C** (`np.ndarray`): A (3, 3) genetic drift matrix estimated from LDSC.
+- **C** (`np.ndarray`): A (3, 3) sampling-error scaling matrix, for example from LDSC intercepts.
 - **beta1** (`float`): Effect size (beta) for the SNP in population 1.
 - **se1** (`float`): Standard error for the SNP in population 1.
 - **ld1** (`float`): LD score for population 1.
@@ -87,10 +99,10 @@ def GMMtissue(
 - **se2** (`float`): Standard error for the SNP in population 2.
 - **ld2** (`float`): LD score for population 2.
 - **ldx** (`float`): Cross-population LD score.
-- **beta_t** (`float`): Effect size (beta) for the SNP in the specific tissue/cell-type.
-- **se_t** (`float`): Standard error for the SNP in the specific tissue/cell-type.
-- **pi2_omega_o** (`float`): Variance component of other cell types within the tissue.
-- **propt** (`float`): Proportion of the specific cell type in the tissue.
+- **beta_t** (`float`): Bulk-tissue effect size for the SNP in population 2.
+- **se_t** (`float`): Standard error of the bulk-tissue effect size.
+- **pi2_omega_o** (`float`): Mixture-proportion-weighted per-SNP variance contribution of other cell types. For a two-cell mixture this is `(1 − propt)² × Var(beta_other)`. The function multiplies it by `ld2`.
+- **propt** (`float`): Fraction of the focal cell type in population 2 tissue, between 0 and 1. Convert percentages to fractions first.
 
 **Returns**
 
@@ -107,7 +119,7 @@ Functions for running Single and Cross-Population LD Score Regression (LDSC).
 
 ### `Run_Single_LDSC`
 
-Run LDSC regression to estimate heritability ($h^2$) in a single population.
+Estimate the per-SNP genetic variance coefficient from single-population LDSC.
 
 ```python
 def Run_Single_LDSC(
@@ -127,14 +139,14 @@ def Run_Single_LDSC(
 
 **Returns**
 
-- **h2** (`float`): Estimated heritability. (Clipped to be $\ge$ MIN_HERITABILITY).
-- **h2_se** (`float`): Standard error of the heritability estimate.
+- **h2** (`float`): Estimated per-SNP variance coefficient, bounded below by `MIN_HERITABILITY = 1e-12`. This is the slope in `E[z²] = intercept + n × LD × h2`; it is not summed over the SNPs in the locus.
+- **h2_se** (`float`): Standard error of the per-SNP variance estimate.
 
 ---
 
 ### `Run_Cross_LDSC`
 
-Run LDSC regression to estimate genetic covariance ($\Omega$) between two populations.
+Estimate the per-SNP genetic covariance matrix Ω between two populations.
 
 ```python
 def Run_Cross_LDSC(
@@ -158,12 +170,26 @@ def Run_Cross_LDSC(
 - **n2** (`np.ndarray`): Sample sizes for population 2.
 - **ldscore2** (`np.ndarray`): LD scores for population 2.
 - **crossld** (`np.ndarray`): Cross-population LD scores.
-- **intercept** (`np.ndarray`, optional): Array of intercept values `[h11, h22, h12]`. Default is `[nan, nan, nan]`, which estimates all intercepts.
+- **intercept** (`np.ndarray`, optional): Array of intercept values `[I1, I2, Ix]`. Default is `[nan, nan, nan]`, which estimates all intercepts independently for each call. `[1.0, 1.0, 0.0]` fixes the two within-population intercepts to 1 and the cross-population intercept to 0. The input array is not modified.
 
 **Returns**
 
-- **Omega** (`np.ndarray`): Estimated genetic covariance matrix of shape `(2, 2)`.
-  - `Omega[0, 0]`: Heritability pop 1
-  - `Omega[1, 1]`: Heritability pop 2
+- **Omega** (`np.ndarray`): Estimated per-SNP genetic covariance matrix of shape `(2, 2)`.
+  - `Omega[0, 0]`: Per-SNP genetic variance in population 1
+  - `Omega[1, 1]`: Per-SNP genetic variance in population 2
   - `Omega[0, 1]` / `Omega[1, 0]`: Genetic covariance
 - **Omega_se** (`np.ndarray`): Standard error matrix for `Omega`, shape `(2, 2)`.
+
+
+The diagonal elements of Ω are bounded below by `1e-12`; the off-diagonal
+covariance is not clipped by `Run_Cross_LDSC`. Before calling GMM, check that
+Ω and the LD-weighted covariance matrices are suitable for the intended model.
+The tutorial and full-data runner apply covariance significance checks and
+correlation clipping. Singular inputs can raise a numerical linear algebra
+error.
+
+For `GMM`, rows and columns of `C` correspond to populations 1 and 2. For
+`GMMtissue`, they correspond to population 1, population 2, and bulk tissue.
+The sampling covariance used by the estimator is `diag(SE) @ C @ diag(SE)`.
+An identity matrix represents independent sampling errors with unit LDSC
+intercepts. This matrix describes sampling error, separately from Ω.

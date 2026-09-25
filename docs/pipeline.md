@@ -4,7 +4,8 @@ This guide describes how to obtain and format the external inputs, run the
 traceCB GMM model, and generate downstream colocalization and figures. Run all
 commands from the repository root.
 
-All logs will be saved to your specified `log_path`. Please review the log files carefully for any warnings or errors.
+Workflow logs are written to `results/logs` by default. Set `TRACECB_LOG_DIR`
+to choose another directory, and inspect the logs if a stage fails.
 
 !!! warning Data Format Requirement
     If you use your own eQTL data, ensure the input data format matches the specifications described below exactly to avoid runtime errors.
@@ -121,11 +122,39 @@ To optimize Python loading times, we split and format the data by chromosome.
 
 You can directly use the preprocessed 1000G reference files for `EUR` and `EAS` populations from the [S-LDSC reference files](https://zenodo.org/records/10515792). Download the `1000G_Phase3_plinkfiles.tgz` for `EUR` and `1000G_Phase3_EAS_plinkfiles.tgz` for `EAS`, and extract them to your desired location. Ensure the file paths are correctly specified in your configuration.
 
-#### Option 2: Download from Plink Resource
+#### Option 2: Prepare a GRCh38 PLINK 2 panel
 
-Alternatively, download the 1000G Phase 3 data from [PLINK resources](https://www.cog-genomics.org/plink/1.9/resources#phase1) or the [S-LDXR resource](https://zenodo.org/records/7768714).
+`scripts/preprocess_1000g.sh` expects a GRCh38 PLINK 2 panel with
+`all_hg38.pgen`, `all_hg38.pvar`, and `all_hg38.psam` in `REFERENCE_DIR`.
+It can decompress `all_hg38.pgen.zst` and `all_hg38_rs.pvar.zst`, and rename
+`hg38_corrected.psam`. The sample file must contain superpopulation labels
+in its fifth column. This path requires both PLINK 2 (`PLINK2`) and PLINK 1.9
+(`PLINK1`); it does not ingest the pre-split BED archives from Option 1.
 
-Then run `scripts/preprocess_1000g.sh` to filter samples by population (`EAS`, `EUR`, `AFR`), perform QC, and split by chromosome.
+```bash
+REFERENCE_DIR=/path/to/GRCh38_panel \
+PLINK1=/path/to/plink PLINK2=/path/to/plink2 \
+bash scripts/preprocess_1000g.sh
+```
+
+The script writes `1000G.<population>.QC.maf.<chromosome>.bed/bim/fam`
+under `1000G_EAS`, `1000G_EUR`, and `1000G_AFR`. Point `TARGET_LD_DIR`
+and `AUX_LD_DIR` to the selected reference directories.
+
+### Genome builds and input selection
+
+Choose reference panels and annotation coordinates consistently. The GTEx
+preprocessing helper retains GRCh38 positions from the GTEx variant lookup;
+`harmonize_inputs.py` matches SNPs by rsID and writes the tissue input's `POS`
+column into `INFO/chr*.csv`. It does not perform liftover. Before using these
+positions with colocalization or interval enrichment, convert them to the
+build required by those analyses. The documented colocalization references
+and the manuscript EUR S-LDSC annotation workflow use GRCh37/hg19.
+
+The current harmonization loader identifies input formats from directory
+names: use a target path containing `bbj` or `af`, and a tissue path containing
+`gtex` or `eqtlgen` (case-insensitive). Set these paths through `scripts/config.sh`
+or its environment-variable overrides before launching the workflow.
 
 ### Cell Type Information & Proportion
 
@@ -222,7 +251,7 @@ Execute `scripts/run_gmm.sh` (wraps `src/traceCB/run_gmm.py`) to run the GMM mod
 
 ### Output Files
 
-The results are saved in Parquet notation for performance.
+The per-gene results are saved in Parquet format.
 
 **1. Gene-level Results** (`ENSG@.parquet`)
 
@@ -234,7 +263,9 @@ Contains detailed effect size estimates for Target (TAR), Auxiliary (AUX), and T
 
 **2. Chromosome Summary** (`summary.csv`)
 
-Contains heritability estimates ($h^2$) and effective sample sizes ($N_{eff}$).
+Contains per-SNP genetic variance estimates (`H1SQ`, `H2SQ`), their standard
+errors, and effective sample sizes (`N_eff`). The variance estimates are the
+LDSC coefficients; they are not summed over all SNPs in a gene.
 
 | GENE      | NSNP | H1SQ     | H2SQ     | TAR_SNEFF | ... |
 | --------- | ---- | -------- | -------- | --------- | --- |
@@ -255,7 +286,7 @@ Contains heritability estimates ($h^2$) and effective sample sizes ($N_{eff}$).
 Run `src/coloc/prepare_loci.py`:
 
 ```bash
-LDLINK_TOKEN=<TOKEN> python src/coloc/prepare_loci.py \
+LDLINK_TOKEN="your-token" python src/coloc/prepare_loci.py \
   --gwas <GWAS_SUMSTATS> \
   --gwas-format standard \
   --cytobands <CYTOBAND_TSV> \

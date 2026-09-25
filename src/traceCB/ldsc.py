@@ -423,6 +423,9 @@ def ldscore_regression_gc(
         Arrays for population 1, population 2, and cross-population results,
         each with shape (4,) containing [intercept, coef, intercept_se, coef_se]
     """
+    # Estimate missing intercepts independently for each fit, without changing
+    # the caller's array or the shared default used by subsequent calls.
+    intercept = np.array(intercept, dtype=float, copy=True)
     reg_w1 = 1.0 / np.maximum(ldscore[:, 0], 1.0)
     reg_w2 = 1.0 / np.maximum(ldscore[:, 1], 1.0)
 
