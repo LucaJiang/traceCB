@@ -39,7 +39,7 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
       end_positions + window_size
     )
 
-  # load meta_data.json
+  # load metadata.json
 
   # color_mapping <- c(
   #   "B" = celltype_colors$B_cells,

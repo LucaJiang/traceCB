@@ -76,8 +76,9 @@ Explore our documentation to learn how to use traceCB:
 
 ## Citation
 
-If you use **traceCB** in your research, please cite the accompanying paper.
-Citation details will be added when the paper record is available.
+> Jiang W, Xiao J, Cai M. **traceCB: Trans-ancestry cell-type-specific eQTLs
+> mapping by integrating scRNA-seq and bulk data.** *bioRxiv*. 2026.
+> doi:[10.64898/2026.06.20.733502](https://doi.org/10.64898/2026.06.20.733502).
 
 ## Support
 

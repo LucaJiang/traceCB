@@ -2,6 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue.svg)](LICENSE)
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-10.64898%2F2026.06.20.733502-b31b1b.svg)](https://doi.org/10.64898/2026.06.20.733502)
 [![Open Tutorial In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lucajiang/traceCB/blob/master/docs/tutorial/run_traceCB_colab.ipynb)
 
 traceCB maps trans-ancestry cell-type-specific eQTL effects by integrating
@@ -30,7 +31,7 @@ can be overridden with environment variables documented in `scripts/config.sh`.
 ## Installation
 
 Python 3.10 or newer is required. For repository-level reproduction, create the
-validated Python 3.12 reference environment from the tracked specification:
+Python 3.12 reference environment for release `1.0` from the tracked specification:
 
 ```bash
 git clone https://github.com/lucajiang/traceCB.git
@@ -90,7 +91,7 @@ patterns are listed in the [figure guide](src/figures/README.md).
 
 ```bash
 pip install -e '.[test]'
-conda run -n py312 pytest -q
+python -m pytest -q
 ```
 
 ## Citation
@@ -108,6 +109,20 @@ If you use traceCB, please cite the paper:
   publisher={Cold Spring Harbor Laboratory}
 }
 ```
+
+Machine-readable citation metadata are available in [`CITATION.cff`](CITATION.cff).
+
+## Code and Data Availability
+
+The source code, automated tests, documentation, and processed tutorial example
+are maintained in this repository. Checksums for the tutorial inputs are stored
+in [`data/toy_example/SHA256SUMS`](data/toy_example/SHA256SUMS).
+
+The full study datasets are not redistributed. Their source repositories,
+reference builds, access restrictions, and preprocessing formats are documented
+in [`docs/pipeline.md`](docs/pipeline.md). The EUR S-LDSC workflow additionally
+records reference checksums and run provenance in
+[`src/enrichment/README.md`](src/enrichment/README.md).
 
 ## License
 

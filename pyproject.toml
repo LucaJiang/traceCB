@@ -4,9 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "traceCB"
-version = "0.1.2"
-authors = [{ name = "Luca Jiang", email = "wx.jiang@my.cityu.edu.hk" }]
-description = "TraceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data"
+version = "1.0"
+authors = [
+    { name = "Wenxin Jiang", email = "wx.jiang@my.cityu.edu.hk" },
+    { name = "Jiashun Xiao" },
+    { name = "Mingxuan Cai" },
+]
+description = "traceCB: Trans-ancestry cell-type-specific eQTLs mapping by integrating scRNA-seq and bulk data"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0" }
@@ -45,15 +49,26 @@ dependencies = [
 enrichment = ["gseapy"]
 figures = ["adjustText", "matplotlib-venn", "pypdfium2", "Pillow"]
 tutorial = ["ipykernel", "nbconvert", "notebook"]
-test = ["pytest"]
-ci = ["pytest", "ipykernel", "nbconvert"]
-docs = ["mkdocs-material"]
+test = ["pytest>=8,<10", "tomli>=2; python_version < '3.11'"]
+ci = [
+    "pytest>=8,<10",
+    "tomli>=2; python_version < '3.11'",
+    "build>=1.2,<2",
+    "ipykernel>=6,<8",
+    "nbconvert>=7,<8",
+]
+docs = ["mkdocs-material>=9,<10"]
 
 [project.urls]
 "Homepage" = "https://github.com/lucajiang/traceCB"
 "Bug Tracker" = "https://github.com/lucajiang/traceCB/issues"
+"Documentation" = "https://lucajiang.github.io/traceCB/"
+"Preprint" = "https://doi.org/10.64898/2026.06.20.733502"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["traceCB*"]
 namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

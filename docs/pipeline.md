@@ -123,7 +123,7 @@ You can directly use the preprocessed 1000G reference files for `EUR` and `EAS` 
 
 #### Option 2: Download from Plink Resource
 
-Alternatively, download the 1000G Phase 3 data from [Plink Resource](https://www.cog-genomics.org/plink/1.9/resources#phase1) or [s-ldxc Resource](https://zenodo.org/records/7768714). 
+Alternatively, download the 1000G Phase 3 data from [PLINK resources](https://www.cog-genomics.org/plink/1.9/resources#phase1) or the [S-LDXR resource](https://zenodo.org/records/7768714).
 
 Then run `scripts/preprocess_1000g.sh` to filter samples by population (`EAS`, `EUR`, `AFR`), perform QC, and split by chromosome.
 

@@ -7,8 +7,8 @@ from .ldsc import Run_Cross_LDSC
 from . import utils
 
 # Version info
-__version__ = "0.1.2"
-__author__ = "Luca Jiang"
+__version__ = "1.0"
+__author__ = "Wenxin Jiang, Jiashun Xiao, and Mingxuan Cai"
 
 __all__ = [
     "GMM",

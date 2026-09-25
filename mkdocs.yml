@@ -1,7 +1,7 @@
 site_name: traceCB
 site_url: https://lucajiang.github.io/traceCB/
 site_description: Trans-ancestry cell-type-specific eQTL effects mapping
-site_author: Luca Jiang
+site_author: Wenxin Jiang, Jiashun Xiao, and Mingxuan Cai
 
 repo_name: lucajiang/traceCB
 repo_url: https://github.com/lucajiang/traceCB
