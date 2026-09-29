@@ -244,7 +244,7 @@ def main() -> None:
     print(f"Loading and correlating EUR window {args.start}:{args.end}")
     corr2 = corr_matrix(args.pop2_geno, args.start, args.end)
 
-    figure_path = args.out_dir / f"simulation_ld_window_{args.start}_{args.end}.png"
+    figure_path = args.out_dir / f"simulation_ld_window_{args.start}_{args.end}.pdf"
     summary_path = args.out_dir / f"simulation_ld_window_{args.start}_{args.end}_summary.tsv"
     plot_ld(snp_ids, positions, args.start, args.end, corr1, corr2, figure_path, args.dpi)
     write_summary(summary_path, snp_ids, positions, args.start, args.end, corr1, corr2)

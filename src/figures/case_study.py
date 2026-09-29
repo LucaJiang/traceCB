@@ -6,6 +6,7 @@
 from figures.utils import *
 from adjustText import adjust_text
 from upsetplot import UpSet, plot
+from figures.neff_labels import label_neff_scatter
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -27,39 +28,12 @@ summary_output_dir = f"{save_path}/single_study"
 
 
 def plot_neff_scatter(summary_df, target_qtdid, text_annot=True):
+    """Use first_two label ranking only for configured EAS + GTEx analyses."""
     # plot scatter plot of effective sample size
     ## p1: x=TAR_SNEFF, y=TAR_CNEFF, hue=COV_PVAL<0.05
     ## p2: x=TAR_SNEFF, y=TAR_TNEFF, hue=COV_PVAL<0.05
     ## p3: x=TAR_CNEFF, y=TAR_TNEFF, hue=COV_PVAL<0.05
     fig, ax = plt.subplots(1, 3, figsize=(12, 4))
-    ## find significant and not significant xpop cov
-    # palette = {
-    #     "High Correlation": "#f30c0cf8", ## cor>0.8
-    #     "Medium Correlation": "#33ff00", ## 0.4<cor<0.8
-    #     "Low Correlation": "#00ddfff8", ## cor<0.4
-    #     "Not Significant": "#120eff",
-    # }
-    # summary_df.loc[:, "COV_SIGN"] = pd.cut(
-    #     summary_df.COR,
-    #     bins=[-1, 0.4, 0.8, 1.1],
-    #     labels=[
-    #         "Low Correlation",
-    #         "Medium Correlation",
-    #         "High Correlation",
-    #     ],
-    #     include_lowest=True,
-    # ).astype(str)
-    # summary_df.loc[summary_df["COV_PVAL"] >= 0.05, "COV_SIGN"] = "Not Significant"
-    # summary_df.COV_SIGN = pd.Categorical(
-    #     summary_df.COV_SIGN,
-    #     categories=[
-    #         "High Correlation",
-    #         "Medium Correlation",
-    #         "Low Correlation",
-    #         "Not Significant",
-    #     ],
-    #     ordered=True,
-    # )
     palette = {
         "Significant": "#db1717f8",
         "Not Significant": "#120eff",
@@ -92,47 +66,47 @@ def plot_neff_scatter(summary_df, target_qtdid, text_annot=True):
             ax=ax[i],
             s=4,
         )
-        ## add text annotation
-        ### define gene to annotate
-        summary_df.loc[:, "ANNOTATE_ORDER"] = summary_df.loc[
-            :, y_col
-        ]  # - 1.5*summary_df.loc[:, x_col]
-        if text_annot:
-            num_annotate_genes = 10
-            row_to_annotate = summary_df.nlargest(num_annotate_genes, "ANNOTATE_ORDER")
-            texts = []
-            for _, row in row_to_annotate.iterrows():
-                gene_name = annot_class.get_gene_name(row.GENE)
-                if gene_name is not None and row[x_col] != row[y_col]:
-                    texts.append(
-                        ax[i].text(
-                            row[x_col],
-                            row[y_col],
-                            gene_name,
-                            fontsize=7,
-                            fontstyle="italic",
-                        )
-                    )
-            # Looks like you are using a tranform that doesn't support FancyArrowPatch, using ax.annotate instead. The arrows might strike through texts. Increasing shrinkA in arrowprops might help.
-            adjust_text(
-                texts,
-                ax=ax[i],
-                ha="center",
-                va="center",
-                force_text=(4.0, 4.0),  # 增加文本之间的排斥力
-                force_points=(4, 4),  # 增加文本与点之间的排斥力
-                expand_text=(4, 4),  # 增加文本周围的扩展区域
-                expand_points=(1.5, 1.5),  # 增加点周围的扩展区域
-                lim=10000,  # 增加迭代次数
-                precision=0.0001,  # 提高精度
-                # arrowprops=dict(
-                #     arrowstyle="->",
-                #     color="grey",
-                #     lw=0.5,
-                #     shrinkA=4,  # 增加箭头与文本的距离
-                #     shrinkB=2,  # 增加箭头与点的距离
-                # ),
-            )
+        # ## add text annotation
+        # ### define gene to annotate
+        # summary_df.loc[:, "ANNOTATE_ORDER"] = summary_df.loc[
+        #     :, y_col
+        # ]  # - 1.5*summary_df.loc[:, x_col]
+        # if text_annot:
+        #     num_annotate_genes = 10
+        #     row_to_annotate = summary_df.nlargest(num_annotate_genes, "ANNOTATE_ORDER")
+        #     texts = []
+        #     for _, row in row_to_annotate.iterrows():
+        #         gene_name = annot_class.get_gene_name(row.GENE)
+        #         if gene_name is not None and row[x_col] != row[y_col]:
+        #             texts.append(
+        #                 ax[i].text(
+        #                     row[x_col],
+        #                     row[y_col],
+        #                     gene_name,
+        #                     fontsize=7,
+        #                     fontstyle="italic",
+        #                 )
+        #             )
+        #     # Looks like you are using a tranform that doesn't support FancyArrowPatch, using ax.annotate instead. The arrows might strike through texts. Increasing shrinkA in arrowprops might help.
+        #     adjust_text(
+        #         texts,
+        #         ax=ax[i],
+        #         ha="center",
+        #         va="center",
+        #         force_text=(4.0, 4.0),  # 增加文本之间的排斥力
+        #         force_points=(4, 4),  # 增加文本与点之间的排斥力
+        #         expand_text=(4, 4),  # 增加文本周围的扩展区域
+        #         expand_points=(1.5, 1.5),  # 增加点周围的扩展区域
+        #         lim=10000,  # 增加迭代次数
+        #         precision=0.0001,  # 提高精度
+        #         # arrowprops=dict(
+        #         #     arrowstyle="->",
+        #         #     color="grey",
+        #         #     lw=0.5,
+        #         #     shrinkA=4,  # 增加箭头与文本的距离
+        #         #     shrinkB=2,  # 增加箭头与点的距离
+        #         # ),
+        #     )
         ## add baseline
         xmax = summary_df[x_col].max()
         ymax = summary_df[y_col].max()
@@ -168,6 +142,54 @@ def plot_neff_scatter(summary_df, target_qtdid, text_annot=True):
     plt.suptitle("Effective Sample Size Comparison", y=0.92)
     plt.tight_layout()
     if text_annot:
+        target_population = os.environ.get("TARGET_POPULATION", "EAS")
+        tissue_source = os.environ.get("TISSUE_SOURCE", "eQTLGen")
+        ranking_mode = (
+            "first_two"
+            if (target_population, tissue_source) == ("EAS", "GTEx")
+            else "all_three"
+        )
+        labeled_genes = label_neff_scatter(
+            ax,                                   # 原来的三个子图 axes
+            summary_df,                           # 原来的完整散点数据
+            gene_name=annot_class.get_gene_name,   # 保留原来的基因名映射
+            max_genes=5,                          # 最多标注 5 个基因
+            label_fontsize=9.0,                    # 先试 9，再试 10、11
+            gap_pt=1.5,                            # 标签周围的避让余量
+            ranking_mode=ranking_mode,
+        )
+
+        # 保存所选基因及三个比值，方便你检查。
+        label_dir = os.path.join(save_path, "single_study")
+        os.makedirs(label_dir, exist_ok=True)
+
+        labeled_genes.to_csv(
+            os.path.join(
+                label_dir,
+                f"f3neff_scatter_{target_qtdid}_labels.tsv",
+            ),
+            sep="\t",
+            index=False,
+        )
+
+        print(
+            f"{target_qtdid} ({target_population} + {tissue_source}): "
+            f"ranking_mode={ranking_mode}; labeled {len(labeled_genes)} genes"
+        )
+        print(
+            labeled_genes[
+                [
+                    "GENE_NAME",
+                    "ranking_mode",
+                    "selection_score",
+                    "traceC_Original",
+                    "traceCB_Original",
+                    "traceCB_traceC",
+                    "min_ratio",
+                ]
+            ].to_string(index=False)
+        )
+    if text_annot:
         plt.savefig(
             f"{save_path}/single_study/f3neff_scatter_{target_qtdid}_annot.pdf",
             bbox_inches="tight",
@@ -180,42 +202,46 @@ def plot_neff_scatter(summary_df, target_qtdid, text_annot=True):
     plt.close()
 
 
-def plot_cor_box(summary_sign_df, target_qtdid):
-    # plot by cor group
-    ## 1. num of egene by method, proportion of egene by method
-    ## 2. ratio of effective sample size: GMM/Original, GMM+/Original
-    ## define cor group
-    cor_group_cut = [-0.8, -0.5, 0.0, 0.5, 0.8]
-    cor_group_labels = [
-        "<-0.8",
-        "-0.8~-0.5",
-        "-0.5~0.0",
-        "0.0~0.5",
-        "0.5~0.8",
-        ">0.8",
-    ]
+def original_correlations(summary_df):
+    """Read finite correlations recorded before clipping the LDSC covariance."""
+    if "COR_X_ORI" not in summary_df.columns:
+        raise ValueError(
+            "Unclipped correlations require COR_X_ORI in summary.csv. "
+            "Use results that retain this column or regenerate the summaries; "
+            "the original values cannot be recovered from clipped COR_X."
+        )
+    cor = pd.to_numeric(summary_df["COR_X_ORI"], errors="coerce")
+    return cor.where(np.isfinite(cor))
 
-    # cor_group_cut = [-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8]
-    # cor_group_labels = [
-    #     "<-0.8",
-    #     "-0.8~-0.6",
-    #     "-0.6~-0.4",
-    #     "-0.4~-0.2",
-    #     "-0.2~0.0",
-    #     "0.0~0.2",
-    #     "0.2~0.4",
-    #     "0.4~0.6",
-    #     "0.6~0.8",
-    #     ">0.8",
-    # ]
-    summary_sign_df.loc[:, "COR_GROUP"] = pd.cut(
-        summary_sign_df.COR,
-        bins=[-1.1] + cor_group_cut + [1.1],
-        labels=cor_group_labels,
-        include_lowest=True,
+
+def correlation_groups(summary_df, target_population):
+    """Group original correlations, retaining finite values outside [-1, 1]."""
+    cuts_by_population = {
+        "EAS": [-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        "AFR": [-0.8, -0.5, 0.0, 0.5, 0.8],
+    }
+    if target_population not in cuts_by_population:
+        raise ValueError("TARGET_POPULATION must be EAS or AFR")
+    cuts = cuts_by_population[target_population]
+    cor_group_labels = (
+        [f"≤{cuts[0]:.1f}"]
+        + [f"{left:.1f}~{right:.1f}" for left, right in zip(cuts, cuts[1:])]
+        + [f">{cuts[-1]:.1f}"]
     )
-    summary_sign_df.COR_GROUP = pd.Categorical(
-        summary_sign_df.COR_GROUP, categories=cor_group_labels, ordered=True
+    return pd.cut(
+        original_correlations(summary_df),
+        bins=[-np.inf, *cuts, np.inf],
+        labels=cor_group_labels,
+        right=True,
+    )
+
+
+def plot_cor_box(summary_sign_df, target_qtdid, target_population=None):
+    if target_population is None:
+        target_population = os.environ.get("TARGET_POPULATION", "EAS")
+    summary_sign_df = summary_sign_df.copy()
+    summary_sign_df["COR_GROUP"] = correlation_groups(
+        summary_sign_df, target_population
     )
 
     ## define ratio columns
@@ -254,6 +280,7 @@ def plot_cor_box(summary_sign_df, target_qtdid):
         y="Value",
         hue="Ratio",
         data=ratio_melted,
+        order=summary_sign_df["COR_GROUP"].cat.categories,
         fliersize=0,  # 不显示异常值
         ax=ax,
         palette=this_palette,
@@ -301,6 +328,7 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
     combined_df = pd.concat(
         [target_summary_df, target_summary_sign_df], ignore_index=True
     )
+    combined_df["COR_X_ORI"] = original_correlations(combined_df)
 
     # print(f"Study {target_qtdid}:")
     # print(target_summary_df.COR_X_ORI.describe())
@@ -309,7 +337,7 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
     # 使用 displot 并添加 rug
     g = sns.displot(
         data=combined_df,
-        x="COR_X",
+        x="COR_X_ORI",
         hue="Type",
         kind="hist",
         bins=200,
@@ -357,8 +385,7 @@ def plot_cor_density(summary_df, summary_sign_df, target_qtdid):
 def summarize_cor_density_by_study(
     summary_df_all, summary_df_h2_sign, summary_sign_df, target_qtdid
 ):
-    cor_col = "COR_X_ORI" if "COR_X_ORI" in summary_df_h2_sign.columns else "COR"
-    cor_series = pd.to_numeric(summary_df_h2_sign[cor_col], errors="coerce")
+    cor_series = original_correlations(summary_df_h2_sign)
 
     return {
         "QTDid": target_qtdid,

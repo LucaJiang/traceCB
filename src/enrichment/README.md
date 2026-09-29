@@ -123,9 +123,6 @@ them without running ORA, `SKIP_GMT_PREP=1` to skip preparation, or
 - `09_visualize_results.py`: writes the enrichment heatmap. Its fixed 0.9--1.3
   color scale uses colorbar extensions for clipped cells; printed cell values
   retain the estimates.
-- `10_write_manuscript_sections.py`: writes a data-driven manuscript draft
-  after checking the validation report and FDR values. It never modifies the
-  analysis tables.
 
 ## Auditable outputs
 
@@ -141,10 +138,7 @@ them without running ORA, `SKIP_GMT_PREP=1` to skip preparation, or
 - `metadata/annotation_prefixes.tsv` and `metadata/h2_jobs.tsv`: headered,
   deterministic execution manifests.
 - `results/summary/master_sldsc_gsea_results.csv`: all 198 model results.
-- `visualization/`: PDF/PNG figure and figure-specific notes.
-- `manuscript/sldsc_eur_reference_revision.md`: generated text draft. Its data
-  availability section deliberately contains a pre-publication archival-deposit
-  reminder rather than claiming that a local filesystem path is public.
+- `visualization/`: PDF figure and figure-specific notes; no duplicate PNG export.
 - `logs/run_all_sldsc_gsea.*.log`: resolved configuration, traceCB/LDSC Git
   revisions, traceCB dirty-worktree flag, Python version, stage output, and
   timestamps. Publication reruns should use `TRACECB_GIT_DIRTY=0`.

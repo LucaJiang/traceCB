@@ -8,13 +8,12 @@ effect on results.
 ## Development setup
 
 ```bash
-python -m pip install -e ".[ci,test,docs]"
+python -m pip install -e ".[ci,docs]"
 ```
 
 Before submitting a pull request, run:
 
 ```bash
-python -m pytest -q
 python -m build
 python -m twine check --strict dist/*
 mkdocs build --strict
@@ -35,13 +34,15 @@ software revision, and affected manuscript figure or table in the pull request.
 
 Build from a clean checkout of the intended release commit. The wheel contains
 only the installable `traceCB` library and its metadata. The source archive also
-contains workflows, tests, documentation, and the public toy inputs so that it
-can be tested independently of Git. Run the tests from an extracted source
-archive against the installed wheel, and execute both tutorial notebooks.
-CI checks this on Python 3.10 and 3.12; notebook execution uses Python 3.12.
+contains workflows, documentation, and the public toy inputs. Local `tests/`
+files are excluded from Git and release archives. Install the wheel, verify
+the public toy-input checksums from the extracted source archive, and execute
+both tutorial notebooks against the installed package.
+CI checks package installation on Python 3.10 and 3.12; notebook execution uses
+Python 3.12.
 
 Before publishing, ensure that the release tag points to the reviewed commit
 and that `pyproject.toml`, `traceCB.__version__`, and `CITATION.cff` agree. Record
 the commit and environment used for manuscript results. Passing the toy example
-and unit tests does not replace reproducing the full analyses with their
+and package checks does not replace reproducing the full analyses with their
 external datasets and R/PLINK/LDSC dependencies.

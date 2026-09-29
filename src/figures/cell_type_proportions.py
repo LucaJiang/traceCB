@@ -5,6 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 from figures.utils import REPO_ROOT, label_name_shorten, meta_data, save_path
+from figures.paths import CELL_PROPORTIONS, require_file
 
 map_dict = {
     "B_cells": ["B cells naive", "B cells memory"],
@@ -20,10 +21,7 @@ map_dict = {
     "Monocytes": ["Monocytes"],
 }
 
-data_path = os.environ.get(
-    "TRACECB_CELL_PROPORTIONS",
-    str(REPO_ROOT / "data/cell_type_proportion/individual_proportions.csv"),
-)
+data_path = require_file(CELL_PROPORTIONS, "TRACECB_CELL_PROPORTIONS")
 raw_df = pd.read_csv(data_path, header=0)
 raw_df.columns = [x.replace(".", " ") for x in raw_df.columns]
 raw_df.head()

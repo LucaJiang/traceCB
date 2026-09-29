@@ -1,5 +1,6 @@
 # plot f5 AFR+GTEx violin plot for effective sample size
 from figures.utils import *
+from figures.paths import AFR_STUDY_DIR, AFR_FIGURE_DIR
 from figures.effective_sample_size_violin import remove_outliers
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
@@ -8,12 +9,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-study_path_main = os.environ.get(
-    "TRACECB_AFR_STUDY_DIR", str(REPO_ROOT / "results/AFR_eQTLGen")
-)
-save_path = os.environ.get(
-    "TRACECB_AFR_FIGURE_DIR", str(REPO_ROOT / "results/figures/afr")
-)
+study_path_main = str(AFR_STUDY_DIR)
+save_path = str(AFR_FIGURE_DIR)
+os.makedirs(save_path, exist_ok=True)
 
 TAR_SAMPLE_SIZE = 80
 

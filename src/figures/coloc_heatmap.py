@@ -1,25 +1,18 @@
 # %% plot fig 4 coloc heatmap for bcx mon
 from figures.utils import *
+from figures.paths import COLOC_GENES, COLOC_DIR, COLOC_REPLICATION, COLOC_FIGURE_DIR
 
 COLOC_THRESHOLD = 0.7
 # get annotation of gene id 2 name
-cloest_protein_path = os.environ.get(
-    "TRACECB_COLOC_GENES", str(REPO_ROOT / "data/coloc/bcx_mon.closest_genes.bed")
-)
+cloest_protein_path = require_file(COLOC_GENES, "TRACECB_COLOC_GENES")
 # chr1	2980277	2980277	rs2072732	0	chr1	2985732	3355185	PRDM16_ENSG00000142611	5455
 # chr1	9166344	9166344	rs6693258	0	chr1	9160364	9189161	GPR157_ENSG00000180758	0
-coloc_results_path_base = os.environ.get(
-    "TRACECB_COLOC_DIR", str(REPO_ROOT / "results/EAS_eQTLGen/coloc")
-)
+coloc_results_path_base = COLOC_DIR
 # chr, gene, start, end, nsnp_eqtl, nsnp_gwas, n_snp_coloc, p_original, p_traceC, p_traceCB
 # 1, ENSG00000000460, 169648341, 170163703, 2548, 4992, 550, 0.0950362338748985, 0.0950362338748985, 0.0950362338748985
-replicate_path = os.environ.get(
-    "TRACECB_COLOC_REPLICATION",
-    str(REPO_ROOT / "results/EAS_eQTLGen/coloc/replication.csv"),
-)
-save_path = os.environ.get(
-    "TRACECB_COLOC_FIGURE_DIR", str(REPO_ROOT / "results/figures/coloc")
-)
+replicate_path = require_file(COLOC_REPLICATION, "TRACECB_COLOC_REPLICATION")
+save_path = str(COLOC_FIGURE_DIR)
+os.makedirs(save_path, exist_ok=True)
 # get gene annotation
 annot_df = pd.read_csv(cloest_protein_path, sep="\t", header=None)
 annot_df.columns = [
@@ -43,9 +36,9 @@ combined_df = pd.DataFrame()
 for i, qtdid in enumerate(meta_data["QTDids"]):
     celltype = meta_data["Celltypes"][i]
     coloc_results_path = (
-        coloc_results_path_base + f"bcx_mon_eQTLGen_{qtdid}_{celltype}_coloc.csv"
+        coloc_results_path_base / f"bcx_mon_eQTLGen_{qtdid}_{celltype}_coloc.csv"
     )
-    coloc_df = pd.read_csv(coloc_results_path, sep=",")
+    coloc_df = pd.read_csv(require_file(coloc_results_path, "TRACECB_COLOC_DIR"), sep=",")
 
     for target in ["original", "traceC", "traceCB"]:
         coloc_df[f"{target}"] = coloc_df[f"p_{target}"].apply(

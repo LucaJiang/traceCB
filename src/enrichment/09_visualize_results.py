@@ -117,7 +117,6 @@ def save_heatmap(
     ax.tick_params(axis="y", labelrotation=0, labelsize=9)
     fig.subplots_adjust(left=0.22, bottom=0.16, right=0.96, top=0.86)
     fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
-    fig.savefig(out_path.with_suffix(".png"), dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -224,7 +223,6 @@ def plot_incremental_enrichment(frame: pd.DataFrame, out_dir: Path) -> None:
     ax.tick_params(axis="y", labelrotation=0, labelsize=9)
     fig.subplots_adjust(left=0.22, bottom=0.14, right=0.96, top=0.84)
     fig.savefig(out_dir / "incremental_enrichment_heatmap.pdf", bbox_inches="tight")
-    fig.savefig(out_dir / "incremental_enrichment_heatmap.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -238,7 +236,7 @@ custom annotation was run separately as `EUR baseline-LD v2.2 + one custom
 annotation`, not as a three-column custom joint model. EUR HapMap3 non-MHC
 weights and EUR allele frequencies were used.
 
-- `incremental_enrichment_heatmap.*`: study-specific annotations from
+- `incremental_enrichment_heatmap.pdf`: study-specific annotations from
   original eGenes, traceC-increment eGenes, and traceCB-increment eGenes. SNPs
   are annotated if they overlap the selected eGene cis intervals. Drug allergy
   is omitted from this preview figure. The bottom row is the study-wise average

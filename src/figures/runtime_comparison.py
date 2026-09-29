@@ -1,29 +1,17 @@
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import json
-import os
-import sys
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from figures.paths import FIGURE_DIR, METADATA_FILE, TIMING_FILE, require_file
 
 
 def main():
     # Define paths
-    base_path = str(REPO_ROOT)
-    data_path = os.path.join(base_path, "tmp/timing/summary_timing.csv")
-    meta_path = os.path.join(base_path, "src/figures/metadata.json")
-    output_plot = str(REPO_ROOT / "results/figures/runtime_comparison.pdf")
-
-    # Check if files exist
-    if not os.path.exists(data_path):
-        print(f"Error: Data file not found at {data_path}")
-        return
-    if not os.path.exists(meta_path):
-        print(f"Error: Metadata file not found at {meta_path}")
-        return
+    data_path = require_file(TIMING_FILE, "TRACECB_TIMING_FILE")
+    meta_path = require_file(METADATA_FILE, "TRACECB_FIGURE_METADATA")
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output_plot = FIGURE_DIR / "runtime_comparison.pdf"
 
     # Load data
     df = pd.read_csv(data_path)
@@ -56,55 +44,60 @@ def main():
     print("Study average time (s):", study_totals.mean())
     # Study average time (s): 3201.7
 
-    # Set up the plot grid and style
-    sns.set_theme(style="white", font_scale=1.2)
-    fig = plt.figure(figsize=(20, 10))
-    gs = gridspec.GridSpec(
-        2, 2, width_ratios=[6, 1], height_ratios=[1, 6], wspace=0.03, hspace=0.03
+    # Layout follows the statistics version, with room for individual records.
+    sns.set_theme(style="white", font="DejaVu Sans")
+    fig = plt.figure(figsize=(18, 10))
+    gs = fig.add_gridspec(
+        2, 2, width_ratios=[6, 1.6], height_ratios=[2.75, 6],
+        wspace=0.03, hspace=0.025,
     )
+    fig.subplots_adjust(left=0.17, right=0.97, bottom=0.18, top=0.96)
 
     # Define colors
     bar_color = "#a8dcb1"
     bar_edge_color = "#457b9d"
-    heatmap_cmap = "RdYlBu_r"  # Red (slow) to Blue (fast), or rev.
-    # Actually YlOrRd is good for time (darker = more time). Let's stick to a nice one.
-    heatmap_cmap = sns.cubehelix_palette(
-        start=0.5, rot=-0.5, as_cmap=True
-    )  # nice custom map
-    # Or just "Viridis" or "Rocket"
     heatmap_cmap = "Blues"  # lighter is less time, darker is more time
 
     # 1. Top Bar Plot (Average time per Chromosome)
-    ax_top = plt.subplot(gs[0, 0])
+    ax_top = fig.add_subplot(gs[0, 0])
+    chromosome_positions = np.arange(len(chr_means))
     ax_top.bar(
-        range(len(chr_means)),
+        chromosome_positions,
         chr_means.values,
         color=bar_color,
         edgecolor=bar_edge_color,
         width=0.8,
+        zorder=1,
     )
-    ax_top.set_xlim(-0.5, len(chr_means) - 0.5)
-    ax_top.set_xticks([])
-    ax_top.set_ylabel("Avg Time (s)", fontsize=14, labelpad=10)
-    ax_top.set_title("Running Time Distribution", fontsize=20, pad=20)
-    sns.despine(ax=ax_top, bottom=True)  # Remove bottom line since it touches heatmap
-
-    # Add value labels
-    max_val_top = chr_means.max()
-    for i, v in enumerate(chr_means.values):
-        ax_top.text(
-            i,
-            v + (max_val_top * 0.02),
-            f"{int(v)}",
-            ha="center",
-            va="bottom",
-            fontsize=10,
-            rotation=45,
-            color="#1d3557",
+    # Each dot is one study-chromosome elapsed record, not a benchmark replicate.
+    # Fixed offsets separate records without changing their observed durations.
+    palette = sns.color_palette("tab10", n_colors=len(ordered_studies))
+    offsets = (
+        np.linspace(-0.27, 0.27, len(ordered_studies))
+        if len(ordered_studies) > 1 else np.zeros(1)
+    )
+    for index, (study, row) in enumerate(pivot_df.iterrows()):
+        ax_top.scatter(
+            chromosome_positions + offsets[index],
+            row.to_numpy(),
+            s=17,
+            color=palette[index],
+            edgecolor="white",
+            linewidth=0.3,
+            zorder=3,
+            label=study,
         )
+    ax_top.set_xlim(-0.5, len(chr_means) - 0.5)
+    ax_top.set_ylim(bottom=0)
+    ax_top.set_xticks([])
+    ax_top.set_ylabel("Elapsed time (s)", fontsize=12, labelpad=10)
+    ax_top.legend(
+        loc="upper left", bbox_to_anchor=(1.01, 1.02),
+        fontsize=10, frameon=False, borderaxespad=0,
+    )
 
     # 2. Right Bar Plot (Total time per Study)
-    ax_right = plt.subplot(gs[1, 1])
+    ax_right = fig.add_subplot(gs[1, 1])
     y_pos = range(len(study_totals))
     ax_right.barh(
         y_pos,
@@ -115,23 +108,22 @@ def main():
     )
     ax_right.set_ylim(len(study_totals) - 0.5, -0.5)
     ax_right.set_yticks([])
-    ax_right.set_xlabel("Total CPU Time (s)", fontsize=14, labelpad=10)
-    sns.despine(ax=ax_right, left=True)
+    ax_right.set_xlabel("Sum of chromosome\nelapsed times (s)", fontsize=12)
+    ax_right.set_xlim(0, study_totals.max() * 1.2)
 
     # Add value labels
     max_val_right = study_totals.max()
     for i, v in enumerate(study_totals.values):
         ax_right.text(
-            v + (max_val_right * 0.02),
+            v + (max_val_right * 0.01),
             i,
-            f" {int(v)}",
+            f"{int(v)}",
             va="center",
-            fontsize=11,
-            color="#1d3557",
+            fontsize=10,
         )
 
     # 3. Heatmap
-    ax_main = plt.subplot(gs[1, 0])
+    ax_main = fig.add_subplot(gs[1, 0])
     sns.heatmap(
         pivot_df,
         annot=True,
@@ -144,18 +136,28 @@ def main():
         linecolor="white",
     )
 
-    ax_main.set_xlabel("Chromosome", fontsize=16, labelpad=10)
-    ax_main.set_ylabel("Study", fontsize=16, labelpad=10)
+    ax_main.set_xlabel("Chromosome", fontsize=12)
+    ax_main.set_ylabel("Study", fontsize=12)
 
     # Rotate y-axis labels to be horizontal
     plt.setp(ax_main.get_yticklabels(), rotation=0)
 
-    plt.tight_layout()
+    # Separate colorbar keeps the top bars and heatmap columns aligned.
+    heatmap_position = ax_main.get_position()
+    colorbar_ax = fig.add_axes([
+        heatmap_position.x0 + 0.49 * heatmap_position.width,
+        0.065,
+        0.42 * heatmap_position.width,
+        0.012,
+    ])
+    colorbar = fig.colorbar(
+        ax_main.collections[0], cax=colorbar_ax, orientation="horizontal"
+    )
+    colorbar.set_label("Elapsed time (s)")
+    colorbar.outline.set_visible(False)
 
-    # Create directory if it doesn't exist (though script assumes timing dir exists)
-    os.makedirs(os.path.dirname(output_plot), exist_ok=True)
-
-    plt.savefig(output_plot, dpi=300, bbox_inches="tight", pad_inches=0.1)
+    fig.savefig(output_plot, dpi=300, bbox_inches="tight", pad_inches=0.1)
+    plt.close(fig)
     print(f"Visualization saved to: {output_plot}")
 
 

@@ -112,6 +112,7 @@ manual_annot_gene_dict = {
     "ZNF652": "ENSG00000198740",
 }
 
+oasis_summaries = load_oasis_summaries()
 gene_converter = geneid2name()
 gene_name_to_id = {
     gene: manual_annot_gene_dict.get(gene, gene_converter.get_gene_id(gene))
@@ -136,21 +137,9 @@ for target_pathway in pathways_gene_dict.keys():
         # Resolve IDs independently of OASIS significance so genes absent from
         # OASIS can still be found in our results and displayed with a black x.
         result_df["geneid"] = result_df.index.map(gene_name_to_id)
-        for celltype, aliases in OASIS_celltype_dict.items():
-            for alias in aliases:
-                file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
-                if not os.path.exists(file_path):
-                    print(f"File not found: {file_path}")
-                    continue
-                df = pd.read_csv(file_path, sep="\t")
-                df = df[df["gene"].isin(pathway_genes)]
-                for gene in result_df.index:
-                    if gene in df["gene"].values:
-                        gene_pval = df[df["gene"] == gene]["pval_nominal"].min()
-                        if gene_pval < egene_pval_threshold:
-                            result_df.at[gene, celltype] = 1
-                        # else:
-                        #     print(f"{gene} in {alias} of {celltype} not significant: pval {gene_pval}")
+        for celltype, df in oasis_summaries.items():
+            significant_genes = df.loc[df["pval_nominal"] < egene_pval_threshold, "gene"]
+            result_df.loc[result_df.index.isin(significant_genes), celltype] = 1
         return result_df
 
     def get_oasis_gene_availability():
@@ -160,18 +149,11 @@ for target_pathway in pathways_gene_dict.keys():
             index=pathway_genes,
             columns=list(OASIS_celltype_dict.keys()),
         )
-        for celltype, aliases in OASIS_celltype_dict.items():
-            available_genes = set()
-            for alias in aliases:
-                file_path = f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
-                if not os.path.exists(file_path):
-                    print(f"File not found: {file_path}")
-                    continue
-                df = pd.read_csv(file_path, sep="\t", usecols=["gene"])
-                available_genes.update(df.loc[df["gene"].isin(pathway_genes), "gene"])
-            result_df.loc[result_df.index.isin(available_genes), celltype] = 1
+        for celltype, df in oasis_summaries.items():
+            result_df.loc[result_df.index.isin(df["gene"]), celltype] = 1
         return result_df
 
+    # OASIS retains both replication tiers; CIMA uses only the strict threshold.
     oasis_egene_df_1e5 = get_egene_OASIS(egene_pval_threshold=1e-5)
     oasis_egene_df_5e3 = get_egene_OASIS(egene_pval_threshold=5e-3)
     oasis_gene_available_df = get_oasis_gene_availability()
@@ -286,7 +268,7 @@ for target_pathway in pathways_gene_dict.keys():
                     va="center",
                     color=missing_symbol_color,
                     fontsize=10,
-                    fontweight=800,
+                    fontweight="normal",
                 )
             elif replicate_df.iat[y, x] == 2:
                 ax.text(
@@ -401,7 +383,7 @@ for target_pathway in pathways_gene_dict.keys():
                     va="center",
                     color=orig_handle.symbol_color,
                     fontsize=12,  # 与 annot_kws 中的 size 一致
-                    fontweight=800,  # 与 annot_kws 中的 weight 一致
+                    fontweight="normal" if orig_handle.symbol == "x" else 800,
                     transform=trans,
                 )
                 artists.append(text_artist)
@@ -423,14 +405,14 @@ for target_pathway in pathways_gene_dict.keys():
             symbol="+",
             facecolor="white",
             edgecolor="white",
-            label="Replicated in OASIS (p<5e-3)",
+            label=r"Replicated in OASIS ($p < 5 \times 10^{-3}$)",
             symbol_color=replicate_symbol_color,
         ),
         SymbolPatch(
             symbol="++",
             facecolor="white",
             edgecolor="white",
-            label="Replicated in OASIS (p<1e-5)",
+            label=r"Replicated in OASIS ($p < 10^{-5}$)",
             symbol_color=replicate_symbol_color,
         ),
         SymbolPatch(
@@ -456,8 +438,16 @@ for target_pathway in pathways_gene_dict.keys():
     # 6. 调整并保存图像
     # plt.xlabel("Study", fontsize=12)
     plt.ylabel("Gene", fontsize=12)
-    ax.set_yticklabels(ax.get_yticklabels(), style="italic")
-    plt.title(title, fontsize=14, y=1.1)
+    # ax.set_yticklabels(ax.get_yticklabels(), style="italic")
+    GENE_LABEL_SIZE = 12  # 先试 12；不够大再试 13 或 14
+
+    ax.tick_params(axis="y", labelsize=GENE_LABEL_SIZE)
+
+    for tick in ax.get_yticklabels():
+        tick.set_fontsize(GENE_LABEL_SIZE)
+        tick.set_fontstyle("italic")
+        tick.set_rotation(0)
+    plt.title(title, fontsize=14, y=1.05)
     ax.set_xticklabels(
         ax.get_xticklabels(),
         rotation=45,

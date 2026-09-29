@@ -1,3 +1,4 @@
+source(file.path(Sys.getenv("TRACECB_REPO_ROOT", "."), "src/figures/paths.R"))
 # plot Locuszoom use Grch 37/hg19
 
 # ----- H3K27ac -----
@@ -12,11 +13,10 @@ library(EnsDb.Hsapiens.v75)
 library(ggtext) # Add ggtext package to support rich text
 data(SLE_gwas_sub) # data from locuszoomr package
 
-save.path <-
-  "results/figures/"
+save.path <- figure_path("TRACECB_FIGURE_DIR", "output")
 # Import bigWig data
-base.path <- "data/locuszoom/"
-meta_data <- jsonlite::fromJSON("src/figures/metadata.json")
+base.path <- figure_path("TRACECB_LOCUS_TRACK_DIR", "directory")
+meta_data <- jsonlite::fromJSON(figure_path("TRACECB_FIGURE_METADATA"))
 celltype_colors <- meta_data$celltype_colors
 color_mapping <- c(
   "B" = darken(celltype_colors$B_cells, amount = 0.4),
@@ -67,15 +67,15 @@ plot_locuszoom <- function(gene_names, gene_infos, chrs, start_positions, end_po
     ### --------------------------
     # From ENCODE https://www.encodeproject.org/search/?type=File&searchTerm=H3K27ac+CD4+positive+T+cell&file_type=bigWig&biosample_ontology.cell_slims=CD4%2B+T+cell
     b <-
-      import(paste0(base.path, "B_ENCFF701BIL.bigWig"), which = region)
+      import(file.path(base.path, "B_ENCFF701BIL.bigWig"), which = region)
     monocytes <-
-      import(paste0(base.path, "MON_ENCFF840HBF.bigWig"), which = region)
+      import(file.path(base.path, "MON_ENCFF840HBF.bigWig"), which = region)
     cd4 <-
-      import(paste0(base.path, "CD4_ENCFF357NOB.bigWig"), which = region)
+      import(file.path(base.path, "CD4_ENCFF357NOB.bigWig"), which = region)
     cd8 <-
-      import(paste0(base.path, "CD8_ENCFF455UVQ.bigWig"), which = region)
+      import(file.path(base.path, "CD8_ENCFF455UVQ.bigWig"), which = region)
     nk <-
-      import(paste0(base.path, "NK_ENCFF473CXT.bigWig"), which = region)
+      import(file.path(base.path, "NK_ENCFF473CXT.bigWig"), which = region)
 
     # Create plotting data frame
     plot_data <- rbind(

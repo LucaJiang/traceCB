@@ -21,12 +21,17 @@ Python package, full-data workflows, simulations, and manuscript analyses.
   [`src/enrichment/README.md`](https://github.com/LucaJiang/traceCB/blob/master/src/enrichment/README.md).
 - `src/figures/`: manuscript figure scripts and shared metadata.
 - `src/preprocess/` and `src/coloc/`: workflow implementations used by `scripts/`.
-- `tests/`: unit and CLI contract tests.
 - `data/toy_example/`: small public inputs for the tutorial.
 
 Large input data and generated results are intentionally excluded from Git.
-By default, workflows read from `data/` and write to `results/`; both locations
-can be overridden with environment variables documented in `scripts/config.sh`.
+Full-data input paths are configured in `scripts/config.sh`; its data root
+currently points to `/home/wjiang49/group/wjiang49/data`. Generated pipeline
+outputs and figures default to `results/`. Edit the roots for your filesystem;
+all Python and R manuscript figures share this configuration.
+
+Start with the [path configuration guide](docs/configuration.md) for a copyable
+local configuration, required file layouts, separate input/output roots, and
+checks to run before full-data analysis or plotting.
 
 ## Installation
 
@@ -43,7 +48,7 @@ conda activate py312
 For a library-only installation from the source directory, use `pip install .`
 in a supported Python environment, or `pip install -e .` for development.
 The wheel installs only the Python library. The source archive additionally
-includes the tests, workflows, documentation, and public tutorial inputs.
+includes the workflows, documentation, and public tutorial inputs.
 
 When using a lightweight or custom environment, add the corresponding optional
 dependencies for the local notebook and manuscript analyses:
@@ -70,7 +75,7 @@ full study datasets are separate from the Python wheel.
 
 External inputs such as population-specific eQTLs, tissue eQTLs, and 1000
 Genomes reference panels are not redistributed here. Set their locations in the
-environment or edit the repository-relative defaults in `scripts/config.sh`.
+environment or edit the defaults in `scripts/config.sh`.
 The BBJ cell-type eQTL data used for the EAS analysis are available from
 [Human Database of Japan: hum0099-v1](https://humandbs.dbcls.jp/en/hum0099-v1).
 See the [pipeline guide](https://lucajiang.github.io/traceCB/pipeline/) for all
@@ -94,12 +99,20 @@ entry points and the [enrichment guide](https://github.com/LucaJiang/traceCB/blo
 and pathway-enrichment analyses. Figure-specific dependencies and invocation
 patterns are listed in the [figure guide](https://github.com/LucaJiang/traceCB/blob/master/src/figures/README.md).
 
-## Tests
+Before generating the case-study figures, edit `TRACECB_STUDY_DIR`,
+`TRACECB_GTEX_GENE_ANNOTATION`, and `TRACECB_FIGURE_DIR` in
+[`scripts/config.sh`](scripts/config.sh) to match your data and output locations.
+The input defaults refer to the current machine and must be replaced on other
+systems. In a Python environment with `.[figures]` installed, run:
 
 ```bash
-pip install -e '.[test]'
-python -m pytest -q
+source scripts/config.sh
+python -m figures.case_study
 ```
+
+`source scripts/config.sh` sets the shared figure paths, `PYTHONPATH`, and the
+default headless Matplotlib backend in the current shell. Run it once per
+terminal session before invoking Python figure scripts.
 
 ## Citation
 
@@ -121,7 +134,7 @@ Machine-readable citation metadata are available in [`CITATION.cff`](https://git
 
 ## Code and Data Availability
 
-The source code, automated tests, documentation, and processed tutorial example
+The source code, documentation, and processed tutorial example
 are maintained in this repository. Checksums for the tutorial inputs are stored
 in [`data/toy_example/SHA256SUMS`](https://github.com/LucaJiang/traceCB/blob/master/data/toy_example/SHA256SUMS).
 

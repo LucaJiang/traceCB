@@ -4,6 +4,10 @@ This guide describes how to obtain and format the external inputs, run the
 traceCB GMM model, and generate downstream colocalization and figures. Run all
 commands from the repository root.
 
+First follow the [path configuration guide](configuration.md). It explains
+which settings to change, the expected directory layouts, and how to ensure
+figures read the results from your new run.
+
 Workflow logs are written to `results/logs` by default. Set `TRACECB_LOG_DIR`
 to choose another directory, and inspect the logs if a stage fails.
 
@@ -120,7 +124,14 @@ To optimize Python loading times, we split and format the data by chromosome.
 
 #### Option 1: Use S-LDSC Reference Files (Recommended)
 
-You can directly use the preprocessed 1000G reference files for `EUR` and `EAS` populations from the [S-LDSC reference files](https://zenodo.org/records/10515792). Download the `1000G_Phase3_plinkfiles.tgz` for `EUR` and `1000G_Phase3_EAS_plinkfiles.tgz` for `EAS`, and extract them to your desired location. Ensure the file paths are correctly specified in your configuration.
+Preprocessed 1000G reference files for `EUR` and `EAS` populations are available
+from the [S-LDSC reference files](https://zenodo.org/records/10515792):
+`1000G_Phase3_plinkfiles.tgz` for EUR and `1000G_Phase3_EAS_plinkfiles.tgz` for EAS.
+Before using them, check the build, QC and file layout against the
+[reference requirements](configuration.md#harmonization-ld-scores-and-gmm).
+The current loaders require `1000G.*.QC.maf.<chr>.bed/bim/fam` directly inside
+each population directory; the downloaded names are not necessarily compatible.
+Renaming files alone does not establish matching QC or genome coordinates.
 
 #### Option 2: Prepare a GRCh38 PLINK 2 panel
 
@@ -138,8 +149,10 @@ bash scripts/preprocess_1000g.sh
 ```
 
 The script writes `1000G.<population>.QC.maf.<chromosome>.bed/bim/fam`
-under `1000G_EAS`, `1000G_EUR`, and `1000G_AFR`. Point `TARGET_LD_DIR`
-and `AUX_LD_DIR` to the selected reference directories.
+under `1000G_EAS`, `1000G_EUR`, and `1000G_AFR`. Set `LD_REFERENCE_DIR` to their
+parent directory; the configuration derives `TARGET_LD_DIR` from the selected
+population. Set `AUX_LD_DIR` if the EUR panel is stored elsewhere. Exporting
+`TARGET_LD_DIR` alone does not override the current configuration.
 
 ### Genome builds and input selection
 
@@ -308,8 +321,31 @@ Visualization scripts are located in `src/figures/`.
 Install their Python dependencies with `pip install -e '.[figures]'` and see
 `src/figures/README.md` for R dependencies and invocation examples.
 
-*   **Logic**: `src/figures/utils.py` selects which study to plot.
+*   **Inputs and outputs**: `scripts/config.sh` configures all Python and R figure paths.
 *   **Style**: `src/figures/metadata.json` defines colors, labels, and plot settings.
 
-Use `TRACECB_STUDY_DIR` and `TRACECB_FIGURE_DIR` to select inputs and outputs
-without editing the figure scripts.
+Before running, edit `TRACECB_STUDY_DIR`, `TRACECB_GTEX_GENE_ANNOTATION`, and
+`TRACECB_FIGURE_DIR` in `scripts/config.sh` for your filesystem. The input defaults
+refer to the current machine and must be replaced on other systems. The study
+directory must contain `QTD*/GMM/chr*/summary.csv`; the annotation path must point
+to the uncompressed GENCODE GTF file.
+
+```bash
+source scripts/config.sh
+python -m figures.case_study
+```
+
+`source scripts/config.sh` exports the shared paths and population, sets
+`PYTHONPATH` and the default headless Matplotlib backend, and creates the figure
+output directory. Run it once per terminal session before invoking Python
+figure modules in that shell. The case study uses the active Python environment
+and writes results to `${TRACECB_FIGURE_DIR}/single_study/`. Figure output defaults
+to `${TRACECB_OUTPUT_ROOT}/figures/${TARGET_POPULATION}_${TISSUE_SOURCE}`. For
+EAS + eQTLGen, single-study figures therefore go to
+`results/figures/EAS_eQTLGen/single_study/`; `python -m figures.combine_case_study`
+writes the combined figures to `results/figures/EAS_eQTLGen/single_study_combined/`.
+
+See the complete path table in `src/figures/README.md` for OASIS, OneK1K, CIMA,
+GTEx, AFR, colocalization, and locus inputs. Existing manuscript studies default
+to `${TRACECB_DATA_ROOT}/traceCB`; set `TRACECB_STUDY_ROOT` to
+`${TRACECB_OUTPUT_ROOT}` to use newly generated pipeline studies.

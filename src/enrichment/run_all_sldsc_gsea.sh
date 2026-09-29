@@ -96,7 +96,6 @@ bash "${SCRIPT_DIR}/07_run_h2.sh"
 
 "${PYTHON_BIN}" "${SCRIPT_DIR}/08_aggregate_results.py" --result-dir "${RESULT_DIR}"
 "${PYTHON_BIN}" "${SCRIPT_DIR}/09_visualize_results.py" --result-dir "${RESULT_DIR}"
-"${PYTHON_BIN}" "${SCRIPT_DIR}/10_write_manuscript_sections.py" --result-dir "${RESULT_DIR}"
 
 echo "[check] LD score files: $(find "${RESULT_DIR}/annotations/ldscores" -name '*.l2.ldscore.gz' | wc -l)"
 echo "[check] h2 result files: $(find "${RESULT_DIR}/results/raw" -name '*.results' | wc -l)"

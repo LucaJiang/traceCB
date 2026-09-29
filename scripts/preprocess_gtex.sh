@@ -29,6 +29,7 @@ mkdir -p "${OUT_PATH}"
 # targrt structure: $OUT_PATH/chr1.csv
 
 # Map according to variant_id, format to following columns:
+# GTEx slope is relative to ALT: A1=ALT, A2=REF; keep BETA unchanged.
 # GENE  RSID    CHR  POS    TSS_DISTANCE    A1  A2  MAF PVAL    BETA    SE
 # ENSG00000227232    rs1209314672    1    13550    -16003    T    C    0.0141791    0.734151    0.0587242    0.172837
 
@@ -103,8 +104,8 @@ for chr in {1..22}; do
               $8,         # CHR
               $9,        # POS
               int($3),    # TSS_DISTANCE
-              $10,        # A1
-              $11,        # A2
+              $11,        # A1 (ALT; effect allele)
+              $10,        # A2 (REF)
               $4,         # MAF
               $5,         # PVAL
               $6,         # BETA
@@ -113,7 +114,7 @@ for chr in {1..22}; do
 
     # head -n 3 "$temp_dir/chr${chr}_formatted.txt"
     # GENE  RSID    CHR  POS    TSS_DISTANCE    A1  A2  MAF PVAL    BETA    SE
-    # ENSG00000227232    rs1209314672    1    13550    -16003    C    T    0.0141791    0.734151    0.0587242    0.172837
+    # ENSG00000227232    rs1209314672    1    13550    -16003    T    C    0.0141791    0.734151    0.0587242    0.172837
 
     # Sort and append to output file
     sort -t',' -k1,1 -k4,4n "$temp_dir/chr${chr}_formatted.txt" >>"$output_file"

@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+source(file.path(Sys.getenv("TRACECB_REPO_ROOT", "."), "src/figures/paths.R"))
 
 # Load required libraries
 library(locuszoomr)
@@ -15,15 +16,16 @@ library(colorspace)
 # note: use arrow::read_parquet for parquet files, or convert to csv first
 
 # Configuration
-study_path_main <- "results/EAS_eQTLGen" # Update this path
-save_path <- "results/figures/" # Update this path
+study_path_main <- figure_path("TRACECB_LOCUS_EQTL_DIR", "directory")
+save_path <- figure_path("TRACECB_FIGURE_DIR", "output")
 MIN_PVAL <- 1e-40
 MAX_RANGE <- 200000
-gwas_path <- "data/coloc/bcx_mon/bcx_mon_GWAS.csv"
-meta_data <- jsonlite::fromJSON("src/figures/metadata.json")
-epi_track_path <- "data/locuszoom/"
+gwas_path <- figure_path("TRACECB_LOCUS_GWAS")
+meta_data <- jsonlite::fromJSON(figure_path("TRACECB_FIGURE_METADATA"))
+epi_track_path <- figure_path("TRACECB_LOCUS_TRACK_DIR", "directory")
 
-token <- "72edb9cc22c9" # LD token for LDlink API
+# Apply for your own LDlink API token and replace xxxx before running.
+token <- "xxxx"
 
 # Plot gene info
 plot_gene_info <- list(
@@ -229,11 +231,11 @@ plot_signal_plot <- function(chr, start_pos, end_pos, gene_name) {
   region <- GRanges(paste0("chr", chr, ":", start_pos, "-", end_pos))
 
   # Import bigWig files
-  b <- import(paste0(epi_track_path, "B_ENCFF701BIL.bigWig"), which = region)
-  monocytes <- import(paste0(epi_track_path, "MON_ENCFF840HBF.bigWig"), which = region)
-  cd4 <- import(paste0(epi_track_path, "CD4_ENCFF357NOB.bigWig"), which = region)
-  cd8 <- import(paste0(epi_track_path, "CD8_ENCFF455UVQ.bigWig"), which = region)
-  nk <- import(paste0(epi_track_path, "NK_ENCFF473CXT.bigWig"), which = region)
+  b <- import(file.path(epi_track_path, "B_ENCFF701BIL.bigWig"), which = region)
+  monocytes <- import(file.path(epi_track_path, "MON_ENCFF840HBF.bigWig"), which = region)
+  cd4 <- import(file.path(epi_track_path, "CD4_ENCFF357NOB.bigWig"), which = region)
+  cd8 <- import(file.path(epi_track_path, "CD8_ENCFF455UVQ.bigWig"), which = region)
+  nk <- import(file.path(epi_track_path, "NK_ENCFF473CXT.bigWig"), which = region)
 
   # Create plotting data frame
   plot_data <- rbind(
@@ -401,7 +403,7 @@ plot_manhattan_with_precomputed_LD <- function(gene_id, qtdid, chromosome, gene_
     )
 
   save_name <- sprintf(
-    "%s/%s_%s_%s_manhattan_precomputed_LD.png",
+    "%s/%s_%s_%s_manhattan_precomputed_LD.pdf",
     save_path, qtdid, gene_id, gene_name
   )
 

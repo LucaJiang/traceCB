@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  package:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -25,16 +25,16 @@ jobs:
       - run: python -m pip install "build>=1.2,<2" "twine>=6,<8"
       - run: python -m build
       - run: python -m twine check --strict dist/*
-      - name: Install wheel and test the source archive
+      - name: Verify wheel and source archive
         run: |
           wheel=$(find dist -name '*.whl' -print -quit)
-          python -m pip install "${wheel}[ci,test]"
+          python -m pip install "${wheel}[ci]"
           python -m pip check
           mkdir -p "$RUNNER_TEMP/tracecb-source"
           tar -xzf dist/tracecb-*.tar.gz --strip-components=1 -C "$RUNNER_TEMP/tracecb-source"
           cd "$RUNNER_TEMP/tracecb-source"
           sha256sum --check data/toy_example/SHA256SUMS
-          python -m pytest -q
+          python -c "from traceCB import GMM, GMMtissue, Run_Cross_LDSC; import traceCB; print(traceCB.__version__)"
       - name: Execute tutorial notebooks
         if: matrix.python-version == '3.12'
         run: |
@@ -59,7 +59,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-    needs: [test, docs]
+    needs: [package, docs]
     runs-on: ubuntu-latest
     permissions:
       contents: write

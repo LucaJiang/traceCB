@@ -8,29 +8,29 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
 from pathlib import Path
+from figures.paths import (
+    REPO_ROOT,
+    STUDY_DIR,
+    FIGURE_DIR,
+    ONEK1K_FILE,
+    GTEX_LOOKUP,
+    GENE_ANNOTATION,
+    OASIS_DIR,
+    METADATA_FILE,
+    require_file,
+    require_files,
+)
 
 pd.set_option("display.max_rows", None)
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 1000)
 plt.rcParams["font.family"] = "DejaVu Sans"
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-study_path_main = os.environ.get(
-    "TRACECB_STUDY_DIR", str(REPO_ROOT / "results/EAS_eQTLGen")
-)
-save_path = os.environ.get(
-    "TRACECB_FIGURE_DIR", str(REPO_ROOT / "results/figures")
-)
-onek1k_path = os.environ.get(
-    "TRACECB_ONEK1K_FILE", str(REPO_ROOT / "data/replication/onek1k_esnp.csv")
-)
-gtex_lookup_table_path = os.environ.get(
-    "TRACECB_GTEX_LOOKUP", str(REPO_ROOT / "data/GTEx/GTEx_Analysis_v8_lookup.txt.gz")
-)
-gtex_gene_anotation_path = os.environ.get(
-    "TRACECB_GTEX_GENE_ANNOTATION",
-    str(REPO_ROOT / "data/GTEx/gencode.v26.GRCh38.genes.gtf"),
-)
+study_path_main = str(STUDY_DIR)
+save_path = str(FIGURE_DIR)
+onek1k_path = str(ONEK1K_FILE)
+gtex_lookup_table_path = str(GTEX_LOOKUP)
+gtex_gene_anotation_path = str(GENE_ANNOTATION)
 
 ## convert p-value to z-score and vice versa
 p2z = lambda p: np.abs(norm.ppf(p / 2))
@@ -50,9 +50,7 @@ cell_label_name = {
     "B_cells": "B cells",
     "NK_cells": "NK cells",
 }
-OASIS_path = os.environ.get(
-    "TRACECB_OASIS_DIR", str(REPO_ROOT / "data/replication/OASIS")
-)
+OASIS_path = str(OASIS_DIR)
 OASIS_celltype_dict = {
     "Monocytes": ["Mono"],
     "CD4+T_cells": ["CD4T"],
@@ -75,7 +73,7 @@ def load_json(json_file="metadata.json"):
 
 
 # metadata.json at src/figures/
-json_file_path = os.path.join(os.path.dirname(__file__), "metadata.json")
+json_file_path = str(require_file(METADATA_FILE, "TRACECB_FIGURE_METADATA"))
 meta_data = load_json(json_file_path)
 
 
@@ -89,6 +87,13 @@ def _load_summary(study_dir):
     # GENE,NSNP,H1SQ,H1SQSE,H2SQ,H2SQSE,COV_PVAL,COR_X,SIGMAO,RUN_GMM,TAR_SNEFF,TAR_CNEFF,TAR_TNEFF,TAR_SeSNP,TAR_CeSNP,TAR_TeSNP,AUX_SNEFF,AUX_CNEFF,AUX_TNEFF,AUX_SeSNP,AUX_CeSNP,AUX_TeSNP,TISSUE_SNEFF,TISSUE_SeSNP
     # summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr1", "summary.csv"))
     summary_dirs = glob.glob(os.path.join(study_dir, "GMM", "chr*", "summary.csv"))
+    if not summary_dirs:
+        raise FileNotFoundError(
+            f"No summary.csv files found at {study_dir}/GMM/chr*/summary.csv. "
+            "Run 'source scripts/config.sh' from the repository root, then rerun "
+            "this Python script in the same shell. If the files are still missing, "
+            "check TRACECB_STUDY_DIR in scripts/config.sh."
+        )
     summary_df = pd.DataFrame()
     for summary_file in summary_dirs:
         df = pd.read_csv(summary_file, header=0, index_col=None)
@@ -153,27 +158,42 @@ def load_all_summary(study_path_main=study_path_main):
     return all_summary_sign_df, all_summary_df
 
 
+def load_oasis_summaries():
+    """Load every required OASIS cell type; missing files are configuration errors."""
+    paths_by_celltype = {
+        celltype: [
+            Path(OASIS_path) / f"{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
+            for alias in aliases
+        ]
+        for celltype, aliases in OASIS_celltype_dict.items()
+    }
+    require_files(
+        [path for paths in paths_by_celltype.values() for path in paths],
+        "TRACECB_OASIS_DIR",
+    )
+    return {
+        celltype: pd.concat(
+            [
+                pd.read_csv(
+                    path, sep="\t", usecols=["phenotype_id", "gene", "pval_nominal"]
+                )
+                for path in paths
+            ],
+            ignore_index=True,
+        )
+        for celltype, paths in paths_by_celltype.items()
+    }
+
+
 def get_oasis_egene_by_celltype(egene_pval_threshold=5e-3):
     """
     Loads eGenes from OASIS dataset, grouped by cell type.
     Returns a dictionary mapping cell types to a set of eGene IDs.
     """
-    oasis_egenes_by_celltype = {cell: set() for cell in OASIS_celltype_dict.keys()}
-    for celltype, aliases in OASIS_celltype_dict.items():
-        for alias in aliases:
-            file_path = (
-                f"{OASIS_path}/{alias}_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz"
-            )
-            if not os.path.exists(file_path):
-                print(f"File not found: {file_path}")
-                continue
-            df = pd.read_csv(file_path, sep="\t")
-            # OASIS文件使用'phenotype_id'作为gene id列
-            replicated_genes = set(
-                df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"]
-            )
-            oasis_egenes_by_celltype[celltype].update(replicated_genes)
-    return oasis_egenes_by_celltype
+    return {
+        celltype: set(df.loc[df["pval_nominal"] < egene_pval_threshold, "phenotype_id"])
+        for celltype, df in load_oasis_summaries().items()
+    }
 
 
 class geneid2name(object):
@@ -181,6 +201,13 @@ class geneid2name(object):
     def __init__(self):
         # Parse GTEx GTF file instead of OneK1K
         # gtex_gene_anotation_path is defined globally
+        if not os.path.isfile(gtex_gene_anotation_path):
+            raise FileNotFoundError(
+                f"Gene annotation file not found: {gtex_gene_anotation_path}. "
+                "Run 'source scripts/config.sh' from the repository root, then rerun "
+                "this Python script in the same shell. If the file is still missing, "
+                "check TRACECB_GTEX_GENE_ANNOTATION in scripts/config.sh."
+            )
         data = []
         with open(gtex_gene_anotation_path, "r") as f:
             for line in f:
@@ -246,7 +273,7 @@ def get_gtex_lookup_table():
     POS based on b38
     """
     lookup_df = pd.read_csv(
-        gtex_lookup_table_path,
+        require_file(gtex_lookup_table_path, "TRACECB_GTEX_LOOKUP"),
         sep="\t",
         compression="gzip",
         usecols=["variant_id", "rs_id_dbSNP151_GRCh38p7"],

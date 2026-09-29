@@ -42,17 +42,19 @@ dependencies = [
 [project.optional-dependencies]
 enrichment = ["gseapy", "matplotlib", "seaborn>=0.13"]
 figures = [
-    "polars", "matplotlib", "seaborn>=0.13", "plotly", "UpSetPlot", "kaleido",
-    "adjustText", "matplotlib-venn", "pypdfium2", "Pillow",
+    "polars", "matplotlib", "seaborn>=0.13", "plotly>=6.1.1", "UpSetPlot", "kaleido",
+    "adjustText", "matplotlib-venn", "pypdfium2", "Pillow", "openpyxl",
 ]
 simulation = ["matplotlib", "seaborn>=0.13"]
 tutorial = ["ipykernel", "nbconvert", "notebook"]
 test = [
+    # tomli is a TOML parser backport; Python 3.11+ includes tomllib.
     "pytest>=8,<10", "tomli>=2; python_version < '3.11'",
     "polars", "matplotlib", "seaborn>=0.13",
 ]
 ci = [
     "pytest>=8,<10",
+    # This condition applies only to tomli, not to traceCB's Python support.
     "tomli>=2; python_version < '3.11'",
     "build>=1.2,<2",
     "twine>=6,<8",

@@ -1,5 +1,6 @@
 # %% plot eGene in Nuclear and Membrane Pathway with CIMA replication
 from figures.utils import *
+from figures.paths import CIMA_LEAD_EQTL, CIMA_CELL_TYPES
 from matplotlib.patches import Rectangle
 from matplotlib.legend_handler import HandlerPatch
 from matplotlib.patches import Patch
@@ -8,11 +9,8 @@ import matplotlib.colors as mcolors
 save_path = os.path.join(save_path, "pathway_CIMA")
 os.makedirs(save_path, exist_ok=True)
 
-CIMA_root = os.environ.get("TRACECB_CIMA_DIR", str(REPO_ROOT / "data/replication/CIMA"))
-CIMA_lead_cis_xqtl_path = os.path.join(CIMA_root, "xQTL", "CIMA_Lead_cis-xQTL.csv")
-CIMA_celltype_level_path = os.path.join(
-    CIMA_root, "Cell_Atlas", "CIMA_Cell_Type_Level_and_Marker.xlsx"
-)
+CIMA_lead_cis_xqtl_path = CIMA_LEAD_EQTL
+CIMA_celltype_level_path = CIMA_CELL_TYPES
 
 Nuclear_gene_list = [
     "ACTA2",
@@ -163,13 +161,12 @@ def map_cima_l4_to_major_celltype(celltype):
 
 
 def validate_cima_celltype_hierarchy():
-    hierarchy_df = pd.read_excel(CIMA_celltype_level_path)
+    hierarchy_df = pd.read_excel(require_file(CIMA_celltype_level_path, "TRACECB_CIMA_CELL_TYPES"))
     print("CIMA L1 hierarchy:", sorted(hierarchy_df["L1"].dropna().unique()))
 
 
 def load_cima_lead_eqtl():
-    if not os.path.exists(CIMA_lead_cis_xqtl_path):
-        raise FileNotFoundError(f"CIMA lead cis-xQTL file not found: {CIMA_lead_cis_xqtl_path}")
+    require_file(CIMA_lead_cis_xqtl_path, "TRACECB_CIMA_LEAD_EQTL")
     cols = ["phenotype_id", "celltype", "pval_nominal", "analysis"]
     cima_df = pd.read_csv(CIMA_lead_cis_xqtl_path, usecols=cols)
     cima_df = cima_df[cima_df["analysis"] == "cis-eQTL"].copy()
@@ -210,7 +207,8 @@ name2id = {v: k for k, v in meta_data["id2name"].items()}
 # %%
 for target_pathway, pathway_genes in pathways_gene_dict.items():
 
-    def get_egene_CIMA(egene_pval_threshold=5e-3):
+    # CIMA uses only the strict replication threshold; the weaker tier is OASIS-only.
+    def get_egene_CIMA(egene_pval_threshold=1e-5):
         result_df = pd.DataFrame(
             0,
             index=pathway_genes,
@@ -251,7 +249,6 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
         return result_df
 
     cima_egene_df_1e5 = get_egene_CIMA(egene_pval_threshold=1e-5)
-    cima_egene_df_5e3 = get_egene_CIMA(egene_pval_threshold=5e-3)
     cima_gene_available_df = get_cima_gene_availability()
 
     def get_egene_ours():
@@ -277,7 +274,6 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
         gene_qtd_df.rename(columns={column: meta_data["id2name"][column]}, inplace=True)
     gene_qtd_df.drop(columns=["geneid"], inplace=True)
     cima_egene_df_1e5.drop(columns=["geneid"], inplace=True)
-    cima_egene_df_5e3.drop(columns=["geneid"], inplace=True)
 
     remove_row = gene_qtd_df.max(axis=1) <= 1
     gene_qtd_df = gene_qtd_df[~remove_row]
@@ -292,7 +288,6 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
     for study_name in replicate_df.columns:
         study_id = name2id[study_name]
         cell_type = meta_data["id2celltype"][study_id]
-        replicate_df[study_name] = cima_egene_df_5e3[cell_type]
         replicate_df.loc[cima_egene_df_1e5[cell_type] > 0, study_name] = 2
         replicate_available_df[study_name] = cima_gene_available_df[cell_type]
 
@@ -331,24 +326,13 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
                     va="center",
                     color=missing_symbol_color,
                     fontsize=10,
-                    fontweight=800,
+                    fontweight="normal",
                 )
             elif replicate_df.iat[y, x] == 2:
                 ax.text(
                     x + 0.5,
                     y + 0.5,
                     "++",
-                    ha="center",
-                    va="center",
-                    color=replicate_symbol_color,
-                    fontsize=8,
-                    fontweight=800,
-                )
-            elif replicate_df.iat[y, x] == 1:
-                ax.text(
-                    x + 0.5,
-                    y + 0.5,
-                    "+",
                     ha="center",
                     va="center",
                     color=replicate_symbol_color,
@@ -434,7 +418,7 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
                     va="center",
                     color=orig_handle.symbol_color,
                     fontsize=12,
-                    fontweight=800,
+                    fontweight="normal" if orig_handle.symbol == "x" else 800,
                     transform=trans,
                 )
                 artists.append(text_artist)
@@ -451,17 +435,10 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
             label=f"Newly Identified by {meta_data['method_name'][2]}",
         ),
         SymbolPatch(
-            symbol="+",
-            facecolor="white",
-            edgecolor="white",
-            label="Replicated in CIMA (p<5e-3)",
-            symbol_color=replicate_symbol_color,
-        ),
-        SymbolPatch(
             symbol="++",
             facecolor="white",
             edgecolor="white",
-            label="Replicated in CIMA (p<1e-5)",
+            label=r"Replicated in CIMA ($p < 10^{-5}$)",
             symbol_color=replicate_symbol_color,
         ),
         SymbolPatch(
@@ -486,7 +463,7 @@ for target_pathway, pathway_genes in pathways_gene_dict.items():
 
     plt.ylabel("Gene", fontsize=12)
     ax.set_yticklabels(ax.get_yticklabels(), style="italic")
-    plt.title(title, fontsize=14, y=1.1)
+    plt.title(title, fontsize=14, y=1.05)
     ax.set_xticklabels(
         ax.get_xticklabels(),
         rotation=45,

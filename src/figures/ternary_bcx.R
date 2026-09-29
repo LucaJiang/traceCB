@@ -1,3 +1,4 @@
+source(file.path(Sys.getenv("TRACECB_REPO_ROOT", "."), "src/figures/paths.R"))
 # plt f4 ternary with labeled genes
 
 library(ggtern)
@@ -12,15 +13,13 @@ target_celltype <- ""
 label_gene <- ""
 label_gene_name <- ""
 
-result_parh <-
-  "results/EAS_eQTLGen/coloc"
+result_parh <- figure_path("TRACECB_COLOC_DIR", "directory")
 meta_data <-
-  jsonlite::fromJSON("src/figures/metadata.json")
-save_path <-
-  "results/figures/"
+  jsonlite::fromJSON(figure_path("TRACECB_FIGURE_METADATA"))
+save_path <- figure_path("TRACECB_COLOC_FIGURE_DIR", "output")
 
 all_files <-
-  list.files(result_parh, pattern = "coloc.csv", full.names = TRUE)
+  coloc_files(result_parh)
 
 all_results <- data.frame()
 for (file in all_files) {

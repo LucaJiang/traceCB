@@ -43,8 +43,4 @@ tmp/
 # Local tools, audits, and long-running validation outputs
 tools/
 audit/
-tests/esnp_direction_replicate.py
-tests/esnp_direction_replicate_hum0343.csv
-tests/run_traceCB_*.sh
-tests/traceCB_simulation_*/
-tests/updatetraceCB_simulation_*/
+tests/

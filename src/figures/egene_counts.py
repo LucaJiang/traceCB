@@ -1,5 +1,6 @@
 # plot number of eGenes/eSNPs for each method
 from figures.utils import *
+from figures.paths import POPULATION, REPLICATION_EGENES
 from matplotlib.patches import Rectangle
 from adjustText import adjust_text
 from scipy import stats
@@ -11,6 +12,13 @@ CELLTYPE_RANGES = {
     "CD8+T_cells": (5.5, 2),
     "B_cells": (7.5, 1),
     "NK_cells": (8.5, 1),
+}
+
+# Preserve the original f3egene.py (EAS) and f5egene.py (AFR) layouts.
+# Both eQTLGen and GTEx use the layout for their target population.
+CELLTYPE_HEADER_LAYOUTS = {
+    "EAS": {"top_padding": 0.10, "header_offset": 110},
+    "AFR": {"top_padding": 0.24, "header_offset": 26},
 }
 
 
@@ -153,12 +161,15 @@ def prepare_growth_df(plot_df):
     return growth_df
 
 
-def add_celltype_background(ax):
+def add_celltype_background(ax, *, top_padding=0.10, header_offset=None):
     celltype_colors = meta_data["celltype_colors"]
     ax.set_xlim(-0.5, len(meta_data["Names"]) - 0.5)
     y_min, y_max = ax.get_ylim()
-    y_max += (y_max - y_min) * 0.1
+    y_max += (y_max - y_min) * top_padding
     ax.set_ylim(y_min, y_max)
+    if header_offset is None:
+        # Increment plots retain their existing scale-dependent spacing.
+        header_offset = min(110, (y_max - y_min) * 0.1)
     margin = 0.05
 
     for celltype, (x_start, width) in CELLTYPE_RANGES.items():
@@ -177,7 +188,7 @@ def add_celltype_background(ax):
 
         x_end = x_start + width
         ax.hlines(
-            y=y_max - 110,
+            y=y_max - header_offset,
             xmin=x_start + margin,
             xmax=x_end - margin,
             colors=celltype_colors[celltype],
@@ -309,7 +320,7 @@ def plot_growth_scatter(
 
 def f3egene(plot_df):
     method_names = meta_data["method_name"]
-    legend_order = meta_data["method_name"] + [m + " (replicate)" for m in method_names]
+    legend_order = meta_data["method_name"] + [m + " (replicated)" for m in method_names]
     fig, ax = plt.subplots(figsize=(8, 5))  # 增加高度以容纳上方标注
 
     # 设置x轴位置
@@ -331,7 +342,7 @@ def f3egene(plot_df):
             x + width / 2,
             plot_df[m + "_replicate"],
             width,
-            label=m + " (replicate)",
+            label=m + " (replicated)",
             color=meta_data["Colors"][m],
             # alpha=0.7,
             hatch="\\\\",
@@ -342,7 +353,7 @@ def f3egene(plot_df):
     ax.set_xticks(x)
     ax.set_xticklabels(studies, rotation=20, ha="right")
 
-    add_celltype_background(ax)
+    add_celltype_background(ax, **CELLTYPE_HEADER_LAYOUTS[POPULATION])
 
     # 图例handles和labels
     handles, labels = ax.get_legend_handles_labels()
@@ -389,7 +400,7 @@ def f3egene_increment(plot_df):
         x - 0.5 * width,
         plot_df["new_in_C_replicate"],
         width,
-        label=f"New in {meta_data['method_name'][1]} (replicate)",
+        label=f"New in {meta_data['method_name'][1]} (replicated)",
         color=meta_data["Colors"][meta_data["method_name"][1]],
         hatch="\\\\",
     )
@@ -404,7 +415,7 @@ def f3egene_increment(plot_df):
         x + 1.5 * width,
         plot_df["new_in_T_replicate"],
         width,
-        label=f"New in {meta_data['method_name'][2]} (replicate)",
+        label=f"New in {meta_data['method_name'][2]} (replicated)",
         color=meta_data["Colors"][meta_data["method_name"][2]],
         hatch="\\\\",
     )
@@ -447,15 +458,12 @@ def f3egene_growth_celltype_proportion(plot_df):
 if __name__ == "__main__":
     _, summary_df = load_all_summary()
     replicate_df = pd.read_csv(
-        os.environ.get(
-            "TRACECB_REPLICATION_EGENES",
-            str(REPO_ROOT / "data/replication/hum0343_eGene.csv"),
-        )
+        require_file(REPLICATION_EGENES, "TRACECB_REPLICATION_EGENES")
     )
     replicate_egenes = replicate_df.gene
     plot_df = count_egene(summary_df, replicate_egenes)
     f3egene(plot_df)
-    f3egene_increment(plot_df)
+    # f3egene_increment(plot_df)
     growth_df = prepare_growth_df(plot_df)
     f3egene_growth_samplesize(growth_df)
     f3egene_growth_celltype_proportion(growth_df)

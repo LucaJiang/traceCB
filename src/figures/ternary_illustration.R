@@ -1,3 +1,4 @@
+source(file.path(Sys.getenv("TRACECB_REPO_ROOT", "."), "src/figures/paths.R"))
 # illustration of colocalization analysis
 library(ggtern)
 library(ggplot2)
@@ -68,7 +69,7 @@ plot_ternary <- function(data) {
   return(result)
 }
 ggsave(
-  "results/figures/ternary_illustration.pdf",
+  file.path(figure_path("TRACECB_FIGURE_DIR", "output"), "ternary_illustration.pdf"),
   plot = plot_ternary(plot_data),
   width = 3,
   height = 3

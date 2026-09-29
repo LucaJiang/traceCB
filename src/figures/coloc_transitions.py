@@ -10,18 +10,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
 from upsetplot import UpSet, from_memberships
+from figures.paths import COLOC_DIR, COLOC_FIGURE_DIR, METADATA_FILE, require_file
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-LOCAL_DATA_DIR = REPO_ROOT / "data" / "coloc"
-LOCAL_SAVE_DIR = REPO_ROOT / "results" / "figures" / "coloc"
-SERVER_DATA_DIR = Path(
-    os.environ.get("TRACECB_COLOC_DIR", REPO_ROOT / "results/EAS_eQTLGen/coloc")
-)
-SERVER_SAVE_DIR = Path(
-    os.environ.get("TRACECB_COLOC_FIGURE_DIR", REPO_ROOT / "results/figures/coloc")
-)
-METADATA_PATH = Path(__file__).with_name("metadata.json")
+METADATA_PATH = METADATA_FILE
 
 
 def parse_args():
@@ -37,13 +29,13 @@ def parse_args():
     )
     parser.add_argument(
         "--data-dir",
-        default=None,
-        help="Directory containing *_coloc.csv files. Defaults to local data/coloc if present.",
+        default=str(COLOC_DIR),
+        help="Directory containing *_coloc.csv files (default: TRACECB_COLOC_DIR).",
     )
     parser.add_argument(
         "--save-dir",
-        default=None,
-        help="Output directory. Defaults to local data/img/eas_eqtlgen if present.",
+        default=str(COLOC_FIGURE_DIR),
+        help="Output directory (default: TRACECB_COLOC_FIGURE_DIR).",
     )
     parser.add_argument(
         "--threshold",
@@ -72,16 +64,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def resolve_default_path(user_path, local_path, server_path):
-    if user_path is not None:
-        return Path(user_path)
-    if local_path.exists():
-        return local_path
-    return server_path
-
-
 def load_metadata():
-    with open(METADATA_PATH, "r") as f:
+    with open(require_file(METADATA_PATH, "TRACECB_FIGURE_METADATA"), "r") as f:
         return json.load(f)
 
 
@@ -102,7 +86,9 @@ def load_coloc_data(data_dir, prefix):
     print(f"Found {len(coloc_files)} coloc files in {data_dir}")
     if not coloc_files:
         raise FileNotFoundError(
-            f"No coloc files matched {data_dir}/{prefix}*_coloc.csv"
+            f"No coloc files matched {data_dir}/{prefix}*_coloc.csv. "
+            "Run 'source scripts/config.sh' and check TRACECB_COLOC_DIR, "
+            "or generate the results with bash scripts/run_colocalization.sh."
         )
 
     df_list = []
@@ -684,8 +670,8 @@ def plot_combined_prefix_method_upset(
 
 def main():
     args = parse_args()
-    data_dir = resolve_default_path(args.data_dir, LOCAL_DATA_DIR, SERVER_DATA_DIR)
-    save_dir = resolve_default_path(args.save_dir, LOCAL_SAVE_DIR, SERVER_SAVE_DIR)
+    data_dir = Path(args.data_dir)
+    save_dir = Path(args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     meta_data = load_metadata()

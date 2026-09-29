@@ -1,35 +1,92 @@
 #!/usr/bin/env bash
 
-# Shared configuration for the full-data workflows.
-# Override any path with the corresponding environment variable; no personal
-# filesystem paths are assumed.
+# Shared configuration for the full-data workflows and all manuscript figures.
+# Review the user settings below before running. Derived paths are grouped in
+# the defaults section and can be overridden with their environment variables.
+# Apply the configuration to the current shell: source scripts/config.sh
 
-CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${TRACECB_REPO_ROOT:-$(cd "${CONFIG_DIR}/.." && pwd)}"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    echo "Run 'source scripts/config.sh' from the repository root to configure the current shell." >&2
+    exit 2
+fi
 
-TISSUE_SOURCE="${TISSUE_SOURCE:-eQTLGen}"  # eQTLGen or GTEx
-TARGET_POPULATION="${TARGET_POPULATION:-EAS}"  # EAS or AFR
+# 1. User settings: machine-specific roots and Conda environments.
+# These values match this machine; update them when using another filesystem.
+DATA_ROOT="${TRACECB_DATA_ROOT:-/home/wjiang49/group/wjiang49/data}"
+export TRACECB_DATA_ROOT="${DATA_ROOT}"
+export TRACECB_SOFTWARE_ROOT="${TRACECB_SOFTWARE_ROOT:-/home/wjiang49/group/wjiang49/software}"
+PYTHON_ENV="${PYTHON_ENV:-py312}"
+R_ENV="${R_ENV:-r4}"
+
+# 2. Defaults: workflow options and paths derived from the roots above.
+# Usually no edits are needed if the data/software directory layout matches.
+# Override individual paths below if your files use a different layout.
+export TISSUE_SOURCE="${TISSUE_SOURCE:-eQTLGen}"  # eQTLGen or GTEx
+export TARGET_POPULATION="${TARGET_POPULATION:-EAS}"  # EAS or AFR; also selects figure bins
 CHROMOSOMES=({1..22})
 
-DATA_ROOT="${TRACECB_DATA_ROOT:-${REPO_ROOT}/data}"
+# Repository, output, and software paths.
+CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${TRACECB_REPO_ROOT:-$(cd "${CONFIG_DIR}/.." && pwd)}"
+export TRACECB_REPO_ROOT="${REPO_ROOT}"
+SRC_DIR="${REPO_ROOT}/src"
 OUTPUT_ROOT="${TRACECB_OUTPUT_ROOT:-${REPO_ROOT}/results}"
-GTEX_DIR="${GTEX_DIR:-${DATA_ROOT}/GTEx/GTEx_Whole_Blood_by_chr}"
+export TRACECB_OUTPUT_ROOT="${OUTPUT_ROOT}"
+OUTPUT_DIR="${OUTPUT_ROOT}/${TARGET_POPULATION}_${TISSUE_SOURCE}"
+LOG_DIR="${TRACECB_LOG_DIR:-${OUTPUT_ROOT}/logs}"
+PLINK_BIN="${PLINK_BIN:-${TRACECB_SOFTWARE_ROOT}/plink}"
+PLINK2="${PLINK2:-${TRACECB_SOFTWARE_ROOT}/plink2}"
+SLDXR_DIR="${SLDXR_DIR:-${TRACECB_SOFTWARE_ROOT}/s-ldxr-master}"
+
+# Full-data workflow inputs.
+# Existing study results are stored separately from newly generated outputs.
+export TRACECB_STUDY_ROOT="${TRACECB_STUDY_ROOT:-${DATA_ROOT}/traceCB}"
+GTEX_SOURCE_DIR="${GTEX_SOURCE_DIR:-${DATA_ROOT}/GTEx}"
+GTEX_DIR="${GTEX_DIR:-${GTEX_SOURCE_DIR}/GTEx_Whole_Blood_by_chr}"
 EQTLGEN_DIR="${EQTLGEN_DIR:-${DATA_ROOT}/eQTLGen}"
-CELL_TYPE_PROPORTION_FILE="${CELL_TYPE_PROPORTION_FILE:-${DATA_ROOT}/GTEx/celltype_proportion.csv}"
+CELL_TYPE_PROPORTION_FILE="${CELL_TYPE_PROPORTION_FILE:-${GTEX_SOURCE_DIR}/celltype_proportion.csv}"
 EQTL_CATALOGUE_DIR="${EQTL_CATALOGUE_DIR:-${DATA_ROOT}/eQTLCatalogue/by_celltype_chr}"
 BBJ_DIR="${BBJ_DIR:-${DATA_ROOT}/BBJ_eQTL/by_celltype_chr}"
 AFR_DIR="${AFR_DIR:-${DATA_ROOT}/popcell/AFB_NS}"
 LD_REFERENCE_DIR="${LD_REFERENCE_DIR:-${DATA_ROOT}/1000G}"
 AUX_LD_DIR="${AUX_LD_DIR:-${LD_REFERENCE_DIR}/1000G_EUR}"
-COLOC_INPUT_DIR="${COLOC_INPUT_DIR:-${DATA_ROOT}/coloc}"
+COLOC_INPUT_DIR="${COLOC_INPUT_DIR:-${TRACECB_COLOC_INPUT_DIR:-${TRACECB_STUDY_ROOT}/coloc}}"
 
-SRC_DIR="${REPO_ROOT}/src"
-LOG_DIR="${TRACECB_LOG_DIR:-${OUTPUT_ROOT}/logs}"
-PYTHON_ENV="${PYTHON_ENV:-py312}"
-R_ENV="${R_ENV:-r4}"
-PLINK_BIN="${PLINK_BIN:-plink}"
-SLDXR_DIR="${SLDXR_DIR:-${REPO_ROOT}/external/s-ldxr}"
+# Figure inputs: external data under DATA_ROOT / TRACECB_STUDY_ROOT.
+# STUDY_DIR must contain QTD*/GMM/chr*/summary.csv; GENE_ANNOTATION is a GTF file.
+export TRACECB_STUDY_DIR="${TRACECB_STUDY_DIR:-${TRACECB_STUDY_ROOT}/${TARGET_POPULATION}_${TISSUE_SOURCE}}"
+export TRACECB_AFR_STUDY_DIR="${TRACECB_AFR_STUDY_DIR:-${TRACECB_STUDY_ROOT}/AFR_${TISSUE_SOURCE}}"
+export TRACECB_GTEX_GENE_ANNOTATION="${TRACECB_GTEX_GENE_ANNOTATION:-${GTEX_SOURCE_DIR}/gencode.v26.GRCh38.genes.gtf}"
+export TRACECB_ONEK1K_FILE="${TRACECB_ONEK1K_FILE:-${TRACECB_STUDY_ROOT}/onek1k_supp/onek1k_esnp.csv}"
+export TRACECB_GTEX_LOOKUP="${TRACECB_GTEX_LOOKUP:-${GTEX_LOOKUP_FILE:-${GTEX_SOURCE_DIR}/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz}}"
+GTEX_LOOKUP_FILE="${GTEX_LOOKUP_FILE:-${TRACECB_GTEX_LOOKUP}}"
+export TRACECB_OASIS_DIR="${TRACECB_OASIS_DIR:-${DATA_ROOT}/hum0197/eQTL_summary_statistics}"
+export TRACECB_CIMA_DIR="${TRACECB_CIMA_DIR:-${DATA_ROOT}/CIMA}"
+export TRACECB_CIMA_LEAD_EQTL="${TRACECB_CIMA_LEAD_EQTL:-${TRACECB_CIMA_DIR}/xQTL/CIMA_Lead_cis-xQTL.csv}"
+export TRACECB_CIMA_CELL_TYPES="${TRACECB_CIMA_CELL_TYPES:-${TRACECB_CIMA_DIR}/Cell_Atlas/CIMA_Cell_Type_Level_and_Marker.xlsx}"
+export TRACECB_REPLICATION_EGENES="${TRACECB_REPLICATION_EGENES:-${DATA_ROOT}/hum0343/hum0343_eGene.csv}"
+export TRACECB_REPLICATION_ESNPS="${TRACECB_REPLICATION_ESNPS:-${DATA_ROOT}/hum0343/hum0343_eSNP.csv}"
+export TRACECB_CELL_PROPORTIONS="${TRACECB_CELL_PROPORTIONS:-${TRACECB_STUDY_ROOT}/cell_type_proportion/ind_celltype_proportion.csv}"
+export TRACECB_COLOC_INPUT_DIR="${TRACECB_COLOC_INPUT_DIR:-${COLOC_INPUT_DIR}}"
+export TRACECB_COLOC_GENES="${TRACECB_COLOC_GENES:-${TRACECB_COLOC_INPUT_DIR}/bcx/bcx_mon.closest.protein_coding.bed}"
+export TRACECB_LOCUS_GWAS="${TRACECB_LOCUS_GWAS:-${TRACECB_COLOC_INPUT_DIR}/bcx/bcx_mon_GWAS.csv}"
+# Locus plots also require exported per-gene CSVs and these external bigWigs.
+export TRACECB_LOCUS_EQTL_DIR="${TRACECB_LOCUS_EQTL_DIR:-${TRACECB_STUDY_DIR}}"
+export TRACECB_LOCUS_TRACK_DIR="${TRACECB_LOCUS_TRACK_DIR:-${DATA_ROOT}/locuszoom}"
 
+# Figure outputs, repository metadata, and generated result tables.
+# Keep each population/bulk-source configuration's figures and composites together.
+export TRACECB_FIGURE_DIR="${TRACECB_FIGURE_DIR:-${OUTPUT_ROOT}/figures/${TARGET_POPULATION}_${TISSUE_SOURCE}}"
+export TRACECB_AFR_FIGURE_DIR="${TRACECB_AFR_FIGURE_DIR:-${TRACECB_FIGURE_DIR}/afr}"
+export TRACECB_ESNP_REPLICATION_DIR="${TRACECB_ESNP_REPLICATION_DIR:-${TRACECB_FIGURE_DIR}/esnp_replication}"
+export TRACECB_COLOC_FIGURE_DIR="${TRACECB_COLOC_FIGURE_DIR:-${TRACECB_FIGURE_DIR}/coloc}"
+export TRACECB_FIGURE_METADATA="${TRACECB_FIGURE_METADATA:-${SRC_DIR}/figures/metadata.json}"
+export TRACECB_TIMING_FILE="${TRACECB_TIMING_FILE:-${REPO_ROOT}/tmp/timing/summary_timing.csv}"
+# Colocalization result tables must be generated by run_colocalization.sh.
+export TRACECB_COLOC_DIR="${TRACECB_COLOC_DIR:-${OUTPUT_DIR}/coloc}"
+export TRACECB_COLOC_REPLICATION="${TRACECB_COLOC_REPLICATION:-${TRACECB_COLOC_DIR}/replication.csv}"
+
+# Study metadata and paths selected by population / tissue source.
 STUDY_IDS=(
     "QTD000021" "QTD000031" "QTD000066" "QTD000067" "QTD000069"
     "QTD000073" "QTD000081" "QTD000115" "QTD000371" "QTD000372"
@@ -85,7 +142,15 @@ case "${TISSUE_SOURCE}" in
         ;;
 esac
 
-OUTPUT_DIR="${OUTPUT_ROOT}/${TARGET_POPULATION}_${TISSUE_SOURCE}"
+# Runtime setup.
+# Make the source-only figures package importable from the active Python
+# environment. Re-sourcing config.sh must not duplicate the source path.
+case ":${PYTHONPATH:-}:" in
+    *":${SRC_DIR}:"*) ;;
+    *) export PYTHONPATH="${SRC_DIR}${PYTHONPATH:+:${PYTHONPATH}}" ;;
+esac
+export PYTHONPATH
+export MPLBACKEND="${MPLBACKEND:-Agg}"
 
 activate_conda_env() {
     local env_name="$1"
@@ -94,4 +159,4 @@ activate_conda_env() {
     conda activate "${env_name}"
 }
 
-mkdir -p "${LOG_DIR}" "${OUTPUT_DIR}"
+mkdir -p "${LOG_DIR}" "${OUTPUT_DIR}" "${TRACECB_FIGURE_DIR}"

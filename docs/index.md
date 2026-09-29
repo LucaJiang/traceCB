@@ -62,12 +62,12 @@ notebook, or `.[enrichment,figures]` for the manuscript analysis scripts.
 * `src/simulation/`: main, supplementary, and chromosome 22 simulations.
 * `src/enrichment/`: S-LDSC and pathway-enrichment analyses.
 * `src/figures/`: manuscript figure scripts.
-* `tests/`: unit and command-line contract tests.
 
 ### Guides
 
 Explore our documentation to learn how to use traceCB:
 
+* [Path configuration](configuration.md) — machine-specific settings, input layouts, and checks before running.
 * [Pipeline workflow](pipeline.md) — input sources, formats, preprocessing, and full-data execution.
 * [API reference](api_reference.md) — core model functions.
 * [Tutorial](tutorial.md) — local and Google Colab walkthroughs.

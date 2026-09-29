@@ -15,6 +15,9 @@ folder and delete it after inspection. Shell entry points also accept
 `SIM_DATA_DIR`, `POP1_GENO`, and `POP2_GENO`; `SIM_DATA_DIR` should contain
 `EAS_n5000_chr22_loci29.npy` and `EUR_n20000_chr22_loci29.npy`.
 
+Simulation figures, including the LD-window plot, are saved as PDF without
+duplicate PNG exports.
+
 To run the full small-window simulation suite on a server:
 
 ```bash

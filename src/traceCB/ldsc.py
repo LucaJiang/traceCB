@@ -653,3 +653,15 @@ if __name__ == "__main__":
     )
     print("Omega with fixed intercept:", Omega_fixed)
     print("Omega_se with fixed intercept:", Omega_se_fixed)
+
+# Cross-pop LDSC:
+# Omega: [[0.04083435 0.03087531]
+#  [0.03087531 0.01751813]]
+# Omega_se: [[0.05597719 0.0417875 ]
+#  [0.0417875  0.03179019]]
+
+# Cross-pop LDSC with fixed intercept:
+# Omega with fixed intercept: [[0.01868951 0.02262149]
+#  [0.02262149 0.01160651]]
+# Omega_se with fixed intercept: [[0.04651772 0.03957807]
+#  [0.03957807 0.03175546]]

@@ -29,6 +29,7 @@ from typing import Iterable
 
 import polars as pl
 import pyarrow.parquet as pq
+from figures import paths
 
 
 DEFAULT_THRESHOLD = 1e-5
@@ -84,13 +85,13 @@ DETAIL_COLUMNS = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--study-dir", type=Path, required=True)
-    parser.add_argument("--hum0197-dir", type=Path, required=True)
-    parser.add_argument("--hum0343-esnp", type=Path, required=True)
-    parser.add_argument("--cima-lead-eqtl", type=Path, required=True)
-    parser.add_argument("--gene-annotation", type=Path, required=True)
-    parser.add_argument("--gtex-lookup", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--study-dir", type=Path, default=paths.STUDY_DIR)
+    parser.add_argument("--hum0197-dir", type=Path, default=paths.OASIS_DIR)
+    parser.add_argument("--hum0343-esnp", type=Path, default=paths.REPLICATION_ESNPS)
+    parser.add_argument("--cima-lead-eqtl", type=Path, default=paths.CIMA_LEAD_EQTL)
+    parser.add_argument("--gene-annotation", type=Path, default=paths.GENE_ANNOTATION)
+    parser.add_argument("--gtex-lookup", type=Path, default=paths.GTEX_LOOKUP)
+    parser.add_argument("--output-dir", type=Path, default=paths.ESNP_REPLICATION_DIR)
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument(
         "--workers",
@@ -124,7 +125,7 @@ def log(message: str) -> None:
 
 
 def load_metadata() -> dict:
-    metadata_path = Path(__file__).with_name("metadata.json")
+    metadata_path = paths.require_file(paths.METADATA_FILE, "TRACECB_FIGURE_METADATA")
     with metadata_path.open() as handle:
         return json.load(handle)
 
