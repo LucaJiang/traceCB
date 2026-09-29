@@ -170,6 +170,24 @@ The whole-chromosome visualizer uses gene-level 95% confidence intervals by
 default, treating genes as repeat units. Use `--error_unit replicate` only when
 `NREP>1` and you want simulation-replicate uncertainty instead.
 
+### Supplementary Figures 7–10: bars with individual gene dots
+
+`chr22/plot_paper_grid.py` redraws the complete archived 16-setting paper grid using the original method colors, grouped bars, all individual gene values with horizontal jitter, and gene-bootstrap 95% confidence intervals. It reads `bench/result/chr22_paper_grid/fig07_10_gene_points.tsv.gz` and verifies the results against `fig07_10_n_means_bootstrap95.tsv` in the same directory. These local inputs correspond to the recovered `5f72d47` grid; they are separate from the current `chr22/run.sh` scenario design and are not tracked by Git.
+
+```bash
+conda run --no-capture-output -n py312 python src/simulation/chr22/plot_paper_grid.py
+```
+
+The command writes exactly four files to `bench/result/img/chr22_paper_grid_bars_dots`: `alpha_null.pdf`, `alpha_pop2_specific.pdf`, `power_pop1_specific.pdf`, and `power_shared.pdf`. It does not create CSV/TSV tables, JSON reports, or PNG previews. Figure 7 uses a 0–0.45 y-axis; Figures 8–10 show all values from 0 to 1, with upper padding to 1.03. Bootstrap and jitter seeds are fixed for reproducible results.
+
+Use `--gene-points`, `--reference-stats`, or `--out-dir` to override the paths. To generate the four paper assets directly, run:
+
+```bash
+conda run --no-capture-output -n py312 python src/simulation/chr22/plot_paper_grid.py --out-dir ../traceCB_paper/img/supp
+```
+
+Existing unrelated files in the output directory are left untouched. Plotting instructions for these four figures are maintained here instead of generating an additional README in the result directory.
+
 ## Result Hygiene
 
 - Keep long-running production results in named directories under
