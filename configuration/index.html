@@ -1,0 +1,1393 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Trans-ancestry cell-type-specific eQTL effects mapping">
+      
+      
+        <meta name="author" content="Wenxin Jiang, Jiashun Xiao, and Mingxuan Cai">
+      
+      
+        <link rel="canonical" href="https://lucajiang.github.io/traceCB/configuration/">
+      
+      
+        <link rel="prev" href="../tutorial/">
+      
+      
+        <link rel="next" href="../pipeline/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Configuration - traceCB</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configure-paths-for-your-machine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="traceCB" class="md-header__button md-logo" aria-label="traceCB" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            traceCB
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lucajiang/traceCB" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lucajiang/traceCB
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../tutorial/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Tutorial
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../pipeline/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Pipeline
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api_reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="traceCB" class="md-nav__button md-logo" aria-label="traceCB" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    traceCB
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lucajiang/traceCB" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lucajiang/traceCB
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-choose-where-inputs-and-results-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Choose where inputs and results live
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-save-a-machine-specific-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Save a machine-specific configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-supply-the-inputs-for-the-stages-you-will-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Supply the inputs for the stages you will run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Supply the inputs for the stages you will run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#harmonization-ld-scores-and-gmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harmonization, LD scores and GMM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw-data-preprocessing-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw-data preprocessing settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-software" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External software
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-check-the-resolved-paths-before-expensive-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Check the resolved paths before expensive jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-configure-manuscript-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Configure manuscript figures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-simulation-and-enrichment-use-additional-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Simulation and enrichment use additional settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-record-what-another-researcher-needs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Record what another researcher needs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-choose-where-inputs-and-results-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Choose where inputs and results live
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-save-a-machine-specific-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Save a machine-specific configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-supply-the-inputs-for-the-stages-you-will-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Supply the inputs for the stages you will run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Supply the inputs for the stages you will run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#harmonization-ld-scores-and-gmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harmonization, LD scores and GMM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw-data-preprocessing-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw-data preprocessing settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-software" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External software
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-check-the-resolved-paths-before-expensive-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Check the resolved paths before expensive jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-configure-manuscript-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Configure manuscript figures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-simulation-and-enrichment-use-additional-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Simulation and enrichment use additional settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-record-what-another-researcher-needs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Record what another researcher needs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="configure-paths-for-your-machine">Configure paths for your machine</h1>
+<p>Use this guide before running the full-data workflows or manuscript figures.
+The public toy tutorial does not require the external study datasets or this
+configuration. Run the commands below in <strong>Bash, from the repository root</strong>.
+Replace every <code>/srv/...</code> example with a real absolute path on your machine.</p>
+<p><code>scripts/config.sh</code> currently contains the authors' data and software roots.
+You can edit its defaults or override them with exported environment variables.
+Configuration selects files; it does not download data, create missing analysis
+inputs, install software, or convert genome builds. See the <a href="../pipeline/">pipeline guide</a>
+for data sources, access restrictions and column formats.</p>
+<h2 id="1-choose-where-inputs-and-results-live">1. Choose where inputs and results live</h2>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What it points to</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACECB_DATA_ROOT</code></td>
+<td>Root containing external datasets and references.</td>
+<td><code>/srv/tracecb/input</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_SOFTWARE_ROOT</code></td>
+<td>Parent of external tools; defaults expect <code>plink</code>, <code>plink2</code>, and <code>s-ldxr-master/s-ldxr.py</code> below it.</td>
+<td><code>/srv/tracecb/software</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_OUTPUT_ROOT</code></td>
+<td>Writable root for pipeline outputs. The population/tissue subdirectory is added automatically.</td>
+<td><code>/srv/tracecb/runs/run01</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_STUDY_ROOT</code></td>
+<td>Root containing study results to <strong>read</strong>, including population/tissue subdirectories.</td>
+<td><code>/srv/tracecb/runs/run01</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_STUDY_DIR</code></td>
+<td>One population/tissue directory containing <code>QTD*</code> study directories.</td>
+<td><code>/srv/tracecb/runs/run01/EAS_eQTLGen</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_FIGURE_DIR</code></td>
+<td>Writable output directory for figures in the selected configuration.</td>
+<td><code>/srv/tracecb/runs/run01/figures/EAS_eQTLGen</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_LOG_DIR</code></td>
+<td>Pipeline logs; default is <code>TRACECB_OUTPUT_ROOT/logs</code>.</td>
+<td><code>/srv/tracecb/runs/run01/logs</code></td>
+</tr>
+<tr>
+<td><code>TRACECB_REPO_ROOT</code></td>
+<td>Repository checkout; normally detected automatically.</td>
+<td><code>/srv/code/traceCB</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pipeline output and figure input are separate settings.</strong> GMM writes to
+<code>TRACECB_OUTPUT_ROOT/&lt;population&gt;_&lt;tissue&gt;/QTD*/GMM/</code>. Figures read from
+<code>TRACECB_STUDY_DIR</code>, whose default is under <code>TRACECB_DATA_ROOT/traceCB</code>, not under
+the output root. To plot a new run, explicitly set <code>TRACECB_STUDY_ROOT</code> to its
+output root <strong>before</strong> sourcing the configuration. Do not append <code>EAS_eQTLGen</code>
+to <code>TRACECB_OUTPUT_ROOT</code>; otherwise the wrapper adds that component twice.</p>
+<p>Use a new output directory for a new analysis version. Existing files are not
+automatically protected from overwriting, and stale outputs can otherwise be
+mixed with newly generated results.</p>
+<h2 id="2-save-a-machine-specific-configuration">2. Save a machine-specific configuration</h2>
+<p>Keep local paths outside the checkout, for example in <code>../tracecb-local.sh</code>.
+This sample assumes the directory layout in section 3:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Contents of ../tracecb-local.sh; replace paths before sourcing.</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_DATA_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/input"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_SOFTWARE_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/software"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_OUTPUT_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/runs/run01"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_STUDY_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TRACECB_OUTPUT_ROOT</span><span class="s2">"</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">TARGET_POPULATION</span><span class="o">=</span><span class="s2">"EAS"</span><span class="w">   </span><span class="c1"># EAS or AFR</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TISSUE_SOURCE</span><span class="o">=</span><span class="s2">"eQTLGen"</span><span class="w">   </span><span class="c1"># eQTLGen or GTEx; case matters</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHON_ENV</span><span class="o">=</span><span class="s2">"py312"</span><span class="w">       </span><span class="c1"># existing Conda environment name</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">R_ENV</span><span class="o">=</span><span class="s2">"r4"</span><span class="w">               </span><span class="c1"># needed for the optional coloc wrapper</span>
+
+<span class="c1"># These overrides are optional if the software root has the default layout.</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PLINK_BIN</span><span class="o">=</span><span class="s2">"/srv/tracecb/software/plink"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PLINK2</span><span class="o">=</span><span class="s2">"/srv/tracecb/software/plink2"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SLDXR_DIR</span><span class="o">=</span><span class="s2">"/srv/tracecb/software/s-ldxr-master"</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_GTEX_GENE_ANNOTATION</span><span class="o">=</span><span class="s2">"/srv/tracecb/input/GTEx/gencode.v26.GRCh38.genes.gtf"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CELL_TYPE_PROPORTION_FILE</span><span class="o">=</span><span class="s2">"/srv/tracecb/input/GTEx/celltype_proportion.csv"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MAX_JOBS</span><span class="o">=</span><span class="m">8</span>
+</code></pre></div>
+<p>Apply it in a shell that has not already sourced a different traceCB configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">source</span><span class="w"> </span>../tracecb-local.sh
+<span class="nb">source</span><span class="w"> </span>scripts/config.sh
+</code></pre></div>
+<p><code>source scripts/config.sh</code> exports figure paths, sets <code>PYTHONPATH</code> and the
+headless Matplotlib backend, and creates output/log directories. It does not
+activate a Conda environment. The pipeline shell wrappers activate <code>PYTHON_ENV</code>
+or <code>R_ENV</code> themselves; direct Python/R plotting commands use the active environment.
+Do not run <code>bash scripts/config.sh</code>: it cannot configure the calling shell and
+the script deliberately rejects that invocation.</p>
+<p>Environment values take precedence over defaults written as <code>${VARIABLE:-default}</code>.
+Use <code>export</code> so overrides reach wrappers started with <code>bash scripts/...</code>.
+Do not just assign <code>DATA_ROOT</code> or <code>OUTPUT_ROOT</code>; the corresponding user overrides
+are <code>TRACECB_DATA_ROOT</code> and <code>TRACECB_OUTPUT_ROOT</code>.</p>
+<p>When changing population, tissue or roots, start from a clean environment and
+source the appropriate local settings again. A child <code>bash</code> launched from an
+already configured shell inherits its exports and is <strong>not</strong> a clean reset.
+Re-sourcing only <code>TARGET_POPULATION=AFR</code> does not recompute existing exported
+<code>TRACECB_STUDY_DIR</code>, <code>TRACECB_FIGURE_DIR</code>, coloc paths or other derived paths.
+If reusing a configured shell, explicitly update or unset every affected override.</p>
+<h2 id="3-supply-the-inputs-for-the-stages-you-will-run">3. Supply the inputs for the stages you will run</h2>
+<h3 id="harmonization-ld-scores-and-gmm">Harmonization, LD scores and GMM</h3>
+<p>The defaults expect the following layout. Only the selected target population
+and tissue source are needed. <code>chr1</code> examples repeat through <code>chr22</code>.</p>
+<div class="highlight"><pre><span></span><code>input/
+├── BBJ_eQTL/by_celltype_chr/Monocytes/chr1.csv
+├── popcell/AFB_NS/MONO__NS/eQTL_AFB_chr1_assoc.txt.gz
+├── eQTLCatalogue/by_celltype_chr/QTD000021/chr1.csv
+├── eQTLGen/chr1.tsv.gz
+├── GTEx/
+│   ├── GTEx_Whole_Blood_by_chr/chr1.csv
+│   ├── celltype_proportion.csv
+│   └── gencode.v26.GRCh38.genes.gtf
+└── 1000G/
+    ├── 1000G_EAS/1000G.EAS.QC.maf.1.bed
+    ├── 1000G_EAS/1000G.EAS.QC.maf.1.bim
+    ├── 1000G_EAS/1000G.EAS.QC.maf.1.fam
+    ├── 1000G_EUR/1000G.EUR.QC.maf.1.{bed,bim,fam}
+    └── 1000G_AFR/1000G.AFR.QC.maf.1.{bed,bim,fam}
+</code></pre></div>
+<p><code>{bed,bim,fam}</code> denotes three files, not a literal filename. Add all required
+cell types and studies, following <code>STUDY_IDS</code> and <code>CELL_TYPES</code> in the config.</p>
+<table>
+<thead>
+<tr>
+<th>Override</th>
+<th>Required contents / role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BBJ_DIR</code></td>
+<td><strong>Formatted</strong> EAS target inputs: <code>&lt;cell-type&gt;/chr&lt;chr&gt;.csv</code>, e.g. <code>Monocytes/chr22.csv</code>. Defaults to <code>DATA_ROOT/BBJ_eQTL/by_celltype_chr</code>.</td>
+</tr>
+<tr>
+<td><code>AFR_DIR</code></td>
+<td>Formatted AFR target inputs: <code>&lt;label&gt;__NS/eQTL_AFB_chr&lt;chr&gt;_assoc.txt.gz</code>. Labels are <code>MONO</code>, <code>B</code>, <code>NK</code>, <code>T.CD4</code>, <code>T.CD8</code>.</td>
+</tr>
+<tr>
+<td><code>EQTL_CATALOGUE_DIR</code></td>
+<td>Formatted auxiliary EUR inputs: <code>&lt;QTD study&gt;/chr&lt;chr&gt;.csv</code>.</td>
+</tr>
+<tr>
+<td><code>EQTLGEN_DIR</code></td>
+<td>eQTLGen <code>chr&lt;chr&gt;.tsv.gz</code>, tab-delimited and retaining the original headers expected by <code>load_eQTLGen()</code>. A whole-genome download is not directly interchangeable with these files.</td>
+</tr>
+<tr>
+<td><code>GTEX_SOURCE_DIR</code></td>
+<td>Raw GTEx download directory; default parent for GTEx files below.</td>
+</tr>
+<tr>
+<td><code>GTEX_DIR</code></td>
+<td>Formatted GTEx tissue inputs: <code>chr&lt;chr&gt;.csv</code>.</td>
+</tr>
+<tr>
+<td><code>CELL_TYPE_PROPORTION_FILE</code></td>
+<td>CSV named <strong><code>celltype_proportion.csv</code></strong>, with <code>Cell_type,Proportion</code> columns. Values are <strong>percentages</strong>: <code>20</code> means 20%, not <code>0.2</code>. Use cell-type names matching the config. The preparation wrapper copies the basename unchanged, and GMM expects this exact basename.</td>
+</tr>
+<tr>
+<td><code>LD_REFERENCE_DIR</code></td>
+<td>Parent of <code>1000G_EAS</code>, <code>1000G_AFR</code> and, by default, <code>1000G_EUR</code>.</td>
+</tr>
+<tr>
+<td><code>AUX_LD_DIR</code></td>
+<td>Directory containing the EUR reference BED/BIM/FAM triplets; can override the default <code>LD_REFERENCE_DIR/1000G_EUR</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The loader currently chooses input formats using directory names: the target
+path must contain <code>bbj</code> or <code>af</code>, and the tissue path must contain <code>gtex</code> or
+<code>eqtlgen</code> (case-insensitive). Keep these identifiers when choosing custom paths.</p>
+<p><code>TARGET_EQTL_DIR</code>, <code>TISSUE_DIR</code>, <code>AUX_EQTL_DIR</code>, <code>TARGET_LD_DIR</code> and <code>OUTPUT_DIR</code>
+are derived assignments that the config overwrites. Set their parent settings
+from the table instead. In particular, exporting <code>TARGET_LD_DIR</code> alone does not
+override the selected <code>LD_REFERENCE_DIR/1000G_&lt;population&gt;</code> directory. For a
+different target layout, arrange the selected subdirectory accordingly or use
+the underlying Python tools' explicit path arguments.</p>
+<p>Put LD triplets directly in the configured population directory. The loader
+expects <code>1000G.*.QC.maf.&lt;chr&gt;.bim</code>; there should be one matching reference per
+chromosome. A download named <code>1000G.EUR.QC.&lt;chr&gt;</code> does not match that pattern.
+Confirm ancestry, genome build, QC and allele conventions before adapting a
+reference layout; changing a filename does not perform QC or liftover.
+<code>harmonize_inputs.py</code> matches rsIDs and retains tissue coordinates without liftover.
+Coordinate-based coloc/enrichment inputs must use matching builds.</p>
+<p>Study IDs, cell types, sample sizes and the chromosome list are Bash arrays or
+unconditional assignments in <code>config.sh</code>, not environment-variable overrides.
+For your own cohorts, edit those coordinated lists and any manuscript figure
+metadata that assumes the paper's ten studies. Exporting <code>CHROMOSOMES=22</code> will
+not restrict the wrappers. For one prepared study/chromosome, use the CLI:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>traceCB.run_gmm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--study<span class="w"> </span>QTD000021<span class="w"> </span>--cell-type<span class="w"> </span>Monocytes<span class="w"> </span>--chromosome<span class="w"> </span><span class="m">22</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$TRACECB_OUTPUT_ROOT</span><span class="s2">/</span><span class="si">${</span><span class="nv">TARGET_POPULATION</span><span class="si">}</span><span class="s2">_</span><span class="si">${</span><span class="nv">TISSUE_SOURCE</span><span class="si">}</span><span class="s2">"</span>
+</code></pre></div>
+<p>This command requires already harmonized inputs, gene LD scores and proportions
+under that study directory; it does not prepare them.</p>
+<h3 id="raw-data-preprocessing-settings">Raw-data preprocessing settings</h3>
+<p>These settings belong to the preprocessing scripts. Their outputs feed the
+formatted-input paths above; setting one side does not always update the other.</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Raw input settings</th>
+<th>Output setting and next-stage input</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>preprocess_bbj.sh &lt;cell-type&gt;</code></td>
+<td><code>BBJ_SOURCE_DIR/eQTL_&lt;cell-type&gt;.tar.gz</code>.</td>
+<td><code>BBJ_OUTPUT_DIR</code>; set <code>BBJ_DIR</code> to the same directory when overriding.</td>
+</tr>
+<tr>
+<td><code>preprocess_eqtl_catalogue.sh</code></td>
+<td><code>EQTL_CATALOGUE_SOURCE_DIR</code> containing Catalogue study files.</td>
+<td><code>EQTL_CATALOGUE_DIR</code>.</td>
+</tr>
+<tr>
+<td><code>preprocess_gtex.sh</code></td>
+<td><code>GTEX_EQTL_FILE</code> and <code>GTEX_LOOKUP_FILE</code> (both gzip files). <code>TRACECB_GTEX_LOOKUP</code> also supplies the lookup default; keep overrides consistent.</td>
+<td><code>GTEX_OUTPUT_DIR</code>; set <code>GTEX_DIR</code> to the same directory when overriding.</td>
+</tr>
+<tr>
+<td><code>preprocess_1000g.sh</code></td>
+<td><code>REFERENCE_DIR</code> containing <code>all_hg38.pgen</code>, <code>all_hg38.pvar</code>, <code>all_hg38.psam</code>, or the supported compressed source files.</td>
+<td>Population subdirectories under <code>REFERENCE_DIR</code>; set <code>LD_REFERENCE_DIR</code> to this parent for subsequent stages. Requires <code>PLINK1</code> and <code>PLINK2</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The exact default GTEx lookup filename is
+<code>GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table2017.48.22.txt.gz</code>.
+The default association filename is
+<code>GTEx_Analysis_v8_QTLs-GTEx_Analysis_v8_eQTL_all_associations-Whole_Blood.allpairs.txt.gz</code>.
+Override their variables if your downloaded filenames differ.
+The repository does not currently provide a dedicated eQTLGen chromosome-splitting
+entry point; prepare the specified chromosome files before running harmonization.</p>
+<h3 id="external-software">External software</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Required value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PLINK_BIN</code></td>
+<td>PLINK 1.9 executable path, not its containing directory. A command name on <code>PATH</code> also works.</td>
+</tr>
+<tr>
+<td><code>PLINK2</code></td>
+<td>PLINK 2 executable, used by 1000G preprocessing.</td>
+</tr>
+<tr>
+<td><code>PLINK1</code></td>
+<td>Optional PLINK 1.9 override specific to 1000G preprocessing; otherwise uses <code>PLINK_BIN</code>.</td>
+</tr>
+<tr>
+<td><code>SLDXR_DIR</code></td>
+<td>Directory containing <code>s-ldxr.py</code>; its Python dependencies must be installed in the environment running LD scores.</td>
+</tr>
+<tr>
+<td><code>PYTHON_ENV</code> / <code>R_ENV</code></td>
+<td>Existing Conda environment <strong>names</strong>. The Python <code>environment.yml</code> does not create the R environment.</td>
+</tr>
+<tr>
+<td><code>PYTHON_BIN</code></td>
+<td>Optional Python executable used by the main workflow wrappers after environment activation. Prefer the activated environment's <code>python</code>.</td>
+</tr>
+<tr>
+<td><code>MAX_JOBS</code></td>
+<td>Positive integer for the wrappers that implement this limit: GTEx preprocessing, LD scores, GMM and coloc. Input preparation instead launches one process per configured study.</td>
+</tr>
+</tbody>
+</table>
+<p>See the <a href="../pipeline/">pipeline guide</a> and the figure README for dependencies.
+Record actual PLINK/S-LDXR/R versions and commits with your run; paths alone do
+not freeze software versions.</p>
+<h2 id="4-check-the-resolved-paths-before-expensive-jobs">4. Check the resolved paths before expensive jobs</h2>
+<p>After sourcing both configuration files, inspect what the wrappers will use:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>TARGET_POPULATION<span class="w"> </span>TISSUE_SOURCE<span class="w"> </span>TARGET_EQTL_DIR<span class="w"> </span>AUX_EQTL_DIR<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>TISSUE_DIR<span class="w"> </span>CELL_TYPE_PROPORTION_FILE<span class="w"> </span>TARGET_LD_DIR<span class="w"> </span>AUX_LD_DIR<span class="w"> </span>OUTPUT_DIR<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>TRACECB_STUDY_DIR<span class="w"> </span>TRACECB_FIGURE_DIR<span class="w"> </span>PLINK_BIN<span class="w"> </span>SLDXR_DIR<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s=%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">done</span>
+
+<span class="c1"># Main prerequisites before input preparation / LD scoring:</span>
+<span class="o">(</span>
+<span class="w">  </span><span class="nb">set</span><span class="w"> </span>-e
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$TARGET_EQTL_DIR</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$AUX_EQTL_DIR</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$TISSUE_DIR</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$CELL_TYPE_PROPORTION_FILE</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PLINK_BIN</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$SLDXR_DIR</span><span class="s2">/s-ldxr.py"</span>
+
+<span class="w">  </span><span class="c1"># Require exactly one correctly named reference and its complete triplet.</span>
+<span class="w">  </span><span class="nb">shopt</span><span class="w"> </span>-s<span class="w"> </span>nullglob
+<span class="w">  </span><span class="k">for</span><span class="w"> </span>ref_dir<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$TARGET_LD_DIR</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$AUX_LD_DIR</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>chr<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHROMOSOMES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">      </span><span class="nv">bims</span><span class="o">=(</span><span class="s2">"</span><span class="nv">$ref_dir</span><span class="s2">"</span>/1000G.*.QC.maf.<span class="s2">"</span><span class="nv">$chr</span><span class="s2">"</span>.bim<span class="o">)</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="w"> </span><span class="si">${#</span><span class="nv">bims</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Expected one BIM for chr%s in %s; found %s\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">          </span><span class="s2">"</span><span class="nv">$chr</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$ref_dir</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">bims</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">      </span><span class="k">fi</span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span>ext<span class="w"> </span><span class="k">in</span><span class="w"> </span>bed<span class="w"> </span>bim<span class="w"> </span>fam<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">bims</span><span class="p">[0]%.bim</span><span class="si">}</span><span class="s2">.</span><span class="nv">$ext</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">      </span><span class="k">done</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">  </span><span class="k">done</span>
+<span class="o">)</span>
+</code></pre></div>
+<p>These checks cover paths and filenames, not scientific validity or full CSV
+schemas. Resolve failures before continuing. A pipeline directory may exist
+because the config created it even when no analyses have run.</p>
+<p>Then run the needed stages in order:</p>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>scripts/prepare_inputs.sh
+bash<span class="w"> </span>scripts/run_ld_scores.sh
+bash<span class="w"> </span>scripts/run_gmm.sh
+</code></pre></div>
+<p>Before making full-study figures, check completeness explicitly. The plotting
+loader can otherwise read a subset of chromosomes without treating it as an error:</p>
+<div class="highlight"><pre><span></span><code><span class="o">(</span>
+<span class="w">  </span><span class="nv">missing</span><span class="o">=</span><span class="m">0</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span>study<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">STUDY_IDS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>chr<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHROMOSOMES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">      </span><span class="nv">file</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TRACECB_STUDY_DIR</span><span class="s2">/</span><span class="nv">$study</span><span class="s2">/GMM/chr</span><span class="nv">$chr</span><span class="s2">/summary.csv"</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Missing or empty: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">      </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">  </span><span class="k">done</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="nv">$missing</span><span class="s2">"</span>
+<span class="o">)</span>
+</code></pre></div>
+<p>This only checks presence and size. Also inspect logs, summary columns/rows and
+per-gene Parquet outputs. A header-only summary is not evidence of a successful
+full analysis. Label deliberately partial analyses as partial.</p>
+<h2 id="5-configure-manuscript-figures">5. Configure manuscript figures</h2>
+<p>For case-study plots of a newly generated run, the local example already points
+the study input at the output root. Install the figure dependencies and activate
+the intended Python environment before running:</p>
+<div class="highlight"><pre><span></span><code>conda<span class="w"> </span>activate<span class="w"> </span>py312
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.[figures]'</span>
+<span class="nb">source</span><span class="w"> </span>../tracecb-local.sh
+<span class="nb">source</span><span class="w"> </span>scripts/config.sh
+python<span class="w"> </span>-m<span class="w"> </span>figures.case_study
+python<span class="w"> </span>-m<span class="w"> </span>figures.combine_case_study
+</code></pre></div>
+<p>For <strong>existing</strong> results, use these overrides instead, in a clean shell:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_DATA_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/input"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_OUTPUT_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/figure-runs/run01"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_STUDY_ROOT</span><span class="o">=</span><span class="s2">"/srv/tracecb/archive"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TARGET_POPULATION</span><span class="o">=</span><span class="s2">"EAS"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TISSUE_SOURCE</span><span class="o">=</span><span class="s2">"eQTLGen"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TRACECB_GTEX_GENE_ANNOTATION</span><span class="o">=</span><span class="s2">"/srv/tracecb/input/GTEx/gencode.v26.GRCh38.genes.gtf"</span>
+<span class="nb">source</span><span class="w"> </span>scripts/config.sh
+<span class="c1"># Reads /srv/tracecb/archive/EAS_eQTLGen/QTD*/GMM/...</span>
+<span class="c1"># Writes /srv/tracecb/figure-runs/run01/figures/EAS_eQTLGen/...</span>
+</code></pre></div>
+<p><code>TRACECB_GTEX_GENE_ANNOTATION</code> is a <strong>file</strong>, not a directory; the current reader
+expects an uncompressed GTF. It is also required for gene annotation when the
+tissue source is eQTLGen. <code>TRACECB_FIGURE_METADATA</code> defaults to the repository's
+<code>src/figures/metadata.json</code> and normally should not be changed.</p>
+<p>Only configure the following extra inputs for figures that consume them:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Required input / use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACECB_AFR_STUDY_DIR</code></td>
+<td>AFR cohort root with <code>QTD*/GMM/chr*/summary.csv</code>; defaults to <code>STUDY_ROOT/AFR_&lt;tissue&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_ONEK1K_FILE</code></td>
+<td>Processed <code>onek1k_esnp.csv</code>, not an arbitrary raw OneK1K download.</td>
+</tr>
+<tr>
+<td><code>TRACECB_OASIS_DIR</code></td>
+<td>OASIS directory with all five <code>&lt;cell&gt;_PC15_MAF0.05_Cell.10_top_assoc_chr1_23.txt.gz</code> files; <code>&lt;cell&gt;</code> is <code>Mono</code>, <code>CD4T</code>, <code>CD8T</code>, <code>B</code>, <code>NK</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_GTEX_LOOKUP</code></td>
+<td>Full GTEx variant lookup gzip; used for SNP matching in replication plots.</td>
+</tr>
+<tr>
+<td><code>TRACECB_CIMA_DIR</code></td>
+<td>Parent of the CIMA files below; override the individual files if their layout differs.</td>
+</tr>
+<tr>
+<td><code>TRACECB_CIMA_LEAD_EQTL</code></td>
+<td><code>CIMA_Lead_cis-xQTL.csv</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_CIMA_CELL_TYPES</code></td>
+<td><code>CIMA_Cell_Type_Level_and_Marker.xlsx</code>; the <code>openpyxl</code> Excel reader is included in the <code>figures</code> extra.</td>
+</tr>
+<tr>
+<td><code>TRACECB_REPLICATION_EGENES</code> / <code>TRACECB_REPLICATION_ESNPS</code></td>
+<td>Processed <code>hum0343_eGene.csv</code> / <code>hum0343_eSNP.csv</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_CELL_PROPORTIONS</code></td>
+<td>Individual-level <code>ind_celltype_proportion.csv</code> for the proportion figure; distinct from GMM's mean <code>celltype_proportion.csv</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_TIMING_FILE</code></td>
+<td><code>summary_timing.csv</code> in the schema consumed by <code>runtime_comparison.py</code>; a raw GMM text log is not a substitute.</td>
+</tr>
+<tr>
+<td><code>TRACECB_COLOC_INPUT_DIR</code></td>
+<td>Prepared GWAS/locus directory containing <code>bcx/</code> and <code>bbj/</code>. Keep <code>COLOC_INPUT_DIR</code> consistent if also set.</td>
+</tr>
+<tr>
+<td><code>TRACECB_COLOC_DIR</code></td>
+<td>Generated <code>*_coloc.csv</code> result directory. Setting it selects <strong>figure input</strong>; the coloc shell wrapper writes to <code>OUTPUT_DIR/coloc</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_COLOC_GENES</code></td>
+<td>Closest-gene BED file, e.g. <code>bcx_mon.closest.protein_coding.bed</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_COLOC_REPLICATION</code></td>
+<td>Separately generated replication table, default <code>COLOC_DIR/replication.csv</code>; the main coloc wrapper does not create it.</td>
+</tr>
+<tr>
+<td><code>TRACECB_LOCUS_GWAS</code></td>
+<td>Prepared locus GWAS CSV, e.g. <code>bcx_mon_GWAS.csv</code>.</td>
+</tr>
+<tr>
+<td><code>TRACECB_LOCUS_EQTL_DIR</code></td>
+<td>Root of exported per-gene CSVs in the layout used by <code>manhattan_locuszoom.R</code>; GMM Parquet files alone are insufficient.</td>
+</tr>
+<tr>
+<td><code>TRACECB_LOCUS_TRACK_DIR</code></td>
+<td>ENCODE bigWig track directory, with the filenames expected by the locus scripts.</td>
+</tr>
+</tbody>
+</table>
+<p>When <code>TRACECB_STUDY_ROOT</code> points to a new run, unchanged external resources such
+as <code>onek1k_supp/</code>, <code>cell_type_proportion/</code> and prepared <code>coloc/</code> inputs may still
+be stored elsewhere. Override their individual paths; do not assume GMM creates
+them in the new study root.</p>
+<p>Optional output overrides are <code>TRACECB_AFR_FIGURE_DIR</code>,
+<code>TRACECB_ESNP_REPLICATION_DIR</code> and <code>TRACECB_COLOC_FIGURE_DIR</code>. Their defaults are
+<code>afr/</code>, <code>esnp_replication/</code> and <code>coloc/</code> under <code>TRACECB_FIGURE_DIR</code>. The full script
+inventory and R packages are documented in <code>src/figures/README.md</code>.</p>
+<h2 id="6-simulation-and-enrichment-use-additional-settings">6. Simulation and enrichment use additional settings</h2>
+<p><code>scripts/config.sh</code> does <strong>not</strong> configure every simulation/enrichment path.</p>
+<p>For the small-window simulations, use their own overrides explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">SIM_DATA_DIR</span><span class="o">=</span>/srv/tracecb/input/simulation<span class="w"> </span><span class="se">\</span>
+<span class="nv">OUT_DIR</span><span class="o">=</span>/srv/tracecb/runs/run01/simulation<span class="w"> </span><span class="se">\</span>
+<span class="nv">IMG_DIR</span><span class="o">=</span>/srv/tracecb/runs/run01/figures/simulation<span class="w"> </span><span class="se">\</span>
+<span class="nv">NREP</span><span class="o">=</span><span class="m">100</span><span class="w"> </span><span class="nv">NSNP</span><span class="o">=</span><span class="m">2000</span><span class="w"> </span><span class="nv">OMEGA_MODE</span><span class="o">=</span>both<span class="w"> </span><span class="se">\</span>
+bash<span class="w"> </span>src/simulation/run_all.sh<span class="w"> </span>all
+</code></pre></div>
+<p><code>SIM_DATA_DIR</code> must contain <code>EAS_n5000_chr22_loci29.npy</code> and
+<code>EUR_n20000_chr22_loci29.npy</code>, or set <code>POP1_GENO</code> and <code>POP2_GENO</code> to individual files.
+The matrices are not distributed with the repository. Reproducing the exact
+paper inputs additionally requires their data-generation/selection provenance.
+Set <code>CONDA_ENV</code> for these wrappers; they do not use <code>PYTHON_ENV</code>.
+Set <code>SKIP_CONDA=1</code> only if the active environment is already suitable.</p>
+<p>The <code>all</code> target does not include the whole-chromosome suite. Its
+<code>src/simulation/chr22/run.sh</code> entry point also needs PLINK, SNP-gene and LD inputs;
+<code>SIM_DATA_DIR</code> does not redirect its hard-coded defaults. Use the underlying
+<code>chr22/simulate.py --help</code> path arguments for a custom input layout. Explicitly
+set <code>NREP</code> and <code>IMG_DIR</code>: the shared setup currently supplies <code>NREP=100</code>, so the
+later <code>NREP=1</code> fallback in <code>chr22/run.sh</code> does not take effect. See
+<code>src/simulation/README.md</code> for the separate grids and plotting commands.</p>
+<p>S-LDSC enrichment uses <code>STUDY_DIR</code>, <code>RESULT_DIR</code>, <code>GWAS_ROOT</code>, <code>LDSC_DIR</code> and LD
+reference <strong>prefixes</strong>, described in <code>src/enrichment/README.md</code>. <code>LDSC_DIR</code> is the
+LDSC checkout, distinct from <code>SLDXR_DIR</code>. Its EUR reference stack uses GRCh37;
+setting a path does not make GRCh38 intervals compatible.</p>
+<p>For ORA, set both <code>GMT_DIR</code> (shell download location) and <code>TRACECB_GMT_DIR</code>
+(Python reader location) to the same directory. Set <code>RESULT_ROOT</code> for the ORA
+wrapper and provide its study/GTF inputs. Neither this wrapper nor the S-LDSC
+wrapper automatically sources <code>scripts/config.sh</code>.</p>
+<h2 id="7-record-what-another-researcher-needs">7. Record what another researcher needs</h2>
+<p>Alongside each run, save the code commit and local diff, resolved configuration
+without credentials, software/environment versions, data source/access details,
+genome builds, input checksums, simulation seeds and exact commands. Include a
+manifest connecting each paper figure to its input tables and producing command.
+Keep API tokens out of config files committed to Git. Complete path configuration
+is necessary, but does not replace missing inputs, scientific validation or
+the provenance required for exact paper reproduction.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
